@@ -488,7 +488,7 @@ class TestScoreBreakdown:
         memory.pipeline.extractor = extractor
         memory.add("I live in Berlin", user_id="alice")
 
-        results = memory.search("Berlin", user_id="alice")
+        results = memory.search("Lives in Berlin", user_id="alice")
         assert len(results) >= 1
         r = results[0]
         assert r.similarity_score > 0
