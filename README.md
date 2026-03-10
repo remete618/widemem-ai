@@ -661,3 +661,13 @@ Bug reports, feature requests, and unsolicited opinions are all welcome at the G
 ## License
 
 Apache 2.0 — See [LICENSE](LICENSE) for the full text that nobody reads.
+
+---
+
+<p align="center">
+  <a href="https://widemem.ai">
+    <img src="assets/widemem-landing.png" alt="widemem.ai landing page" width="700" />
+  </a>
+  <br />
+  <a href="https://widemem.ai">widemem.ai</a>
+</p>
