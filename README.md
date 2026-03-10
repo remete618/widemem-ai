@@ -81,6 +81,34 @@ Six features, one library. Here's what widemem does that most memory systems don
 pip install widemem-ai
 ```
 
+### Trouble installing?
+
+**1. `pip` not found?** Use `pip3`:
+```bash
+pip3 install widemem-ai
+```
+
+**2. pip too old?** Upgrade it first:
+```bash
+python3 -m pip install --upgrade pip
+```
+
+**3. Python 3.9 or older?** widemem requires Python 3.10+. Install via Homebrew (macOS):
+```bash
+brew install python@3.10
+/opt/homebrew/bin/python3.10 -m pip install widemem-ai
+```
+
+No Homebrew? Install it first:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+**Verify installation:**
+```bash
+python3 -c "import widemem; print(widemem.__version__)"
+```
+
 ### Optional providers
 
 ```bash
