@@ -38,6 +38,7 @@ anthropic = ["anthropic>=0.30"]
 ollama = ["ollama>=0.2"]
 qdrant = ["qdrant-client>=1.9"]
 sentence-transformers = ["sentence-transformers>=2.0"]
+server = ["fastapi>=0.110", "uvicorn>=0.29"]
 all = [
     "anthropic>=0.30",
     "ollama>=0.2",
