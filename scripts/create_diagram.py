@@ -49,7 +49,7 @@ def rounded_box(ax, x, y, w, h, label, sublabel=None, color=ACCENT_BLUE,
                             facecolor=color, edgecolor="none", zorder=3)
     ax.add_patch(accent)
 
-    cx, cy = x + w / 2, y + h / 2
+    cx, cy = x + w / 2, y + (h - 0.008) / 2
     if sublabel:
         cy += 0.012
     if icon:
