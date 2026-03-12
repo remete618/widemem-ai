@@ -33,6 +33,14 @@ widemem gives your AI a real memory — one that scores what matters, forgets wh
 
 ---
 
+## Architecture
+
+<p align="center">
+  <img src="docs/architecture.png" alt="widemem architecture diagram" width="100%">
+</p>
+
+---
+
 ## TL;DR
 
 Six features, one library. Here's what widemem does that most memory systems don't:
