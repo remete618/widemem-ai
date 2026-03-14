@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
 from widemem.core.memory import WideMemory
@@ -57,6 +58,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="widemem", lifespan=lifespan)
 
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def _require_auth(api_key: Optional[str] = Security(_api_key_header)) -> None:
+    expected = os.environ.get("WIDEMEM_API_KEY")
+    if not expected:
+        return  # no key configured = auth disabled (local dev)
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
 
 class SearchRequest(BaseModel):
     query: str
@@ -86,7 +97,7 @@ class AddResponse(BaseModel):
 
 
 @app.post("/search", response_model=SearchResponse)
-def search(req: SearchRequest):
+def search(req: SearchRequest, _: None = Depends(_require_auth)):
     results = _memory.search(query=req.query, user_id=req.user_id, top_k=req.top_k)
     return SearchResponse(
         memories=[
@@ -101,7 +112,7 @@ def search(req: SearchRequest):
 
 
 @app.post("/add", response_model=AddResponse)
-def add(req: AddRequest):
+def add(req: AddRequest, _: None = Depends(_require_auth)):
     result = _memory.add(text=req.text, user_id=req.user_id)
     return AddResponse(added=len(result.memories))
 
