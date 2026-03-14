@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class MemoryTier(str, Enum):
@@ -74,7 +74,7 @@ class HistoryEntry(BaseModel):
 class LLMConfig(BaseModel):
     provider: str = "openai"
     model: str = "gpt-4o-mini"
-    api_key: Optional[str] = None
+    api_key: Optional[SecretStr] = None
     base_url: Optional[str] = None
     temperature: float = 0.0
     max_tokens: int = 2000
@@ -83,7 +83,7 @@ class LLMConfig(BaseModel):
 class EmbeddingConfig(BaseModel):
     provider: str = "openai"
     model: str = "text-embedding-3-small"
-    api_key: Optional[str] = None
+    api_key: Optional[SecretStr] = None
     dimensions: int = 1536
 
 

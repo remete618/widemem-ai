@@ -13,7 +13,7 @@ class OpenAILLM(BaseLLM):
     def __init__(self, config: LLMConfig) -> None:
         super().__init__(config)
         self.client = OpenAI(
-            api_key=config.api_key,
+            api_key=config.api_key.get_secret_value() if config.api_key else None,
             base_url=config.base_url,
         )
 

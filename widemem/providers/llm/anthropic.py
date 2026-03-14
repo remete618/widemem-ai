@@ -14,7 +14,7 @@ class AnthropicLLM(BaseLLM):
             from anthropic import Anthropic
         except ImportError:
             raise ProviderError("Install anthropic: pip install widemem[anthropic]")
-        self.client = Anthropic(api_key=config.api_key)
+        self.client = Anthropic(api_key=config.api_key.get_secret_value() if config.api_key else None)
 
     def _generate(self, prompt: str, system: str | None = None) -> str:
         kwargs = {
