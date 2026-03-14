@@ -48,10 +48,12 @@ class ExtractionCollector:
 
     def export(self, output_path: str, limit: Optional[int] = None) -> int:
         query = "SELECT input_text, facts_json FROM extractions ORDER BY timestamp"
+        params: tuple = ()
         if limit:
-            query += f" LIMIT {limit}"
+            query += " LIMIT ?"
+            params = (int(limit),)
 
-        cursor = self.conn.execute(query)
+        cursor = self.conn.execute(query, params)
         rows = cursor.fetchall()
 
         path = Path(output_path).expanduser()
