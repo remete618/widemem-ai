@@ -50,8 +50,10 @@ ollama = ["ollama>=0.2"]
 qdrant = ["qdrant-client>=1.9"]
 sentence-transformers = ["sentence-transformers>=2.0"]
 server = ["fastapi>=0.110", "uvicorn>=0.29"]
+mcp = ["mcp>=1.0"]
 all = [
     "anthropic>=0.30",
+    "mcp>=1.0",
     "ollama>=0.2",
     "qdrant-client>=1.9",
     "sentence-transformers>=2.0",
