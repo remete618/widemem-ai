@@ -269,19 +269,29 @@ class WideMemory:
         for item in parsed.get("memories", []):
             memory_id = item.get("id")
             content = item.get("content", "")
-            if not content:
+            if not content or len(content) > 50000:
                 continue
             existing = self.vector_store.get(memory_id) if memory_id else None
             if existing:
                 continue
+            raw_importance = item.get("importance", 5.0)
+            try:
+                importance = max(0.0, min(10.0, float(raw_importance)))
+            except (TypeError, ValueError):
+                importance = 5.0
+            raw_tier = item.get("tier", "fact")
+            try:
+                tier = MemoryTier(raw_tier)
+            except ValueError:
+                tier = MemoryTier.FACT
             embedding = self.embedder.embed(content)
             memory = Memory(
                 id=memory_id or Memory().id,
                 content=content,
                 user_id=item.get("user_id"),
                 agent_id=item.get("agent_id"),
-                importance=item.get("importance", 5.0),
-                tier=MemoryTier(item.get("tier", "fact")),
+                importance=importance,
+                tier=tier,
                 content_hash=item.get("content_hash", ""),
             )
             metadata = {

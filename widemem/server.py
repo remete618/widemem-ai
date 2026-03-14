@@ -70,8 +70,8 @@ def _require_auth(api_key: Optional[str] = Security(_api_key_header)) -> None:
 
 
 class SearchRequest(BaseModel):
-    query: str
-    user_id: Optional[str] = None
+    query: str = Field(max_length=1000)
+    user_id: Optional[str] = Field(default=None, max_length=256)
     top_k: int = Field(default=5, ge=1, le=100)
 
 
@@ -86,8 +86,8 @@ class SearchResponse(BaseModel):
 
 
 class AddRequest(BaseModel):
-    text: str
-    user_id: Optional[str] = None
+    text: str = Field(max_length=10000)
+    user_id: Optional[str] = Field(default=None, max_length=256)
 
 
 class AddResponse(BaseModel):

@@ -10,7 +10,7 @@ from widemem.providers.embeddings.base import BaseEmbedder
 class OpenAIEmbedder(BaseEmbedder):
     def __init__(self, config: EmbeddingConfig) -> None:
         super().__init__(config)
-        self.client = OpenAI(api_key=config.api_key)
+        self.client = OpenAI(api_key=config.api_key.get_secret_value() if config.api_key else None)
 
     def embed(self, text: str) -> list[float]:
         return self.embed_batch([text])[0]
