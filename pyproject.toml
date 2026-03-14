@@ -10,16 +10,27 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Radu Cioplea", email = "radu@cioplea.com" }]
-keywords = ["ai", "memory", "llm", "embeddings", "vector-search"]
+keywords = [
+    "ai", "memory", "llm", "embeddings", "vector-search",
+    "agent-memory", "conversational-memory", "rag", "semantic-search",
+    "openai", "anthropic", "ollama", "faiss", "qdrant",
+    "long-term-memory", "mem0", "ai-agents", "chatbot-memory",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
 ]
 dependencies = [
     "pydantic>=2.0",
@@ -52,6 +63,9 @@ packages = ["widemem"]
 [project.urls]
 Homepage = "https://widemem.ai"
 Repository = "https://github.com/remete618/widemem-ai"
+Documentation = "https://github.com/remete618/widemem-ai#readme"
+Issues = "https://github.com/remete618/widemem-ai/issues"
+Changelog = "https://github.com/remete618/widemem-ai/releases"
 
 [tool.ruff]
 target-version = "py310"
