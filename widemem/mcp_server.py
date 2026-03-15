@@ -8,9 +8,9 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from mcp import types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp import types
 
 from widemem.core.memory import WideMemory
 from widemem.core.types import (
@@ -65,7 +65,10 @@ async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="widemem_add",
-            description="Add a memory. The text is processed by the LLM to extract facts, resolve conflicts with existing memories, and store them.",
+            description=(
+                "Add a memory. The text is processed by the LLM to extract facts, "
+                "resolve conflicts with existing memories, and store them."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -83,7 +86,10 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="widemem_search",
-            description="Search memories by semantic similarity. Returns the most relevant memories ranked by similarity, importance, and recency.",
+            description=(
+                "Search memories by semantic similarity. Returns the most relevant "
+                "memories ranked by similarity, importance, and recency."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
