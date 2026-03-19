@@ -74,7 +74,7 @@ async def list_tools() -> list[types.Tool]:
                 "properties": {
                     "text": {
                         "type": "string",
-                        "description": "Text containing facts to remember (e.g. 'I live in Berlin and work as an engineer')",
+                        "description": "Text containing facts to remember (e.g. 'I live in San Francisco and work as an engineer')",
                     },
                     "user_id": {
                         "type": "string",
