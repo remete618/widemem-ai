@@ -154,7 +154,7 @@ def build_frustration_response(
     if fact:
         return {
             "action": "recover_and_pin",
-            "message": f"Sorry about that. I'm saving this now with high importance so I won't forget again.",
+            "message": "Sorry about that. I'm saving this now with high importance so I won't forget again.",
             "pin_fact": fact,
             "pin_importance": 9.0,
         }

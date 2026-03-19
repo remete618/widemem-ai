@@ -12,7 +12,8 @@ CREATIVE_REFUSE = [
 ]
 
 CREATIVE_HEDGE = [
-    "I'm not sure about this specifically, but I have some related memories. Want me to piece something together? No guarantees on accuracy.",
+    "I'm not sure about this specifically, but I have some related memories. "
+    "Want me to piece something together? No guarantees on accuracy.",
     "I don't have a direct answer, but I know some related things. I can try to connect the dots — might be spot on, might be way off.",
     "My confidence on this is... let's say moderate. I have related info but not the exact answer. Want me to give it a shot?",
 ]

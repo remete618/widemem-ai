@@ -5,7 +5,8 @@ Rules:
 - Each fact should be self-contained and understandable without context
 - ALWAYS preserve specific details:
   * Proper nouns (names of people, places, organizations, brands)
-  * Dates, times, and temporal references — convert relative dates like "yesterday" or "last week" to absolute dates using the timestamp in brackets at the start of the message
+  * Dates, times, and temporal references — convert relative dates like "yesterday" or
+    "last week" to absolute dates using the timestamp in brackets at the start of the message
   * Quantities, measurements, ages, durations
   * Specific activities and topics (NOT vague descriptions)
 - BAD: "Caroline is going to do research" — too vague
@@ -23,7 +24,9 @@ Rules:
 {custom_topics_instruction}
 Respond with JSON only."""
 
-FACT_EXTRACTION_PROMPT = """Extract detailed, specific facts from this conversation. Preserve all proper nouns, dates, places, and quantities. Convert relative time references to absolute dates using the timestamp at the start.
+FACT_EXTRACTION_PROMPT = """Extract detailed, specific facts from this conversation. \
+Preserve all proper nouns, dates, places, and quantities. \
+Convert relative time references to absolute dates using the timestamp at the start.
 
 {text}
 

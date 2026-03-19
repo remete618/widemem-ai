@@ -30,7 +30,6 @@ def boost_on_repetition(
         if score < 0.85:
             continue
 
-        existing_content = metadata.get("content", "")
         # High similarity = likely the same fact repeated
         old_importance = metadata.get("importance", 5.0)
         new_importance = min(old_importance + boost_amount, max_importance)

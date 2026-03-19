@@ -17,7 +17,6 @@ from widemem.core.types import (
     ScoringConfig,
     SearchResult,
 )
-from widemem.retrieval.uncertainty import assess_confidence
 from widemem.extraction.collector import ExtractionCollector
 from widemem.extraction.llm_extractor import LLMExtractor
 from widemem.hierarchy.manager import HierarchyManager
@@ -29,6 +28,7 @@ from widemem.providers.llm.base import BaseLLM
 from widemem.providers.llm.openai import OpenAILLM
 from widemem.retrieval.active import ActiveRetrieval, Clarification
 from widemem.retrieval.temporal import score_and_rank
+from widemem.retrieval.uncertainty import assess_confidence
 from widemem.storage.history import HistoryStore
 from widemem.storage.vector.base import BaseVectorStore
 from widemem.storage.vector.faiss_store import FAISSVectorStore

@@ -6,8 +6,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Optional
 
-logger = logging.getLogger("widemem.server")
-
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
@@ -19,6 +17,8 @@ from widemem.core.types import (
     MemoryConfig,
     VectorStoreConfig,
 )
+
+logger = logging.getLogger("widemem.server")
 
 _memory: Optional[WideMemory] = None
 
