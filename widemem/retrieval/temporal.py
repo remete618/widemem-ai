@@ -18,6 +18,8 @@ def score_and_rank(
     time_before: Optional[datetime] = None,
     topic_weights: Optional[Dict[str, float]] = None,
     ymyl_config: Optional[YMYLConfig] = None,
+    similarity_first: bool = False,
+    similarity_boost: float = 0.15,
 ) -> list[MemorySearchResult]:
     now = now or datetime.utcnow()
     ymyl_config = ymyl_config or YMYLConfig()
@@ -63,4 +65,17 @@ def score_and_rank(
         scored.append(result)
 
     scored.sort(key=lambda r: r.final_score, reverse=True)
+
+    # Two-pass: ensure top similarity results aren't buried by importance scoring
+    if similarity_first and len(scored) > 5:
+        by_sim = sorted(scored, key=lambda r: r.similarity_score, reverse=True)
+        top_sim_ids = {id(r) for r in by_sim[:5]}
+        top_final = scored[0].final_score if scored else 1.0
+        for r in scored:
+            if id(r) in top_sim_ids:
+                # Additive boost — ensures top-similarity results rise
+                # Boost strength varies by retrieval mode (fast=0.10, balanced=0.15, deep=0.20)
+                r.final_score += top_final * similarity_boost
+        scored.sort(key=lambda r: r.final_score, reverse=True)
+
     return scored

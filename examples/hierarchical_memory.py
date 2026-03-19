@@ -7,9 +7,9 @@ mem = WideMemory(config=config)
 
 # Add many facts about a user
 facts = [
-    "I live in Berlin, Germany",
-    "I moved from Paris last year",
-    "I speak German and French fluently",
+    "I live in San Francisco, California",
+    "I moved from Boston last year",
+    "I speak Spanish and French fluently",
     "I work at Google as a senior engineer",
     "I specialize in distributed systems",
     "I enjoy hiking in the Alps on weekends",

@@ -7,12 +7,17 @@ from typing import Any, Callable, Dict, List, Optional
 from widemem.conflict.batch_resolver import BatchConflictResolver
 from widemem.core.pipeline import AddResult, MemoryPipeline
 from widemem.core.types import (
+    RETRIEVAL_MODE_PRESETS,
     HistoryEntry,
     Memory,
     MemoryConfig,
     MemorySearchResult,
     MemoryTier,
+    RetrievalMode,
+    ScoringConfig,
+    SearchResult,
 )
+from widemem.retrieval.uncertainty import assess_confidence
 from widemem.extraction.collector import ExtractionCollector
 from widemem.extraction.llm_extractor import LLMExtractor
 from widemem.hierarchy.manager import HierarchyManager
@@ -133,11 +138,18 @@ class WideMemory:
         query: str,
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
-        top_k: int = 10,
+        top_k: Optional[int] = None,
         time_after: Optional[datetime] = None,
         time_before: Optional[datetime] = None,
         tier: Optional[MemoryTier] = None,
+        mode: Optional[RetrievalMode] = None,
     ) -> List[MemorySearchResult]:
+        # Resolve retrieval preset: per-query mode > config mode > defaults
+        preset = self.config.get_retrieval_preset()
+        if mode is not None:
+            preset = dict(RETRIEVAL_MODE_PRESETS[mode])
+        effective_top_k = min(top_k or preset["top_k"], 1000)
+
         embedding = self.embedder.embed(query)
 
         filters: Dict[str, Any] = {}
@@ -148,8 +160,9 @@ class WideMemory:
         if tier:
             filters["tier"] = tier.value
 
-        top_k = min(top_k, 1000)
-        fetch_k = top_k * 3
+        scoring_config, sim_first = self._adapt_scoring(query, self.config.scoring)
+        fetch_multiplier = preset["fetch_k_multiplier"] if sim_first else 3
+        fetch_k = effective_top_k * fetch_multiplier
         raw_results = self.vector_store.search(
             vector=embedding,
             top_k=fetch_k,
@@ -186,18 +199,23 @@ class WideMemory:
 
         ranked = score_and_rank(
             results=search_results,
-            config=self.config.scoring,
+            config=scoring_config,
             time_after=time_after,
             time_before=time_before,
             topic_weights=self.config.topics.weights or None,
             ymyl_config=self.config.ymyl if self.config.ymyl.enabled else None,
+            similarity_first=sim_first,
+            similarity_boost=preset.get("similarity_boost", 0.15),
         )
 
-        if self.config.enable_hierarchy and tier is None:
+        use_hierarchy = preset.get("enable_hierarchy", self.config.enable_hierarchy)
+        if use_hierarchy and tier is None:
             preferred = classify_query(query)
             ranked = route_results(ranked, preferred)
 
-        return ranked[:top_k]
+        final = ranked[:effective_top_k]
+        confidence = assess_confidence(final)
+        return SearchResult(results=final, confidence=confidence)
 
     def summarize(
         self,
@@ -210,6 +228,30 @@ class WideMemory:
             agent_id=agent_id,
             force=force,
         )
+
+    def pin(
+        self,
+        text: str,
+        user_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        importance: float = 9.0,
+    ) -> AddResult:
+        """Store a memory with elevated importance. Use when the user explicitly
+        asks to remember something, corrects a forgotten fact, or repeats
+        information that should not be forgotten."""
+        result = self.pipeline.process(text=text, user_id=user_id, agent_id=agent_id)
+
+        for memory in result.memories:
+            if memory.importance < importance:
+                memory.importance = importance
+                embedding = self.embedder.embed(memory.content)
+                self.vector_store.update(
+                    id=memory.id,
+                    vector=embedding,
+                    metadata=self.pipeline._memory_to_metadata(memory),
+                )
+
+        return result
 
     def get(self, memory_id: str) -> Optional[Memory]:
         result = self.vector_store.get(memory_id)
@@ -308,6 +350,46 @@ class WideMemory:
             self.vector_store.insert(id=memory.id, vector=embedding, metadata=metadata)
             imported += 1
         return imported
+
+    @staticmethod
+    def _adapt_scoring(query: str, default: ScoringConfig) -> tuple:
+        """Adapt scoring weights based on query type. Returns (ScoringConfig, similarity_first)."""
+        q = query.lower().strip()
+
+        # Temporal queries — boost recency, reduce importance
+        temporal_signals = ("when ", "what time", "what date", "how long ago",
+                           "last time", "recently", "before the", "after the",
+                           "how recent", "what year", "what month")
+        if any(q.startswith(s) or s in q for s in temporal_signals):
+            return ScoringConfig(
+                decay_function=default.decay_function,
+                decay_rate=default.decay_rate,
+                similarity_weight=0.40,
+                importance_weight=0.10,
+                recency_weight=0.50,
+            ), False
+
+        # Simple factual queries — boost similarity, reduce importance, enable similarity_first
+        factual_starts = ("where ", "who ", "what is ", "what was ", "what does ",
+                         "what did ", "what are ", "what were ", "what do ",
+                         "how old ", "how much ", "how many ",
+                         "which ", "name ", "is ", "was ",
+                         "does ", "did ", "has ", "have ")
+        is_short_what = q.startswith("what ") and len(q.split()) <= 10
+        multi_hop_signals = ("relationship between", "how does", "compare", "contrast",
+                            "connection between", "relate to", "in common")
+        is_multi_hop = any(s in q for s in multi_hop_signals)
+        if (any(q.startswith(s) for s in factual_starts) or is_short_what) and not is_multi_hop:
+            return ScoringConfig(
+                decay_function=default.decay_function,
+                decay_rate=default.decay_rate,
+                similarity_weight=0.75,
+                importance_weight=0.10,
+                recency_weight=0.15,
+            ), True  # similarity_first for factual queries
+
+        # Multi-hop / broad / default — keep configured weights, no similarity_first
+        return default, False
 
     def _create_llm(self) -> BaseLLM:
         provider = self.config.llm.provider

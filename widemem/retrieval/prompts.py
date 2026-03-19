@@ -3,9 +3,9 @@ CONTRADICTION_DETECTION_SYSTEM = (
     "determine if any contradictions or ambiguities exist.\n\n"
     "Rules:\n"
     "- A contradiction exists when new information directly conflicts with existing memory "
-    '(e.g., "lives in Berlin" vs "lives in Paris")\n'
+    '(e.g., "lives in San Francisco" vs "lives in Boston")\n'
     "- An ambiguity exists when the relationship between new and existing is unclear "
-    '(e.g., "in Berlin" could mean moved or visiting)\n'
+    '(e.g., "in San Francisco" could mean moved or visiting)\n'
     "- Temporal changes are common ambiguities: people move, change jobs, etc.\n"
     "- Only flag genuine contradictions/ambiguities, not additions of new information\n\n"
     "Respond with JSON only."

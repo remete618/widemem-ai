@@ -15,6 +15,8 @@ __  _  _|__| __| _/____   _____   ____   _____      _____  |__|
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-140%20passing-brightgreen.svg)](#development)
 
+> **NEW in v1.4** — Confidence scoring, uncertainty modes (strict/helpful/creative), `mem.pin()` for persistent memories, frustration detection, and retrieval modes (fast/balanced/deep). Your AI now knows when it doesn't know. [See what's new ↓](#uncertainty--confidence)
+
 ### Because your AI deserves better than amnesia. ¬_¬
 
 An open-source AI memory layer that actually remembers what matters. Local-first, batteries-included, and opinionated about not forgetting your user's blood type.
@@ -28,7 +30,7 @@ widemem gives your AI a real memory — one that scores what matters, forgets wh
 - **Memories that know their place** — Importance scoring (1-10) + time decay means "has a peanut allergy" always outranks "had pizza on Tuesday". As it should. Not all memories are created equal, and your retrieval system should know the difference between a life-threatening allergy and a lunch preference.
 - **One brain, three layers** — Facts roll up into summaries, summaries into themes. Ask "where does Alice live" and get the fact. Ask "tell me about Alice" and get the big picture. Your AI can zoom in and zoom out without breaking a sweat or making a second API call.
 - **YMYL or GTFO** — Health, legal, and financial facts get VIP treatment: higher importance floors, immunity from decay, and forced contradiction detectoin. Because forgetting someone's medication is not a "minor regression". It's a lawsuit waiting to happen. ¬_¬
-- **Conflict resolution that isn't stupid** — Add "I live in Paris" after "I live in Berlin" and the system doesn't just blindly append both. It detects the contradiction, resolves it in a single LLM call, and updates the memory. Like a reasonable adult would.
+- **Conflict resolution that isn't stupid** — Add "I live in Boston" after "I live in San Francisco" and the system doesn't just blindly append both. It detects the contradiction, resolves it in a single LLM call, and updates the memory. Like a reasonable adult would.
 - **Local by default, cloud if you want** — SQLite + FAISS out of the box. No accounts, no API keys for storage, no "please sign up for our enterprise plan to store more than 100 memories". Plug in Qdrant or any cloud provider when you're ready. Or don't. We won't guilt-trip you.
 
 ---
@@ -50,9 +52,11 @@ Six features, one library. Here's what widemem does that most memory systems don
 | 1 | **Batch conflict resolution** | Single LLM call for all facts vs. existing memories | N facts = 1 API call, not N. Your wallet will thank you. |
 | 2 | **Importance + decay** | Facts rated 1-10, with exponential/linear/step decay | Old trivia fades. Critical facts don't. |
 | 3 | **Hierarchical memory** | Facts -> summaries -> themes, auto-routed | Broad questions get themes, specfic ones get facts. |
-| 4 | **Active retrieval** | Contradiction detection + clarifying questions | "Wait, you said you live in Berlin AND Paris?" |
+| 4 | **Active retrieval** | Contradiction detection + clarifying questions | "Wait, you said you live in San Francisco AND Boston?" |
 | 5 | **Self-supervised extraction** | Collect training data, distill to a small model | LLM extraction quality, local model costs. Eventually. |
 | 6 | **YMYL prioritization** | Health/legal/financial facts are untouchable | Some things you just don't forget. |
+| 7 | **Uncertainty & confidence** | Knows when it doesn't know, offers to guess or asks for help | No more hallucinated answers from empty memory. |
+| 8 | **Retrieval modes** | fast / balanced / deep — choose your accuracy-cost tradeoff | Same system, three price points. You pick. |
 
 140 tests. Zero external services required. SQLite + FAISS by default. Plug in OpenAI, Anthropic, Ollama, Qdrant, or sentence-transformers as needed.
 
@@ -73,6 +77,8 @@ Six features, one library. Here's what widemem does that most memory systems don
 - [Active Retrieval](#active-retrieval)
 - [Temporal Search](#temporal-search)
 - [Self-Supervised Extraction](#self-supervised-extraction)
+- [Uncertainty & Confidence](#uncertainty--confidence)
+- [Retrieval Modes](#retrieval-modes)
 - [History & Audit Trail](#history--audit-trail)
 - [Batch Conflict Resolution](#batch-conflict-resolution)
 - [API Reference](#api-reference)
@@ -139,7 +145,7 @@ from widemem import WideMemory, MemoryConfig
 memory = WideMemory()
 
 # Add memories
-result = memory.add("I live in Berlin and work as a software engineer", user_id="alice")
+result = memory.add("I live in San Francisco and work as a software engineer", user_id="alice")
 
 # Search
 results = memory.search("where does alice live", user_id="alice")
@@ -147,7 +153,7 @@ for r in results:
     print(f"{r.memory.content} (score: {r.final_score:.2f})")
 
 # Update happens automatically — add contradicting info and the resolver handles it
-memory.add("I just moved to Paris", user_id="alice")
+memory.add("I just moved to Boston", user_id="alice")
 
 # Delete
 memory.delete(results[0].memory.id)
@@ -162,7 +168,7 @@ WideMemory also works as a context manager if you're the responsible type:
 
 ```python
 with WideMemory() as memory:
-    memory.add("I live in Berlin", user_id="alice")
+    memory.add("I live in San Francisco", user_id="alice")
     results = memory.search("where does alice live", user_id="alice")
 # Connection closed automatically. You're welcome.
 ```
@@ -468,7 +474,7 @@ Query routing uses keyword heuristics (no extra LLM call) with a fallback chain 
 
 ## Active Retrieval
 
-Your AI shouldn't silently overwrite "lives in Berlin" with "lives in Paris" without at least raising an eyebrow. Active retrieval detects contradictions and ambiguities, then asks clarifying questions via callbacks.
+Your AI shouldn't silently overwrite "lives in San Francisco" with "lives in Boston" without at least raising an eyebrow. Active retrieval detects contradictions and ambiguities, then asks clarifying questions via callbacks.
 
 ```python
 config = MemoryConfig(
@@ -483,10 +489,10 @@ def handle_clarification(clarifications):
         print(f"  Old: {c.existing_memory}")
         print(f"  New: {c.new_fact}")
     # Return None to abort the add, or a list of answers to proceed
-    return ["User moved to Paris"]
+    return ["User moved to Boston"]
 
 result = memory.add(
-    "I just moved to Paris",
+    "I just moved to Boston",
     user_id="alice",
     on_clarification=handle_clarification,
 )
@@ -551,7 +557,7 @@ config = MemoryConfig(
 memory = WideMemory(config)
 
 # Use the memory normally — all LLM extractions are logged as training pairs
-memory.add("I live in Berlin", user_id="alice")
+memory.add("I live in San Francisco", user_id="alice")
 ```
 
 ### Training a small model
@@ -562,6 +568,94 @@ python scripts/train_extractor.py train --data training_data.json --model distil
 ```
 
 The self-supervised extractor uses a fallback chain: try the small model first, fall back to the LLM if confidence is low. Best of both worlds.
+
+---
+
+## Uncertainty & Confidence
+
+Most memory systems either answer or don't. They'll happily hallucinate from irrelevant memories rather than admit they don't know. widemem is honest about what it knows and what it doesn't.
+
+Every search returns a confidence level:
+
+```python
+response = mem.search("What's Alice's favorite movie?", user_id="alice")
+
+response.confidence     # RetrievalConfidence.NONE — nothing relevant found
+response.has_relevant   # False
+
+# But it still works like a list (backward compatible):
+for r in response:
+    print(r.memory.content)
+```
+
+### Three uncertainty modes
+
+```python
+# Strict: refuses to answer if unsure
+mem = WideMemory(config=MemoryConfig(uncertainty_mode="strict"))
+
+# Helpful (default): "I don't have that, but here's what I do know..."
+mem = WideMemory(config=MemoryConfig(uncertainty_mode="helpful"))
+
+# Creative: "I can guess if you want — fair warning, it might be wrong"
+mem = WideMemory(config=MemoryConfig(uncertainty_mode="creative"))
+```
+
+### Pin important memories
+
+When a user explicitly tells you something important, pin it so it sticks:
+
+```python
+# Normal add — importance decided by LLM (might be 3-6)
+mem.add("I had pasta for lunch", user_id="alice")
+
+# Pin — stored with importance 9, resistant to decay
+mem.pin("My blood type is O negative", user_id="alice")
+```
+
+### Frustration recovery
+
+When users say "I told you this!", widemem detects the frustration, extracts the fact, and offers to pin it:
+
+```python
+from widemem.retrieval.uncertainty import build_frustration_response
+
+response = build_frustration_response(
+    "I told you my blood type is O negative!",
+    confidence=RetrievalConfidence.NONE,
+    mode=UncertaintyMode.HELPFUL,
+)
+# response = {
+#     "action": "recover_and_pin",
+#     "message": "Sorry about that. I'm saving this now with high importance.",
+#     "pin_fact": "my blood type is O negative",
+#     "pin_importance": 9.0,
+# }
+```
+
+---
+
+## Retrieval Modes
+
+Not every query needs the same depth. A casual chatbot doesn't need 50 retrieved memories. A medical assistant does. widemem lets you choose:
+
+```python
+from widemem import WideMemory, MemoryConfig, RetrievalMode
+
+# Set at config level (default for all queries)
+mem = WideMemory(config=MemoryConfig(retrieval_mode="balanced"))
+
+# Override per query when needed
+results = mem.search("critical question", mode=RetrievalMode.DEEP)
+```
+
+| Mode | Memories retrieved | ~Tokens | Best for |
+|------|-------------------|---------|----------|
+| `fast` | 10 | ~150 | Chatbots, casual assistants |
+| `balanced` (default) | 25 | ~500 | Most production apps |
+| `deep` | 50 | ~1,500 | Healthcare, legal, enterprise |
+
+Each mode also adjusts the internal candidate pool size and similarity boost strength. `balanced` is the sweet spot for most use cases — enough context for good answers without burning tokens.
 
 ---
 
@@ -597,7 +691,8 @@ This is the main architectural improvement over mem0's per-fact approach. One ca
 |---|---|
 | `add(text, user_id, agent_id, run_id, on_clarification)` | Extract and store memories. Returns `AddResult`. |
 | `add_batch(texts, user_id, agent_id, run_id)` | Process multiple texts. Returns `List[AddResult]`. |
-| `search(query, user_id, agent_id, top_k, time_after, time_before, tier)` | Search memories. Returns `List[MemorySearchResult]`. |
+| `search(query, user_id, agent_id, top_k, time_after, time_before, tier, mode)` | Search memories. Returns `SearchResult` (list-compatible, with `.confidence`). |
+| `pin(text, user_id, agent_id, importance=9.0)` | Store memory with elevated importance. For facts that must not be forgotten. |
 | `get(memory_id)` | Get a single memory by ID. Returns `Memory` or `None`. |
 | `delete(memory_id)` | Delete a memory by ID. |
 | `get_history(memory_id)` | Get audit trail for a memory. Returns `List[HistoryEntry]`. |

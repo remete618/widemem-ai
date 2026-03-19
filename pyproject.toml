@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "widemem-ai"
-version = "1.3.0"
+version = "1.4.0"
 description = "Next-gen AI memory layer with hierarchical memory, importance scoring, and temporal retrieval"
 readme = "README.md"
 license = "Apache-2.0"

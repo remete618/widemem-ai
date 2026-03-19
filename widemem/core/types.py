@@ -21,6 +21,25 @@ class MemoryAction(str, Enum):
     NONE = "none"
 
 
+class RetrievalMode(str, Enum):
+    FAST = "fast"
+    BALANCED = "balanced"
+    DEEP = "deep"
+
+
+class RetrievalConfidence(str, Enum):
+    HIGH = "high"
+    MODERATE = "moderate"
+    LOW = "low"
+    NONE = "none"
+
+
+class UncertaintyMode(str, Enum):
+    STRICT = "strict"
+    HELPFUL = "helpful"
+    CREATIVE = "creative"
+
+
 class DecayFunction(str, Enum):
     EXPONENTIAL = "exponential"
     LINEAR = "linear"
@@ -60,6 +79,35 @@ class MemorySearchResult(BaseModel):
     temporal_score: float = 1.0
     importance_score: float = 1.0
     final_score: float = 0.0
+
+
+class SearchResult:
+    """Wraps search results with confidence metadata.
+    Behaves like a list for backward compatibility — existing code that
+    iterates, indexes, or checks len() works unchanged."""
+
+    __slots__ = ("results", "confidence", "has_relevant")
+
+    def __init__(
+        self,
+        results: list,
+        confidence: RetrievalConfidence = RetrievalConfidence.HIGH,
+    ) -> None:
+        self.results = results
+        self.confidence = confidence
+        self.has_relevant = confidence != RetrievalConfidence.NONE
+
+    def __iter__(self):
+        return iter(self.results)
+
+    def __len__(self):
+        return len(self.results)
+
+    def __getitem__(self, idx):
+        return self.results[idx]
+
+    def __bool__(self):
+        return len(self.results) > 0
 
 
 class HistoryEntry(BaseModel):
@@ -119,6 +167,13 @@ class TopicConfig(BaseModel):
     custom_topics: list = Field(default_factory=list)
 
 
+RETRIEVAL_MODE_PRESETS = {
+    RetrievalMode.FAST: {"top_k": 10, "fetch_k_multiplier": 3, "similarity_boost": 0.10, "enable_hierarchy": False},
+    RetrievalMode.BALANCED: {"top_k": 25, "fetch_k_multiplier": 4, "similarity_boost": 0.15, "enable_hierarchy": True},
+    RetrievalMode.DEEP: {"top_k": 50, "fetch_k_multiplier": 5, "similarity_boost": 0.20, "enable_hierarchy": True},
+}
+
+
 class MemoryConfig(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
@@ -127,9 +182,18 @@ class MemoryConfig(BaseModel):
     ymyl: YMYLConfig = Field(default_factory=YMYLConfig)
     topics: TopicConfig = Field(default_factory=TopicConfig)
     history_db_path: str = "~/.widemem/history.db"
+    retrieval_mode: RetrievalMode = RetrievalMode.BALANCED
+    uncertainty_mode: UncertaintyMode = UncertaintyMode.HELPFUL
     enable_hierarchy: bool = False
     enable_active_retrieval: bool = False
     active_retrieval_threshold: float = 0.6
     collect_extractions: bool = False
     extractions_db_path: str = "~/.widemem/extractions.db"
     ttl_days: Optional[int] = None
+
+    def get_retrieval_preset(self) -> dict:
+        """Get the retrieval preset for the configured mode."""
+        preset = dict(RETRIEVAL_MODE_PRESETS[self.retrieval_mode])
+        if self.enable_hierarchy:
+            preset["enable_hierarchy"] = True
+        return preset

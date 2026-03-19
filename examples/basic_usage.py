@@ -6,7 +6,7 @@ from widemem import WideMemory, MemoryConfig
 mem = WideMemory()
 
 # Add memories
-result = mem.add("I live in Berlin and work at Google as a senior engineer.", user_id="alice")
+result = mem.add("I live in San Francisco and work at Google as a senior engineer.", user_id="alice")
 print(f"Added {len(result.memories)} memories")
 for m in result.memories:
     print(f"  - {m.content} (importance: {m.importance})")

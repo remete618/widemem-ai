@@ -10,7 +10,7 @@ BATCH_CONFLICT_RESOLUTION_SYSTEM = (
     "- NONE: The fact is already captured by an existing memory, no action needed\n\n"
     "Rules:\n"
     "- Be conservative: prefer NONE over ADD if a fact is already well-captured\n"
-    "- Detect contradictions: \"moved to Berlin\" should UPDATE \"lives in Paris\"\n"
+    "- Detect contradictions: \"moved to San Francisco\" should UPDATE \"lives in Boston\"\n"
     "- Detect refinements: \"works as a senior engineer at Google\" should UPDATE "
     "\"works at Google\"\n"
     "- One action per new fact\n"
