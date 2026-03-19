@@ -181,7 +181,7 @@ async def _handle_add(arguments: dict) -> list[types.TextContent]:
         }
         if result.has_clarifications:
             response["clarifications"] = [
-                {"question": c.question, "existing": c.existing_memory, "new": c.new_fact}
+                {"question": c.question, "existing": c.existing_content, "new": c.new_fact}
                 for c in result.clarifications
             ]
         return [types.TextContent(type="text", text=json.dumps(response, default=str))]

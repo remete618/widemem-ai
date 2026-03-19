@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Optional
+
+logger = logging.getLogger("widemem.server")
 
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import APIKeyHeader
@@ -50,6 +53,8 @@ def _build_config() -> MemoryConfig:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _memory
+    if not os.environ.get("WIDEMEM_API_KEY"):
+        logger.warning("WIDEMEM_API_KEY not set — API authentication is disabled. Set it for production use.")
     _memory = WideMemory(config=_build_config())
     yield
     _memory.close()

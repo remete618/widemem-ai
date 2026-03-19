@@ -49,10 +49,11 @@ class WideMemory:
         self.vector_store = vector_store or self._create_vector_store()
         self._history_store = HistoryStore(self.config.history_db_path)
 
-        collector = (
+        self._collector = (
             ExtractionCollector(self.config.extractions_db_path)
             if self.config.collect_extractions else None
         )
+        collector = self._collector
         extractor = LLMExtractor(
             self.llm,
             collector=collector,
@@ -91,6 +92,8 @@ class WideMemory:
 
     def close(self) -> None:
         self._history_store.close()
+        if self._collector:
+            self._collector.close()
 
     def __enter__(self):
         return self
@@ -143,7 +146,7 @@ class WideMemory:
         time_before: Optional[datetime] = None,
         tier: Optional[MemoryTier] = None,
         mode: Optional[RetrievalMode] = None,
-    ) -> List[MemorySearchResult]:
+    ) -> SearchResult:
         # Resolve retrieval preset: per-query mode > config mode > defaults
         preset = self.config.get_retrieval_preset()
         if mode is not None:
