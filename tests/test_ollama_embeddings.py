@@ -7,6 +7,8 @@ import pytest
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import EmbeddingConfig
 
+ollama = pytest.importorskip("ollama", reason="ollama package not installed")
+
 
 class TestOllamaEmbedder:
     def _make_config(self, **kwargs):
