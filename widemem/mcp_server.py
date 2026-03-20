@@ -138,6 +138,41 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="widemem_pin",
+            description=(
+                "Pin a critical fact with elevated importance (9.0). Use when the user "
+                "explicitly asks to remember something, corrects a forgotten fact, or "
+                "for YMYL (health, financial, legal) information."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "The fact to pin as a high-importance memory",
+                    },
+                    "user_id": {
+                        "type": "string",
+                        "description": "Optional user identifier to scope memories",
+                    },
+                },
+                "required": ["text"],
+            },
+        ),
+        types.Tool(
+            name="widemem_export",
+            description="Export all stored memories as a JSON array, optionally filtered by user.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "description": "Optional user identifier to filter the export",
+                    },
+                },
+            },
+        ),
+        types.Tool(
             name="widemem_health",
             description="Health check — verify the widemem server is running and responsive.",
             inputSchema={
@@ -158,6 +193,10 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         return await _handle_delete(arguments)
     elif name == "widemem_count":
         return await _handle_count(arguments)
+    elif name == "widemem_pin":
+        return await _handle_pin(arguments)
+    elif name == "widemem_export":
+        return await _handle_export(arguments)
     elif name == "widemem_health":
         return await _handle_health(arguments)
     else:
@@ -200,6 +239,7 @@ async def _handle_search(arguments: dict) -> list[types.TextContent]:
         results = mem.search(query=query, user_id=user_id, top_k=top_k)
         response = {
             "count": len(results),
+            "confidence": results.confidence.value if hasattr(results, "confidence") else "unknown",
             "memories": [
                 {
                     "id": r.memory.id,
@@ -233,6 +273,36 @@ async def _handle_count(arguments: dict) -> list[types.TextContent]:
         mem = _get_memory()
         count = mem.count(user_id=user_id)
         return [types.TextContent(type="text", text=json.dumps({"count": count}))]
+    except Exception as e:
+        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+
+async def _handle_pin(arguments: dict) -> list[types.TextContent]:
+    text = arguments.get("text", "")
+    user_id = arguments.get("user_id")
+    if not text:
+        return [types.TextContent(type="text", text=json.dumps({"error": "text is required"}))]
+    try:
+        mem = _get_memory()
+        result = mem.pin(text=text, user_id=user_id)
+        response = {
+            "pinned": len(result.memories),
+            "memories": [
+                {"id": m.id, "content": m.content, "importance": m.importance}
+                for m in result.memories
+            ],
+        }
+        return [types.TextContent(type="text", text=json.dumps(response, default=str))]
+    except Exception as e:
+        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+
+async def _handle_export(arguments: dict) -> list[types.TextContent]:
+    user_id = arguments.get("user_id")
+    try:
+        mem = _get_memory()
+        data = mem.export_json(user_id=user_id)
+        return [types.TextContent(type="text", text=data)]
     except Exception as e:
         return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
 
