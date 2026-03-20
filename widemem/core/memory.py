@@ -417,8 +417,11 @@ class WideMemory:
                 SentenceTransformerEmbedder,
             )
             return SentenceTransformerEmbedder(self.config.embedding)
+        if provider == "ollama":
+            from widemem.providers.embeddings.ollama import OllamaEmbedder
+            return OllamaEmbedder(self.config.embedding)
         raise ValueError(
-            f"Unknown embedding provider: {provider}. Supported: openai, sentence-transformers"
+            f"Unknown embedding provider: {provider}. Supported: openai, sentence-transformers, ollama"
         )
 
     def _create_vector_store(self) -> BaseVectorStore:

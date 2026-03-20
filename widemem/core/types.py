@@ -132,6 +132,7 @@ class EmbeddingConfig(BaseModel):
     provider: str = "openai"
     model: str = "text-embedding-3-small"
     api_key: Optional[SecretStr] = None
+    base_url: Optional[str] = None
     dimensions: int = 1536
 
 
