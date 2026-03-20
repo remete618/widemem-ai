@@ -722,6 +722,34 @@ This is the main architectural improvement over mem0's per-fact approach. One ca
 
 ---
 
+## Claude Code Skill
+
+Try widemem directly in Claude Code with the official memory skill.
+
+### Install
+
+```bash
+pip install widemem-ai[mcp,sentence-transformers]
+```
+
+### Available commands
+
+| Command | Description |
+|---|---|
+| `/mem search <query>` | Semantic search across all memories |
+| `/mem add <text>` | Store a fact (with quality gates) |
+| `/mem pin <text>` | Pin critical fact with high importance |
+| `/mem stats` | Memory count and health check |
+| `/mem prune` | Find duplicates and stale entries |
+| `/mem export` | Export all memories as JSON |
+| `/mem reflect` | Full memory audit — duplicates, contradictions, staleness |
+
+### Skill repo
+
+Full setup instructions and source: [widemem-skill](https://github.com/remete618/widemem-skill)
+
+---
+
 ## MCP Server (Model Context Protocol)
 
 widemem ships with an MCP server so you can plug it directly into Claude Desktop, Cursor, or any MCP-compatible client. Memory as a tool — add, search, delete, and count memories without writing a single line of glue code.
