@@ -307,6 +307,26 @@ class TestWideMemory:
         assert retrieved is None
 
 
+class TestInputValidation:
+    def test_empty_text_returns_empty(self, memory):
+        result = memory.add("", user_id="alice")
+        assert len(result.memories) == 0
+
+    def test_whitespace_text_returns_empty(self, memory):
+        result = memory.add("   ", user_id="alice")
+        assert len(result.memories) == 0
+
+    def test_text_too_long_raises(self, memory):
+        with pytest.raises(ValueError, match="Text too long"):
+            memory.add("x" * 50_001, user_id="alice")
+
+    def test_text_at_limit_accepted(self, memory):
+        extractor = MockExtractor()
+        memory.pipeline.extractor = extractor
+        result = memory.add("x" * 50_000, user_id="alice")
+        assert len(result.memories) >= 1
+
+
 class TestBatchAdd:
     def test_add_batch_multiple_texts(self, memory):
         extractor = MockExtractor()
