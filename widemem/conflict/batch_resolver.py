@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import logging
+
 from widemem.conflict.prompts import (
     BATCH_CONFLICT_RESOLUTION_PROMPT,
     BATCH_CONFLICT_RESOLUTION_SYSTEM,
 )
+from widemem.core.exceptions import ProviderError
 from widemem.core.types import ActionItem, Fact, MemoryAction, MemorySearchResult
 from widemem.providers.llm.base import BaseLLM
+from widemem.utils.hashing import content_hash
 from widemem.utils.id_mapping import IDMapper
+
+logger = logging.getLogger(__name__)
 
 
 class BatchConflictResolver:
@@ -47,10 +53,13 @@ class BatchConflictResolver:
 
         try:
             result = self.llm.generate_json(prompt, system=BATCH_CONFLICT_RESOLUTION_SYSTEM)
-        except Exception:
+        except (OSError, ConnectionError, TimeoutError, RuntimeError, ProviderError) as exc:
+            logger.warning("Conflict resolver LLM call failed (%s), falling back to ADD with dedup", exc)
+            existing_hashes = {content_hash(m.memory.content) for m in existing_memories}
             return [
                 ActionItem(action=MemoryAction.ADD, fact=f.content, importance=f.importance)
                 for f in new_facts
+                if content_hash(f.content) not in existing_hashes
             ]
 
         actions = []
