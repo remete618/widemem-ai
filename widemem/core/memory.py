@@ -107,6 +107,8 @@ class WideMemory:
         except Exception:
             pass
 
+    MAX_TEXT_LENGTH = 50_000
+
     def add(
         self,
         text: str,
@@ -115,6 +117,12 @@ class WideMemory:
         run_id: Optional[str] = None,
         on_clarification: Optional[Callable[[List[Clarification]], Optional[List[str]]]] = None,
     ) -> AddResult:
+        if not text or not text.strip():
+            return AddResult(memories=[])
+        if len(text) > self.MAX_TEXT_LENGTH:
+            raise ValueError(
+                f"Text too long ({len(text)} chars). Maximum is {self.MAX_TEXT_LENGTH}."
+            )
         return self.pipeline.process(
             text=text,
             user_id=user_id,
@@ -242,6 +250,12 @@ class WideMemory:
         """Store a memory with elevated importance. Use when the user explicitly
         asks to remember something, corrects a forgotten fact, or repeats
         information that should not be forgotten."""
+        if not text or not text.strip():
+            return AddResult(memories=[])
+        if len(text) > self.MAX_TEXT_LENGTH:
+            raise ValueError(
+                f"Text too long ({len(text)} chars). Maximum is {self.MAX_TEXT_LENGTH}."
+            )
         result = self.pipeline.process(text=text, user_id=user_id, agent_id=agent_id)
 
         for memory in result.memories:
