@@ -45,18 +45,18 @@ class MockLLM(BaseLLM):
 class MockEmbedder(BaseEmbedder):
     def __init__(self, dimensions: int = 64) -> None:
         super().__init__(EmbeddingConfig(dimensions=dimensions))
-        self._cache: dict[str, list[float]] = {}
+        self._vectors: dict[str, list[float]] = {}
 
-    def embed(self, text: str) -> list[float]:
-        if text not in self._cache:
+    def _embed(self, text: str) -> list[float]:
+        if text not in self._vectors:
             rng = np.random.RandomState(hash(text) % 2**31)
             vec = rng.randn(self.config.dimensions).astype(np.float32)
             vec = vec / np.linalg.norm(vec)
-            self._cache[text] = vec.tolist()
-        return self._cache[text]
+            self._vectors[text] = vec.tolist()
+        return self._vectors[text]
 
-    def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        return [self.embed(t) for t in texts]
+    def _embed_batch(self, texts: list[str]) -> list[list[float]]:
+        return [self._embed(t) for t in texts]
 
 
 class MockExtractor(BaseExtractor):
@@ -661,6 +661,76 @@ class TestIDMapping:
         idx1 = mapper.add("uuid-1")
         idx2 = mapper.add("uuid-1")
         assert idx1 == idx2
+
+
+class TestEmbeddingCache:
+    def test_cache_returns_same_result(self, mock_embedder):
+        v1 = mock_embedder.embed("hello")
+        v2 = mock_embedder.embed("hello")
+        assert v1 == v2
+
+    def test_cache_avoids_recomputation(self):
+        call_count = 0
+
+        class CountingEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4))
+
+            def _embed(self, text):
+                nonlocal call_count
+                call_count += 1
+                return [0.1, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                return [self._embed(t) for t in texts]
+
+        embedder = CountingEmbedder()
+        embedder.embed("hello")
+        embedder.embed("hello")
+        embedder.embed("hello")
+        assert call_count == 1
+
+    def test_cache_evicts_oldest(self):
+        class TinyEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), cache_size=2)
+
+            def _embed(self, text):
+                return [hash(text) % 100 / 100.0, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                return [self._embed(t) for t in texts]
+
+        embedder = TinyEmbedder()
+        embedder.embed("a")
+        embedder.embed("b")
+        embedder.embed("c")  # evicts "a"
+        assert len(embedder._cache) == 2
+        assert "a" not in embedder._cache
+
+    def test_batch_uses_cache(self):
+        call_count = 0
+
+        class CountingEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4))
+
+            def _embed(self, text):
+                nonlocal call_count
+                call_count += 1
+                return [0.1, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                nonlocal call_count
+                call_count += len(texts)
+                return [[0.1, 0.2, 0.3, 0.4]] * len(texts)
+
+        embedder = CountingEmbedder()
+        embedder.embed("a")  # 1 call
+        embedder.embed("b")  # 1 call
+        call_count = 0
+        embedder.embed_batch(["a", "b", "c"])  # only "c" should call provider
+        assert call_count == 1
 
 
 class TestContentHash:
