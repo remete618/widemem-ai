@@ -25,11 +25,11 @@ Look, AI memory has come a long way. Context windows are bigger, RAG pipelines a
 
 widemem is for when "good enough" isn't good enough.
 
-widemem gives your AI a real memory — one that scores what matters, forgets what doesn't, and absolutely refuses to lose track of someone's prescritpion medication just because 72 hours passed and the decay function got bored. Think of it as long-term memory for LLMs, except it actually works and doesn't require a PhD to set up.
+widemem gives your AI a real memory — one that scores what matters, forgets what doesn't, and absolutely refuses to lose track of someone's prescription medication just because 72 hours passed and the decay function got bored. Think of it as long-term memory for LLMs, except it actually works and doesn't require a PhD to set up.
 
 - **Memories that know their place** — Importance scoring (1-10) + time decay means "has a peanut allergy" always outranks "had pizza on Tuesday". As it should. Not all memories are created equal, and your retrieval system should know the difference between a life-threatening allergy and a lunch preference.
 - **One brain, three layers** — Facts roll up into summaries, summaries into themes. Ask "where does Alice live" and get the fact. Ask "tell me about Alice" and get the big picture. Your AI can zoom in and zoom out without breaking a sweat or making a second API call.
-- **YMYL or GTFO** — Health, legal, and financial facts get VIP treatment: higher importance floors, immunity from decay, and forced contradiction detectoin. Because forgetting someone's medication is not a "minor regression". It's a lawsuit waiting to happen. ¬_¬
+- **YMYL or GTFO** — Health, legal, and financial facts get VIP treatment: higher importance floors, immunity from decay, and forced contradiction detection. Because forgetting someone's medication is not a "minor regression". It's a lawsuit waiting to happen. ¬_¬
 - **Conflict resolution that isn't stupid** — Add "I live in Boston" after "I live in San Francisco" and the system doesn't just blindly append both. It detects the contradiction, resolves it in a single LLM call, and updates the memory. Like a reasonable adult would.
 - **Honest about what it doesn't know** — Most memory systems hallucinate when they have nothing useful. widemem checks its own confidence before answering. HIGH? Answer normally. LOW? "I'm not sure about this." NONE? "I genuinely don't have that." You can even set it to creative mode: "I can guess if you want, but fair warning." Because an AI that admits ignorance is more useful than one that lies with a straight face. ¬_¬
 - **Local by default, cloud if you want** — SQLite + FAISS out of the box. No accounts, no API keys for storage, no "please sign up for our enterprise plan to store more than 100 memories". Plug in Qdrant or any cloud provider when you're ready. Or don't. We won't guilt-trip you.
@@ -52,7 +52,7 @@ Six features, one library. Here's what widemem does that most memory systems don
 |---|---|---|---|
 | 1 | **Batch conflict resolution** | Single LLM call for all facts vs. existing memories | N facts = 1 API call, not N. Your wallet will thank you. |
 | 2 | **Importance + decay** | Facts rated 1-10, with exponential/linear/step decay | Old trivia fades. Critical facts don't. |
-| 3 | **Hierarchical memory** | Facts -> summaries -> themes, auto-routed | Broad questions get themes, specfic ones get facts. |
+| 3 | **Hierarchical memory** | Facts -> summaries -> themes, auto-routed | Broad questions get themes, specific ones get facts. |
 | 4 | **Active retrieval** | Contradiction detection + clarifying questions | "Wait, you said you live in San Francisco AND Boston?" |
 | 5 | **Self-supervised extraction** | Collect training data, distill to a small model | LLM extraction quality, local model costs. Eventually. |
 | 6 | **YMYL prioritization** | Health/legal/financial facts are untouchable | Some things you just don't forget. |
