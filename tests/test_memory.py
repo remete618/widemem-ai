@@ -326,6 +326,14 @@ class TestInputValidation:
         result = memory.add("x" * 50_000, user_id="alice")
         assert len(result.memories) >= 1
 
+    def test_pin_empty_returns_empty(self, memory):
+        result = memory.pin("", user_id="alice")
+        assert len(result.memories) == 0
+
+    def test_pin_too_long_raises(self, memory):
+        with pytest.raises(ValueError, match="Text too long"):
+            memory.pin("x" * 50_001, user_id="alice")
+
 
 class TestBatchAdd:
     def test_add_batch_multiple_texts(self, memory):
