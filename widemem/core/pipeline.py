@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 from typing import Callable, List, Optional
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
@@ -57,7 +56,6 @@ class MemoryPipeline:
         self.active_retrieval = active_retrieval
         self.ymyl_active_retrieval = ymyl_active_retrieval
         self.ymyl_config = ymyl_config or YMYLConfig()
-        self._lock = threading.Lock()
 
     def process(
         self,
@@ -71,33 +69,32 @@ class MemoryPipeline:
         if not facts:
             return AddResult(memories=[])
 
-        with self._lock:
-            existing = self._find_existing(facts, user_id=user_id, agent_id=agent_id)
+        existing = self._find_existing(facts, user_id=user_id, agent_id=agent_id)
 
-            clarifications: List[Clarification] = []
-            active = self.active_retrieval
-            if not active and self.ymyl_active_retrieval and self.ymyl_config.enabled:
-                has_ymyl_fact = any(
-                    is_ymyl_strong(f.content, self.ymyl_config) for f in facts
-                )
-                if has_ymyl_fact:
-                    active = self.ymyl_active_retrieval
+        clarifications: List[Clarification] = []
+        active = self.active_retrieval
+        if not active and self.ymyl_active_retrieval and self.ymyl_config.enabled:
+            has_ymyl_fact = any(
+                is_ymyl_strong(f.content, self.ymyl_config) for f in facts
+            )
+            if has_ymyl_fact:
+                active = self.ymyl_active_retrieval
 
-            if active and existing:
-                clarifications = active.detect_conflicts(facts, existing)
+        if active and existing:
+            clarifications = active.detect_conflicts(facts, existing)
 
-                if clarifications and on_clarification:
-                    responses = on_clarification(clarifications)
-                    if responses is None:
-                        return AddResult(memories=[], clarifications=clarifications)
+            if clarifications and on_clarification:
+                responses = on_clarification(clarifications)
+                if responses is None:
+                    return AddResult(memories=[], clarifications=clarifications)
 
-            actions = self.resolver.resolve(facts, existing)
-            existing_hashes = {
-                m.memory.metadata.get("content_hash") or content_hash(m.memory.content)
-                for m in existing
-            }
-            memories = self._execute_actions(actions, user_id=user_id, agent_id=agent_id, run_id=run_id, existing_hashes=existing_hashes)
-            return AddResult(memories=memories, clarifications=clarifications)
+        actions = self.resolver.resolve(facts, existing)
+        existing_hashes = {
+            m.memory.metadata.get("content_hash") or content_hash(m.memory.content)
+            for m in existing
+        }
+        memories = self._execute_actions(actions, user_id=user_id, agent_id=agent_id, run_id=run_id, existing_hashes=existing_hashes)
+        return AddResult(memories=memories, clarifications=clarifications)
 
     def _find_existing(
         self,

@@ -227,6 +227,69 @@ class TestFAISSPersistence:
         assert store._storage_path is None
 
 
+class TestFAISSThreadSafety:
+    def test_concurrent_inserts(self, tmp_dir):
+        import threading
+
+        config = VectorStoreConfig(path=f"{tmp_dir}/thread_test")
+        store = FAISSVectorStore(config, dimensions=4)
+        errors = []
+
+        def insert_batch(start: int) -> None:
+            try:
+                for i in range(start, start + 20):
+                    store.insert(f"id-{i}", [0.1 * (i % 10), 0.2, 0.3, 0.4], {"content": f"item {i}"})
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=insert_batch, args=(i * 20,)) for i in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Concurrent inserts raised: {errors}"
+        assert store._index.ntotal == 100
+
+    def test_concurrent_reads_during_write(self, tmp_dir):
+        import threading
+
+        config = VectorStoreConfig(path=f"{tmp_dir}/rw_test")
+        store = FAISSVectorStore(config, dimensions=4)
+        for i in range(10):
+            store.insert(f"id-{i}", [0.1 * i, 0.2, 0.3, 0.4], {"content": f"item {i}"})
+
+        errors = []
+        stop = threading.Event()
+
+        def reader() -> None:
+            try:
+                while not stop.is_set():
+                    store.search([0.1, 0.2, 0.3, 0.4], top_k=5)
+            except Exception as e:
+                errors.append(e)
+
+        def writer() -> None:
+            try:
+                for i in range(10, 30):
+                    store.insert(f"id-{i}", [0.1, 0.2, 0.3, 0.4], {"content": f"item {i}"})
+            except Exception as e:
+                errors.append(e)
+
+        readers = [threading.Thread(target=reader) for _ in range(3)]
+        for t in readers:
+            t.start()
+        writer_t = threading.Thread(target=writer)
+        writer_t.start()
+        writer_t.join()
+        stop.set()
+        for t in readers:
+            t.join()
+
+        assert not errors, f"Concurrent read/write raised: {errors}"
+        assert store._index.ntotal == 30
+
+
 class TestBatchConflictResolver:
     def test_all_add_when_no_existing(self, mock_llm):
         resolver = BatchConflictResolver(mock_llm)
