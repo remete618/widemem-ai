@@ -256,6 +256,58 @@ class TestBatchConflictResolver:
         assert actions[0].action.value == "update"
         assert actions[0].target_id == "mem-1"
 
+    def test_llm_failure_falls_back_to_add_with_dedup(self):
+        from widemem.core.types import Memory
+
+        class FailingLLM(BaseLLM):
+            def __init__(self):
+                super().__init__(LLMConfig())
+
+            def _generate(self, prompt, system=None):
+                raise ConnectionError("network down")
+
+            def _generate_json(self, prompt, system=None):
+                raise ConnectionError("network down")
+
+        resolver = BatchConflictResolver(FailingLLM())
+        facts = [
+            Fact(content="Lives in Berlin", importance=8.0),
+            Fact(content="Works at Google", importance=7.0),
+        ]
+        existing = [MemorySearchResult(
+            memory=Memory(id="mem-1", content="Lives in Berlin"),
+            similarity_score=0.9,
+        )]
+
+        actions = resolver.resolve(facts, existing)
+        # "Lives in Berlin" should be deduped (exact match), only "Works at Google" added
+        assert len(actions) == 1
+        assert actions[0].fact == "Works at Google"
+        assert actions[0].action.value == "add"
+
+    def test_llm_failure_does_not_catch_keyboard_interrupt(self):
+        from widemem.core.types import Memory
+
+        class InterruptLLM(BaseLLM):
+            def __init__(self):
+                super().__init__(LLMConfig())
+
+            def _generate(self, prompt, system=None):
+                raise KeyboardInterrupt
+
+            def _generate_json(self, prompt, system=None):
+                raise KeyboardInterrupt
+
+        resolver = BatchConflictResolver(InterruptLLM())
+        facts = [Fact(content="test", importance=5.0)]
+        existing = [MemorySearchResult(
+            memory=Memory(id="mem-1", content="old"),
+            similarity_score=0.5,
+        )]
+
+        with pytest.raises(KeyboardInterrupt):
+            resolver.resolve(facts, existing)
+
 
 class TestWideMemory:
     def test_add_and_search(self, memory, mock_embedder):
