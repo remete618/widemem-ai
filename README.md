@@ -11,9 +11,11 @@ __  _  _|__| __| _/____   _____   ____   _____      _____  |__|
 
 > *Goldfish memory? ¬_¬ Fixed.*
 
+[![PyPI version](https://img.shields.io/pypi/v/widemem-ai.svg)](https://pypi.org/project/widemem-ai/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/widemem-ai.svg)](https://pypi.org/project/widemem-ai/)
+[![CI](https://github.com/remete618/widemem-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/remete618/widemem-ai/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-140%20passing-brightgreen.svg)](#development)
 
 > **NEW in v1.4** — Confidence scoring, uncertainty modes (strict/helpful/creative), `mem.pin()` for persistent memories, frustration detection, and retrieval modes (fast/balanced/deep). Your AI now knows when it doesn't know. [See what's new ↓](#uncertainty--confidence)
 
