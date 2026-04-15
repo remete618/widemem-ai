@@ -31,7 +31,7 @@ widemem gives your AI a real memory — one that scores what matters, forgets wh
 
 - **Memories that know their place** — Importance scoring (1-10) + time decay means "has a peanut allergy" always outranks "had pizza on Tuesday". As it should. Not all memories are created equal, and your retrieval system should know the difference between a life-threatening allergy and a lunch preference.
 - **One brain, three layers** — Facts roll up into summaries, summaries into themes. Ask "where does Alice live" and get the fact. Ask "tell me about Alice" and get the big picture. Your AI can zoom in and zoom out without breaking a sweat or making a second API call.
-- **YMYL or GTFO** — Health, legal, and financial facts get VIP treatment: higher importance floors, immunity from decay, and forced contradiction detection. Because forgetting someone's medication is not a "minor regression". It's a lawsuit waiting to happen. ¬_¬
+- **YMYL or GTFO** — Health, legal, and financial facts get VIP treatment: higher importance floors, immunity from decay, and forced contradiction detection. Two-stage classification (regex for obvious matches, LLM for implied content) catches "my chest hurts" as health while ignoring "the bank of the river." [Read more →](https://widemem.ai/blog/semantic-ymyl)
 - **Conflict resolution that isn't stupid** — Add "I live in Boston" after "I live in San Francisco" and the system doesn't just blindly append both. It detects the contradiction, resolves it in a single LLM call, and updates the memory. Like a reasonable adult would.
 - **Honest about what it doesn't know** — Most memory systems hallucinate when they have nothing useful. widemem checks its own confidence before answering. HIGH? Answer normally. LOW? "I'm not sure about this." NONE? "I genuinely don't have that." You can even set it to creative mode: "I can guess if you want, but fair warning." Because an AI that admits ignorance is more useful than one that lies with a straight face. ¬_¬
 - **Local by default, cloud if you want** — SQLite + FAISS out of the box. No accounts, no API keys for storage, no "please sign up for our enterprise plan to store more than 100 memories". Plug in Qdrant or any cloud provider when you're ready. Or don't. We won't guilt-trip you.
@@ -382,17 +382,23 @@ config = MemoryConfig(
 )
 ```
 
-### Two-Tier Confidence System
+### Two-Stage Semantic Classification
 
-Not every mention of "bank" means someone's talking about their finances. Could be a river bank. Could be a piggy bank. widemem uses a **two-tier confidence system** to avoid crying wolf:
+Not every mention of "bank" means someone's talking about their finances. And "my chest has been hurting for three days" is a health concern even though it contains no medical keyword. widemem uses a **two-stage pipeline** to handle both cases:
 
-| Confidence | How it triggers | Importance | Decay immunity | Active retrieval |
-|---|---|---|---|---|
-| **Strong** | Multi-word match ("bank account", "blood type") OR 2+ weak keywords | Floor at 8.0 | Yes | Forced |
-| **Weak** | Single ambiguous keyword ("doctor", "bank") | Nudged to 6.0 | No | No |
-| **None** | No YMYL keywords | Unchanged | No | No |
+| Stage | How it works | Example |
+|---|---|---|
+| **1. Regex (fast)** | Multi-word strong patterns fire immediately | "blood pressure" → health, "401k" → financial |
+| **2. LLM (semantic)** | LLM classifies during fact extraction (zero extra API calls) | "my chest hurts" → health, "bank of the river" → null |
 
-So "walked by the bank" gets a gentle 6.0 nudge. "Opened a savings account at the bank" gets the full 8.0 treatment. "Watching Doctor Who" gets a minor bump, not a medical emergency. As it should be.
+Strong regex matches get immediate YMYL protection. For everything else, the LLM decides based on context. This catches implied YMYL content ("I stopped taking my pills" → medical) and rejects false positives ("The Doctor is a great TV show" → not medical).
+
+> For the full breakdown with accuracy data and examples, see **[Your AI Memory Can't Tell a River Bank from a Savings Account](https://widemem.ai/blog/semantic-ymyl)**.
+
+| Classification | Importance | Decay immunity | Active retrieval |
+|---|---|---|---|
+| **YMYL (regex or LLM)** | Floor at 8.0 | Yes | Forced |
+| **Not YMYL** | Unchanged | No | No |
 
 ### YMYL Categories
 
@@ -827,7 +833,7 @@ By using widemem, you agree to the following completely reasonable terms:
 
 2. **Use responsibly.** widemem stores user data locally by default. If you point it at a cloud provider, that's your responsibility. We don't collect, transmit, or even look at your data. We have better things to do.
 
-3. **YMYL is a best-effort safety net**, not a medical device. It uses keyword matching to flag health/legal/financial content. It will catch "diabetes diagnosis" but it won't catch subtle medical references buried in metaphors. Don't rely on it for life-critical decisions. Use it as one layer of many.
+3. **YMYL is a best-effort safety net**, not a medical device. It uses two-stage classification (regex + LLM) to flag health/legal/financial content. It catches both explicit terms ("diabetes diagnosis") and implied references ("my chest hurts"). But LLM classification quality varies by model. Don't rely on it for life-critical decisions. Use it as one layer of many.
 
 4. **LLM providers have their own terms.** If you use OpenAI, Anthropic, or any other provider through widemem, their terms of service apply to those API calls. Read them. Or don't. But they exist.
 
