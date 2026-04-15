@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Optional
 
@@ -11,12 +12,19 @@ from widemem.core.types import (
     UncertaintyMode,
 )
 
-# Similarity thresholds for confidence levels
-CONFIDENCE_THRESHOLDS = {
+_DEFAULT_THRESHOLDS = {
     "high": 0.65,
     "moderate": 0.45,
     "low": 0.25,
 }
+
+
+def get_confidence_thresholds() -> dict[str, float]:
+    return {
+        "high": float(os.environ.get("WIDEMEM_CONFIDENCE_HIGH", _DEFAULT_THRESHOLDS["high"])),
+        "moderate": float(os.environ.get("WIDEMEM_CONFIDENCE_MODERATE", _DEFAULT_THRESHOLDS["moderate"])),
+        "low": float(os.environ.get("WIDEMEM_CONFIDENCE_LOW", _DEFAULT_THRESHOLDS["low"])),
+    }
 
 FRUSTRATION_SIGNALS = (
     "i told you", "i already said", "remember when i", "i mentioned",
@@ -32,12 +40,13 @@ def assess_confidence(results: list[MemorySearchResult]) -> RetrievalConfidence:
         return RetrievalConfidence.NONE
 
     top_sim = results[0].similarity_score
+    thresholds = get_confidence_thresholds()
 
-    if top_sim >= CONFIDENCE_THRESHOLDS["high"]:
+    if top_sim >= thresholds["high"]:
         return RetrievalConfidence.HIGH
-    if top_sim >= CONFIDENCE_THRESHOLDS["moderate"]:
+    if top_sim >= thresholds["moderate"]:
         return RetrievalConfidence.MODERATE
-    if top_sim >= CONFIDENCE_THRESHOLDS["low"]:
+    if top_sim >= thresholds["low"]:
         return RetrievalConfidence.LOW
     return RetrievalConfidence.NONE
 
