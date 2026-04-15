@@ -52,7 +52,7 @@ class LLMExtractor(BaseExtractor):
                     else:
                         # Stage 2: Use LLM's semantic classification
                         llm_ymyl = item.get("ymyl_category")
-                        if llm_ymyl and llm_ymyl in [c for c in self.ymyl_config.categories]:
+                        if llm_ymyl and llm_ymyl in self.ymyl_config.categories:
                             ymyl_category = llm_ymyl
                             importance = max(importance, self.ymyl_config.min_importance)
 

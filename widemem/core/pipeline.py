@@ -191,6 +191,7 @@ class MemoryPipeline:
                     run_id=run_id,
                     importance=action.importance,
                     content_hash=new_hash,
+                    ymyl_category=action.ymyl_category,
                 )
                 embedding = self.embedder.embed(action.fact)
                 self.vector_store.update(
