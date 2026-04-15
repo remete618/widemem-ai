@@ -8,7 +8,9 @@ from widemem.conflict.batch_resolver import BatchConflictResolver
 from widemem.core.pipeline import AddResult, MemoryPipeline
 from widemem.core.types import (
     RETRIEVAL_MODE_PRESETS,
+    EmbeddingConfig,
     HistoryEntry,
+    LLMConfig,
     Memory,
     MemoryConfig,
     MemorySearchResult,
@@ -409,7 +411,7 @@ class WideMemory:
         return default, False
 
     def _create_llm(self) -> BaseLLM:
-        provider = self.config.llm.provider
+        provider = self._resolve_provider(self.config.llm.provider, self.config.llm.api_key, "llm")
         if provider == "openai":
             return OpenAILLM(self.config.llm)
         if provider == "anthropic":
@@ -417,13 +419,16 @@ class WideMemory:
             return AnthropicLLM(self.config.llm)
         if provider == "ollama":
             from widemem.providers.llm.ollama import OllamaLLM
-            return OllamaLLM(self.config.llm)
+            config = self.config.llm
+            if config.model == "gpt-4o-mini":
+                config = LLMConfig(provider="ollama", model="llama3.2", base_url=config.base_url)
+            return OllamaLLM(config)
         raise ValueError(
             f"Unknown LLM provider: {provider}. Supported: openai, anthropic, ollama"
         )
 
     def _create_embedder(self) -> BaseEmbedder:
-        provider = self.config.embedding.provider
+        provider = self._resolve_provider(self.config.embedding.provider, self.config.embedding.api_key, "embedding")
         if provider == "openai":
             return OpenAIEmbedder(self.config.embedding)
         if provider == "sentence-transformers":
@@ -433,10 +438,31 @@ class WideMemory:
             return SentenceTransformerEmbedder(self.config.embedding)
         if provider == "ollama":
             from widemem.providers.embeddings.ollama import OllamaEmbedder
-            return OllamaEmbedder(self.config.embedding)
+            config = self.config.embedding
+            if config.model == "text-embedding-3-small":
+                config = EmbeddingConfig(provider="ollama", model="nomic-embed-text", dimensions=768, base_url=config.base_url)
+            return OllamaEmbedder(config)
         raise ValueError(
             f"Unknown embedding provider: {provider}. Supported: openai, sentence-transformers, ollama"
         )
+
+    @staticmethod
+    def _resolve_provider(configured: str, api_key: Any, kind: str) -> str:
+        """If provider is 'openai' (default) but no API key is available, fall back to Ollama."""
+        if configured != "openai":
+            return configured
+        if api_key is not None:
+            return "openai"
+        import os
+        if os.environ.get("OPENAI_API_KEY"):
+            return "openai"
+        import logging
+        logging.getLogger(__name__).info(
+            "No OpenAI API key found for %s provider, falling back to Ollama (local). "
+            "Set OPENAI_API_KEY or configure a provider explicitly to use OpenAI.",
+            kind,
+        )
+        return "ollama"
 
     def _create_vector_store(self) -> BaseVectorStore:
         provider = self.config.vector_store.provider
