@@ -663,6 +663,71 @@ class TestIDMapping:
         assert idx1 == idx2
 
 
+class TestEmbeddingCache:
+    def test_cache_avoids_recomputation(self):
+        call_count = 0
+
+        class CountingEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), max_retries=1, retry_delay=0)
+
+            def _embed(self, text):
+                nonlocal call_count
+                call_count += 1
+                return [0.1, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                return [self._embed(t) for t in texts]
+
+        embedder = CountingEmbedder()
+        embedder.embed("hello")
+        embedder.embed("hello")
+        embedder.embed("hello")
+        assert call_count == 1
+
+    def test_cache_evicts_oldest(self):
+        class TinyEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), max_retries=1, retry_delay=0, cache_size=2)
+
+            def _embed(self, text):
+                return [hash(text) % 100 / 100.0, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                return [self._embed(t) for t in texts]
+
+        embedder = TinyEmbedder()
+        embedder.embed("a")
+        embedder.embed("b")
+        embedder.embed("c")  # evicts "a"
+        assert len(embedder._cache) == 2
+        assert "a" not in embedder._cache
+
+    def test_batch_uses_cache(self):
+        call_count = 0
+
+        class CountingEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), max_retries=1, retry_delay=0)
+
+            def _embed(self, text):
+                nonlocal call_count
+                call_count += 1
+                return [0.1, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                nonlocal call_count
+                call_count += len(texts)
+                return [[0.1, 0.2, 0.3, 0.4]] * len(texts)
+
+        embedder = CountingEmbedder()
+        embedder.embed("a")  # 1 call
+        embedder.embed("b")  # 1 call
+        call_count = 0
+        embedder.embed_batch(["a", "b", "c"])  # only "c" hits provider
+        assert call_count == 1
+
+
 class TestEmbeddingRetry:
     def test_retry_on_transient_error(self):
         call_count = 0
