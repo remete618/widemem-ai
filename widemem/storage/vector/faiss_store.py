@@ -5,7 +5,10 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import faiss
+try:
+    import faiss
+except ImportError:
+    faiss = None  # type: ignore[assignment]
 import numpy as np
 
 from widemem.core.types import VectorStoreConfig
@@ -21,6 +24,11 @@ class FAISSVectorStore(BaseVectorStore):
     """
 
     def __init__(self, config: VectorStoreConfig, dimensions: int = 1536) -> None:
+        if faiss is None:
+            raise ImportError(
+                "faiss-cpu is required for the FAISS vector store. "
+                "Install it with: pip install widemem-ai[faiss]"
+            )
         super().__init__(config)
         self.dimensions = dimensions
         self._metadata: Dict[str, Dict[str, Any]] = {}
