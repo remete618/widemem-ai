@@ -12,10 +12,10 @@ class OpenAIEmbedder(BaseEmbedder):
         super().__init__(config)
         self.client = OpenAI(api_key=config.api_key.get_secret_value() if config.api_key else None)
 
-    def embed(self, text: str) -> list[float]:
-        return self.embed_batch([text])[0]
+    def _embed(self, text: str) -> list[float]:
+        return self._embed_batch([text])[0]
 
-    def embed_batch(self, texts: list[str]) -> list[list[float]]:
+    def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
         try:

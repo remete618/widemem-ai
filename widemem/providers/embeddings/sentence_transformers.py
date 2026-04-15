@@ -28,10 +28,10 @@ class SentenceTransformerEmbedder(BaseEmbedder):
                 dimensions=actual_dim,
             )
 
-    def embed(self, text: str) -> List[float]:
-        return self.embed_batch([text])[0]
+    def _embed(self, text: str) -> List[float]:
+        return self._embed_batch([text])[0]
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
         if not texts:
             return []
         embeddings = self._model.encode(texts, normalize_embeddings=True)
