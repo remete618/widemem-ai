@@ -1,0 +1,38 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": ["remete618"],
+  "license": "Apache-2.0",
+  "name": "widemem-ai",
+  "description": "AI memory layer with importance scoring, time decay, hierarchical memory (facts, summaries, themes), two-stage YMYL safety classification, and uncertainty modes. Local-first with SQLite + FAISS. 7 MCP tools.",
+  "keywords": ["ai-memory", "memory", "llm", "mcp", "ymyl", "importance-scoring", "time-decay", "hierarchical-memory", "vector-search", "faiss", "sqlite", "local-first", "claude-code", "python"],
+  "tools": [
+    {
+      "name": "widemem_add",
+      "description": "Add text to memory with automatic fact extraction, importance scoring, and YMYL classification"
+    },
+    {
+      "name": "widemem_search",
+      "description": "Search memories by semantic similarity with confidence scoring and retrieval modes (fast, balanced, deep)"
+    },
+    {
+      "name": "widemem_delete",
+      "description": "Delete a memory by ID"
+    },
+    {
+      "name": "widemem_count",
+      "description": "Count stored memories with optional user and agent filters"
+    },
+    {
+      "name": "widemem_pin",
+      "description": "Pin a memory with elevated importance (9.0) so it resists time decay"
+    },
+    {
+      "name": "widemem_export",
+      "description": "Export all memories as JSON for backup or migration"
+    },
+    {
+      "name": "widemem_health",
+      "description": "Check server health status"
+    }
+  ]
+}
