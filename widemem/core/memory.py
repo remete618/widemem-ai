@@ -33,7 +33,6 @@ from widemem.retrieval.temporal import score_and_rank
 from widemem.retrieval.uncertainty import assess_confidence
 from widemem.storage.history import HistoryStore
 from widemem.storage.vector.base import BaseVectorStore
-from widemem.storage.vector.faiss_store import FAISSVectorStore
 
 
 class WideMemory:
@@ -468,6 +467,7 @@ class WideMemory:
     def _create_vector_store(self) -> BaseVectorStore:
         provider = self.config.vector_store.provider
         if provider == "faiss":
+            from widemem.storage.vector.faiss_store import FAISSVectorStore
             return FAISSVectorStore(
                 self.config.vector_store,
                 dimensions=self.config.embedding.dimensions,

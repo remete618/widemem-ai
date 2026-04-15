@@ -35,7 +35,6 @@ classifiers = [
 dependencies = [
     "pydantic>=2.0",
     "openai>=1.0",
-    "faiss-cpu>=1.7",
     "numpy>=1.24",
 ]
 
@@ -45,6 +44,7 @@ dev = [
     "pytest-asyncio>=0.21",
     "ruff>=0.4",
 ]
+faiss = ["faiss-cpu>=1.7"]
 anthropic = ["anthropic>=0.30"]
 ollama = ["ollama>=0.2"]
 qdrant = ["qdrant-client>=1.9"]
@@ -53,6 +53,7 @@ server = ["fastapi>=0.110", "uvicorn>=0.29"]
 mcp = ["mcp>=1.0"]
 all = [
     "anthropic>=0.30",
+    "faiss-cpu>=1.7",
     "mcp>=1.0",
     "ollama>=0.2",
     "qdrant-client>=1.9",
