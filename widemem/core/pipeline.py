@@ -75,7 +75,8 @@ class MemoryPipeline:
         active = self.active_retrieval
         if not active and self.ymyl_active_retrieval and self.ymyl_config.enabled:
             has_ymyl_fact = any(
-                is_ymyl_strong(f.content, self.ymyl_config) for f in facts
+                f.ymyl_category is not None or is_ymyl_strong(f.content, self.ymyl_config)
+                for f in facts
             )
             if has_ymyl_fact:
                 active = self.ymyl_active_retrieval
@@ -160,6 +161,7 @@ class MemoryPipeline:
                     run_id=run_id,
                     importance=action.importance,
                     content_hash=new_hash,
+                    ymyl_category=action.ymyl_category,
                 )
                 embedding = self.embedder.embed(action.fact)
                 self.vector_store.insert(
@@ -214,7 +216,7 @@ class MemoryPipeline:
         return results
 
     def _memory_to_metadata(self, memory: Memory) -> dict:
-        return {
+        meta = {
             "content": memory.content,
             "user_id": memory.user_id,
             "agent_id": memory.agent_id,
@@ -225,3 +227,6 @@ class MemoryPipeline:
             "created_at": memory.created_at.isoformat(),
             "updated_at": memory.updated_at.isoformat(),
         }
+        if memory.ymyl_category:
+            meta["ymyl_category"] = memory.ymyl_category
+        return meta

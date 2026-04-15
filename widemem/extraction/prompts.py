@@ -31,15 +31,27 @@ Convert relative time references to absolute dates using the timestamp at the st
 {text}
 
 Respond with this exact JSON format:
-{{"facts": [{{"content": "the fact with specific details preserved", "importance": 7, "category": "general"}}, ...]}}
+{{"facts": [{{"content": "the fact with specific details preserved", "importance": 7, "category": "general", "ymyl_category": null}}, ...]}}
 
 If there are no meaningful facts, respond with: {{"facts": []}}"""
 
 YMYL_INSTRUCTION = (
-    "\nCRITICAL: Facts about health, medical conditions, medications, finances, "
-    "legal matters, insurance, taxes, or safety are EXTREMELY important. "
-    "Rate these at 8-10 importance and tag their category accordingly. "
-    'These are "Your Money or Your Life" (YMYL) facts that must never be lost.'
+    "\nCRITICAL: For each fact, classify whether it is a YMYL (Your Money or Your Life) fact.\n"
+    'Set "ymyl_category" to one of: "health", "medical", "financial", "legal", '
+    '"safety", "insurance", "tax", "pharmaceutical", or null if not YMYL.\n'
+    "YMYL means the fact genuinely concerns someone's physical/mental health, "
+    "medications, money, legal rights, or physical safety.\n"
+    "Do NOT flag metaphorical or casual usage:\n"
+    '  - "walked by the bank of the river" -> null (not financial)\n'
+    '  - "The Doctor is a great TV show" -> null (not medical)\n'
+    '  - "court of public opinion" -> null (not legal)\n'
+    '  - "investment of time" -> null (not financial)\n'
+    "DO flag genuine YMYL:\n"
+    '  - "my chest has been hurting for three days" -> "health"\n'
+    '  - "I owe $40,000 and can\'t make payments" -> "financial"\n'
+    '  - "I stopped taking my pills" -> "medical"\n'
+    '  - "my ex is threatening to take the kids" -> "legal"\n'
+    "Rate YMYL facts at 8-10 importance. These must never be lost."
 )
 
 CUSTOM_TOPICS_INSTRUCTION = """

@@ -41,17 +41,25 @@ class LLMExtractor(BaseExtractor):
             if isinstance(item, dict) and "content" in item:
                 importance = float(item.get("importance", 5.0))
                 content = item["content"]
+                ymyl_category = None
 
                 if self.ymyl_config.enabled:
-                    ymyl_result = classify_ymyl_detailed(content, self.ymyl_config)
-                    if ymyl_result.is_strong:
+                    # Stage 1: Regex for strong pattern matches (fast, definitive)
+                    regex_result = classify_ymyl_detailed(content, self.ymyl_config)
+                    if regex_result.is_strong:
+                        ymyl_category = regex_result.category
                         importance = max(importance, self.ymyl_config.min_importance)
-                    elif ymyl_result.is_ymyl:
-                        importance = max(importance, 6.0)
+                    else:
+                        # Stage 2: Use LLM's semantic classification
+                        llm_ymyl = item.get("ymyl_category")
+                        if llm_ymyl and llm_ymyl in [c for c in self.ymyl_config.categories]:
+                            ymyl_category = llm_ymyl
+                            importance = max(importance, self.ymyl_config.min_importance)
 
                 facts.append(Fact(
                     content=content,
                     importance=importance,
+                    ymyl_category=ymyl_category,
                 ))
 
         if self.collector and facts:
