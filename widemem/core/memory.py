@@ -201,6 +201,7 @@ class WideMemory:
                     agent_id=metadata.get("agent_id"),
                     importance=metadata.get("importance", 5.0),
                     tier=MemoryTier(metadata.get("tier", "fact")),
+                    ymyl_category=metadata.get("ymyl_category"),
                     created_at=created_at,
                     updated_at=(
                         datetime.fromisoformat(metadata["updated_at"])

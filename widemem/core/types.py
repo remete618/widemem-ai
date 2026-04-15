@@ -50,6 +50,7 @@ class DecayFunction(str, Enum):
 class Fact(BaseModel):
     content: str
     importance: float = Field(default=5.0, ge=0.0, le=10.0)
+    ymyl_category: Optional[str] = None
 
 
 class ActionItem(BaseModel):
@@ -57,6 +58,7 @@ class ActionItem(BaseModel):
     fact: str
     target_id: Optional[str] = None
     importance: float = Field(default=5.0, ge=0.0, le=10.0)
+    ymyl_category: Optional[str] = None
 
 
 class Memory(BaseModel):
@@ -68,6 +70,7 @@ class Memory(BaseModel):
     tier: MemoryTier = MemoryTier.FACT
     importance: float = Field(default=5.0, ge=0.0, le=10.0)
     content_hash: str = ""
+    ymyl_category: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

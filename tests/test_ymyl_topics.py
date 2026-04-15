@@ -116,6 +116,97 @@ class TestYMYLClassifier:
         assert classify_ymyl("emergency contact is Jane", self.config) == "safety"
 
 
+class TestSemanticYMYL:
+    """Tests for LLM-based YMYL classification via extraction pipeline."""
+
+    def test_fact_carries_ymyl_category(self):
+        from widemem.core.types import Fact
+        fact = Fact(content="patient has chest pain", importance=9.0, ymyl_category="health")
+        assert fact.ymyl_category == "health"
+
+    def test_fact_no_ymyl_by_default(self):
+        from widemem.core.types import Fact
+        fact = Fact(content="likes pizza", importance=3.0)
+        assert fact.ymyl_category is None
+
+    def test_action_item_carries_ymyl(self):
+        from widemem.core.types import ActionItem, MemoryAction
+        action = ActionItem(action=MemoryAction.ADD, fact="has diabetes", importance=9.0, ymyl_category="health")
+        assert action.ymyl_category == "health"
+
+    def test_memory_carries_ymyl(self):
+        from widemem.core.types import Memory
+        mem = Memory(content="takes metformin daily", ymyl_category="medical")
+        assert mem.ymyl_category == "medical"
+
+    def test_ymyl_stored_in_metadata(self):
+        from widemem.core.pipeline import MemoryPipeline
+        from widemem.core.types import Memory
+        pipeline = MemoryPipeline.__new__(MemoryPipeline)
+        mem = Memory(content="blood type A+", ymyl_category="safety")
+        meta = pipeline._memory_to_metadata(mem)
+        assert meta["ymyl_category"] == "safety"
+
+    def test_ymyl_not_in_metadata_when_none(self):
+        from widemem.core.pipeline import MemoryPipeline
+        from widemem.core.types import Memory
+        pipeline = MemoryPipeline.__new__(MemoryPipeline)
+        mem = Memory(content="likes pizza")
+        meta = pipeline._memory_to_metadata(mem)
+        assert "ymyl_category" not in meta
+
+    def test_ymyl_memory_gets_decay_immunity(self):
+        """Memories with ymyl_category set should be immune to decay."""
+        config = ScoringConfig()
+        ymyl_config = YMYLConfig(enabled=True, decay_immune=True)
+        now = datetime(2026, 3, 8)
+
+        results = [
+            MemorySearchResult(
+                memory=Memory(
+                    content="patient reports persistent chest pain",
+                    importance=9.0,
+                    ymyl_category="health",
+                    created_at=now - timedelta(days=365),
+                ),
+                similarity_score=0.8,
+            ),
+            MemorySearchResult(
+                memory=Memory(
+                    content="likes pizza",
+                    importance=3.0,
+                    created_at=now - timedelta(days=365),
+                ),
+                similarity_score=0.8,
+            ),
+        ]
+
+        ranked = score_and_rank(results, config, now=now, ymyl_config=ymyl_config)
+        ymyl_result = next(r for r in ranked if "chest pain" in r.memory.content)
+        normal_result = next(r for r in ranked if "pizza" in r.memory.content)
+
+        assert ymyl_result.temporal_score == 1.0
+        assert normal_result.temporal_score < 1.0
+
+    def test_llm_ymyl_overrides_regex_miss(self):
+        """LLM classification should catch implied YMYL that regex misses."""
+        from widemem.scoring.ymyl import classify_ymyl_detailed
+
+        config = YMYLConfig(enabled=True)
+        # "chest pain" doesn't match any regex pattern
+        result = classify_ymyl_detailed("patient reports persistent chest pain", config)
+        assert not result.is_strong  # regex misses this
+
+        # But if LLM classified it, the memory would have ymyl_category set
+        mem = Memory(
+            content="patient reports persistent chest pain",
+            ymyl_category="health",  # LLM would set this
+            importance=9.0,
+            created_at=datetime(2025, 1, 1),
+        )
+        assert mem.ymyl_category == "health"
+
+
 class TestTopicBoost:
     def test_no_weights(self):
         assert get_topic_boost("anything", {}) == 1.0

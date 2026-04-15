@@ -29,7 +29,7 @@ class BatchConflictResolver:
 
         if not existing_memories:
             return [
-                ActionItem(action=MemoryAction.ADD, fact=f.content, importance=f.importance)
+                ActionItem(action=MemoryAction.ADD, fact=f.content, importance=f.importance, ymyl_category=f.ymyl_category)
                 for f in new_facts
             ]
 
@@ -57,7 +57,7 @@ class BatchConflictResolver:
             logger.warning("Conflict resolver LLM call failed (%s), falling back to ADD with dedup", exc)
             existing_hashes = {content_hash(m.memory.content) for m in existing_memories}
             return [
-                ActionItem(action=MemoryAction.ADD, fact=f.content, importance=f.importance)
+                ActionItem(action=MemoryAction.ADD, fact=f.content, importance=f.importance, ymyl_category=f.ymyl_category)
                 for f in new_facts
                 if content_hash(f.content) not in existing_hashes
             ]
@@ -93,6 +93,7 @@ class BatchConflictResolver:
                 fact=new_facts[fact_idx].content,
                 target_id=target_id,
                 importance=float(item.get("importance", new_facts[fact_idx].importance)),
+                ymyl_category=new_facts[fact_idx].ymyl_category,
             ))
 
         for i, fact in enumerate(new_facts):
@@ -101,6 +102,7 @@ class BatchConflictResolver:
                     action=MemoryAction.ADD,
                     fact=fact.content,
                     importance=fact.importance,
+                    ymyl_category=fact.ymyl_category,
                 ))
 
         return actions

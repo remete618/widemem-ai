@@ -34,8 +34,14 @@ def score_and_rank(
             continue
 
         content = result.memory.content
-        ymyl_result = classify_ymyl_detailed(content, ymyl_config) if ymyl_config.enabled else None
-        mem_is_ymyl_strong = ymyl_result is not None and ymyl_result.is_strong
+        # Check stored YMYL classification first (from LLM extraction), fall back to regex
+        mem_is_ymyl_strong = False
+        if ymyl_config.enabled:
+            if result.memory.ymyl_category is not None:
+                mem_is_ymyl_strong = True
+            else:
+                ymyl_result = classify_ymyl_detailed(content, ymyl_config)
+                mem_is_ymyl_strong = ymyl_result is not None and ymyl_result.is_strong
 
         if mem_is_ymyl_strong and ymyl_config.decay_immune:
             recency = 1.0
