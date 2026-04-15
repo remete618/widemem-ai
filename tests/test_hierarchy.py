@@ -50,13 +50,13 @@ class MockEmbedder(BaseEmbedder):
     def __init__(self, dimensions=64):
         super().__init__(EmbeddingConfig(dimensions=dimensions))
 
-    def embed(self, text):
+    def _embed(self, text):
         rng = np.random.RandomState(hash(text) % 2**31)
         vec = rng.randn(self.config.dimensions).astype(np.float32)
         return (vec / np.linalg.norm(vec)).tolist()
 
-    def embed_batch(self, texts):
-        return [self.embed(t) for t in texts]
+    def _embed_batch(self, texts):
+        return [self._embed(t) for t in texts]
 
 
 class DirectExtractor(BaseExtractor):

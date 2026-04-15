@@ -44,19 +44,19 @@ class MockLLM(BaseLLM):
 
 class MockEmbedder(BaseEmbedder):
     def __init__(self, dimensions: int = 64) -> None:
-        super().__init__(EmbeddingConfig(dimensions=dimensions))
-        self._cache: dict[str, list[float]] = {}
+        super().__init__(EmbeddingConfig(dimensions=dimensions), max_retries=1, retry_delay=0)
+        self._vectors: dict[str, list[float]] = {}
 
-    def embed(self, text: str) -> list[float]:
-        if text not in self._cache:
+    def _embed(self, text: str) -> list[float]:
+        if text not in self._vectors:
             rng = np.random.RandomState(hash(text) % 2**31)
             vec = rng.randn(self.config.dimensions).astype(np.float32)
             vec = vec / np.linalg.norm(vec)
-            self._cache[text] = vec.tolist()
-        return self._cache[text]
+            self._vectors[text] = vec.tolist()
+        return self._vectors[text]
 
-    def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        return [self.embed(t) for t in texts]
+    def _embed_batch(self, texts: list[str]) -> list[list[float]]:
+        return [self._embed(t) for t in texts]
 
 
 class MockExtractor(BaseExtractor):
@@ -661,6 +661,47 @@ class TestIDMapping:
         idx1 = mapper.add("uuid-1")
         idx2 = mapper.add("uuid-1")
         assert idx1 == idx2
+
+
+class TestEmbeddingRetry:
+    def test_retry_on_transient_error(self):
+        call_count = 0
+
+        class FlakeyEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), max_retries=3, retry_delay=0.01)
+
+            def _embed(self, text):
+                nonlocal call_count
+                call_count += 1
+                if call_count < 3:
+                    raise ConnectionError("network flake")
+                return [0.1, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                return [self._embed(t) for t in texts]
+
+        embedder = FlakeyEmbedder()
+        result = embedder.embed("test")
+        assert result == [0.1, 0.2, 0.3, 0.4]
+        assert call_count == 3
+
+    def test_provider_error_not_retried(self):
+        from widemem.core.exceptions import ProviderError
+
+        class BadEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), max_retries=3, retry_delay=0.01)
+
+            def _embed(self, text):
+                raise ProviderError("invalid model")
+
+            def _embed_batch(self, texts):
+                raise ProviderError("invalid model")
+
+        embedder = BadEmbedder()
+        with pytest.raises(ProviderError, match="invalid model"):
+            embedder.embed("test")
 
 
 class TestContentHash:
