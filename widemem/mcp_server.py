@@ -27,8 +27,8 @@ def _build_config() -> MemoryConfig:
     data_path = os.environ.get("WIDEMEM_DATA_PATH", "~/.widemem/data")
     data_path = str(Path(data_path).expanduser())
 
-    llm_provider = os.environ.get("WIDEMEM_LLM_PROVIDER", "ollama")
-    llm_model = os.environ.get("WIDEMEM_LLM_MODEL", "llama3.2")
+    llm_provider = os.environ.get("WIDEMEM_LLM_PROVIDER", "openai")
+    llm_model = os.environ.get("WIDEMEM_LLM_MODEL", "gpt-4o-mini")
     llm_base_url = os.environ.get("WIDEMEM_LLM_BASE_URL", "http://localhost:11434")
     embedding_provider = os.environ.get("WIDEMEM_EMBEDDING_PROVIDER", "sentence-transformers")
 

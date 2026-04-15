@@ -13,9 +13,9 @@ from widemem.core.types import (
 )
 
 _DEFAULT_THRESHOLDS = {
-    "high": 0.65,
-    "moderate": 0.45,
-    "low": 0.25,
+    "high": 0.45,
+    "moderate": 0.25,
+    "low": 0.12,
 }
 
 
