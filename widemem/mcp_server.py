@@ -246,6 +246,7 @@ async def _handle_search(arguments: dict) -> list[types.TextContent]:
                     "content": r.memory.content,
                     "importance": r.memory.importance,
                     "score": r.final_score if r.final_score else r.similarity_score,
+                    "created_at": r.memory.created_at.isoformat(),
                 }
                 for r in results
             ],
