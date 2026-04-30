@@ -410,6 +410,30 @@ class TestWideMemory:
         assert retrieved is not None
         assert retrieved.content == "Test fact"
 
+    def test_get_preserves_all_metadata(self, memory):
+        extractor = MockExtractor()
+        extractor.facts_to_return = [
+            Fact(content="Has a peanut allergy", importance=9.0, ymyl_category="health")
+        ]
+        memory.pipeline.extractor = extractor
+
+        result = memory.add("I have a peanut allergy", user_id="alice", agent_id="nurse-bot")
+        assert len(result.memories) == 1
+        original = result.memories[0]
+
+        retrieved = memory.get(original.id)
+        assert retrieved is not None
+        assert retrieved.id == original.id
+        assert retrieved.content == "Has a peanut allergy"
+        assert retrieved.user_id == "alice"
+        assert retrieved.agent_id == "nurse-bot"
+        assert retrieved.ymyl_category == "health"
+        assert retrieved.importance == 9.0
+        assert retrieved.tier == original.tier
+        assert retrieved.content_hash == original.content_hash
+        assert retrieved.created_at == original.created_at
+        assert retrieved.updated_at == original.updated_at
+
     def test_delete_memory(self, memory):
         extractor = MockExtractor()
         extractor.facts_to_return = [Fact(content="To be deleted", importance=5.0)]

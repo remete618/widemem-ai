@@ -28,7 +28,7 @@ class QdrantVectorStore(BaseVectorStore):
         if config.path:
             self.client = QdrantClient(path=config.path)
         else:
-            self.client = QdrantClient(url="localhost", port=6333)
+            self.client = QdrantClient(host="localhost", port=6333)
 
         collections = [c.name for c in self.client.get_collections().collections]
         if collection_name not in collections:

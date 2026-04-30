@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
@@ -277,14 +278,25 @@ class WideMemory:
         if result is None:
             return None
         _, metadata = result
-        return Memory(
-            id=memory_id,
-            content=metadata.get("content", ""),
-            user_id=metadata.get("user_id"),
-            agent_id=metadata.get("agent_id"),
-            importance=metadata.get("importance", 5.0),
-            tier=MemoryTier(metadata.get("tier", "fact")),
-        )
+        kwargs: Dict[str, Any] = {
+            "id": memory_id,
+            "content": metadata.get("content", ""),
+            "user_id": metadata.get("user_id"),
+            "agent_id": metadata.get("agent_id"),
+            "run_id": metadata.get("run_id"),
+            "tier": MemoryTier(metadata.get("tier", "fact")),
+            "importance": metadata.get("importance", 5.0),
+            "content_hash": metadata.get("content_hash", ""),
+            "ymyl_category": metadata.get("ymyl_category"),
+        }
+        for ts_field in ("created_at", "updated_at"):
+            ts_str = metadata.get(ts_field)
+            if ts_str:
+                try:
+                    kwargs[ts_field] = datetime.fromisoformat(ts_str)
+                except (ValueError, TypeError):
+                    pass
+        return Memory(**kwargs)
 
     def delete(self, memory_id: str) -> None:
         self.vector_store.delete(memory_id)
@@ -347,7 +359,7 @@ class WideMemory:
                 tier = MemoryTier.FACT
             embedding = self.embedder.embed(content)
             memory = Memory(
-                id=memory_id or Memory().id,
+                id=memory_id or str(uuid.uuid4()),
                 content=content,
                 user_id=item.get("user_id"),
                 agent_id=item.get("agent_id"),
