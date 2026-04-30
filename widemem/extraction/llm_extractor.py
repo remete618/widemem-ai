@@ -9,6 +9,7 @@ from widemem.extraction.collector import ExtractionCollector
 from widemem.extraction.prompts import FACT_EXTRACTION_PROMPT, build_extraction_system
 from widemem.providers.llm.base import BaseLLM
 from widemem.scoring.ymyl import classify_ymyl_detailed
+from widemem.security.sanitizer import sanitize
 
 
 class LLMExtractor(BaseExtractor):
@@ -30,6 +31,7 @@ class LLMExtractor(BaseExtractor):
         )
 
     def extract(self, text: str) -> list[Fact]:
+        text, _ = sanitize(text)
         prompt = FACT_EXTRACTION_PROMPT.format(text=text)
         try:
             result = self.llm.generate_json(prompt, system=self._system_prompt)

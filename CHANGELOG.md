@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Prompt-injection sanitizer** — `widemem.security.sanitize()` strips well-known prompt-injection patterns (instruction overrides, system tags, role markers, jailbreak vocabulary, memory-targeted destructive actions) from input before LLM extraction. Conservative by design to avoid false positives on legitimate clinical or operational content. Wired into `LLMExtractor.extract()`.
+- **Healthcare quickstart** — `examples/healthcare_quickstart.py` demonstrates the regulated-industry happy path: ingest a clinical encounter, retrieve YMYL facts, abstain gracefully on a memory miss, pin a critical correction.
+
+### Fixed
+
+- **`Memory.get()` metadata loss** — Was discarding `ymyl_category`, `content_hash`, `run_id`, `created_at`, and `updated_at` when reconstructing from vector store metadata. Now copies all persisted fields and parses ISO timestamps back to `datetime`.
+- **`import_json` crash on missing IDs** — `Memory().id` placeholder failed because `content` is required. Now uses `str(uuid.uuid4())` for entries without IDs.
+- **Qdrant `host` parameter** — `QdrantClient(url='localhost', ...)` is invalid; switched to `host='localhost'` for non-path connections.
+
+### Changed
+
+- **README structure** — Compressed provider sections into a single table, moved full configuration reference to `docs/configuration.md`, full API reference to `docs/api.md`, and MCP setup to `docs/mcp.md`. README now ~640 lines, scannable in 90 seconds.
+- **CI install** — Added `[faiss]` extra to test job; without it FAISS-backed tests fail after v1.4 made `faiss-cpu` an optional dependency.
+- **Confidence/abstention framing** — Reframed retrieval confidence as graceful memory-miss handling rather than uncertainty quantification. The implementation is a similarity-threshold abstention; clearer naming reflects that.
+
 ## [1.4.0] - 2026-03-19
 
 ### Added
