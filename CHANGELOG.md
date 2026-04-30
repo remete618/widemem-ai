@@ -13,8 +13,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Uncertainty modes** — Three response strategies for uncertain retrieval: `strict` (refuse if unsure), `helpful` (hedge with related context), `creative` (offer to guess). Set via `MemoryConfig(uncertainty_mode="helpful")`.
 - **`mem.pin()`** — Store a memory with elevated importance (default 9.0). Use when the user explicitly asks to remember something or corrects a forgotten fact. Pinned memories resist decay.
 - **Frustration detection** — Detects when users say things like "I told you this!" or "you forgot" and provides recovery guidance including automatic fact extraction and pinning.
-- **Creative response templates** — Configurable response templates for the `creative` uncertainty mode with personality-aware messaging.
-- **Repetition boost** — Module for automatically increasing importance when the same fact is mentioned multiple times.
 - **Query-adaptive scoring** — Scoring weights now adapt to query type: factual queries boost similarity (0.75), temporal queries boost recency (0.50), multi-hop queries keep balanced weights.
 - **Two-pass re-ranking** — For factual queries, top results by pure similarity get an additive boost to prevent important-but-irrelevant memories from burying the best match.
 - **Improved extraction prompt** — Better preservation of dates, proper nouns, and specific details during fact extraction.
