@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
+from widemem.core._time import as_utc
 from widemem.core.types import MemorySearchResult, ScoringConfig, YMYLConfig
 from widemem.scoring.decay import compute_recency_score
 from widemem.scoring.importance import normalize_importance
@@ -21,12 +22,14 @@ def score_and_rank(
     similarity_first: bool = False,
     similarity_boost: float = 0.15,
 ) -> list[MemorySearchResult]:
-    now = now or datetime.utcnow()
+    now = as_utc(now) if now is not None else datetime.now(timezone.utc)
+    time_after = as_utc(time_after) if time_after is not None else None
+    time_before = as_utc(time_before) if time_before is not None else None
     ymyl_config = ymyl_config or YMYLConfig()
 
     scored = []
     for result in results:
-        created_at = result.memory.created_at
+        created_at = as_utc(result.memory.created_at)
 
         if time_after and created_at < time_after:
             continue

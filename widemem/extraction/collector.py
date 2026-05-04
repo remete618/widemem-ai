@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -41,7 +41,7 @@ class ExtractionCollector:
         facts_json = json.dumps([{"content": f.content, "importance": f.importance} for f in facts])
         self.conn.execute(
             "INSERT INTO extractions (id, input_text, facts_json, model, timestamp) VALUES (?, ?, ?, ?, ?)",
-            (entry_id, input_text, facts_json, model, datetime.utcnow().isoformat()),
+            (entry_id, input_text, facts_json, model, datetime.now(timezone.utc).isoformat()),
         )
         self.conn.commit()
         return entry_id

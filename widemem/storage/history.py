@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
+from widemem.core._time import as_utc
 from widemem.core.types import HistoryEntry, MemoryAction
 
 
@@ -44,7 +45,7 @@ class HistoryStore:
             action=action,
             old_content=old_content,
             new_content=new_content,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         self.conn.execute(
             "INSERT INTO history (id, memory_id, action, old_content, new_content, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
@@ -65,7 +66,7 @@ class HistoryStore:
                 action=MemoryAction(row[2]),
                 old_content=row[3],
                 new_content=row[4],
-                timestamp=datetime.fromisoformat(row[5]),
+                timestamp=as_utc(datetime.fromisoformat(row[5])),
             )
             for row in cursor.fetchall()
         ]

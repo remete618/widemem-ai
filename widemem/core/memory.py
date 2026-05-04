@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
+from widemem.core._time import as_utc
 from widemem.core.pipeline import AddResult, MemoryPipeline
 from widemem.core.types import (
     RETRIEVAL_MODE_PRESETS,
@@ -182,13 +183,13 @@ class WideMemory:
             filters=filters or None,
         )
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         ttl_cutoff = now - timedelta(days=self.config.ttl_days) if self.config.ttl_days else None
 
         search_results = []
         for id, score, metadata in raw_results:
             created_at = (
-                datetime.fromisoformat(metadata["created_at"])
+                as_utc(datetime.fromisoformat(metadata["created_at"]))
                 if "created_at" in metadata else now
             )
             if ttl_cutoff and created_at < ttl_cutoff:
@@ -204,7 +205,7 @@ class WideMemory:
                     ymyl_category=metadata.get("ymyl_category"),
                     created_at=created_at,
                     updated_at=(
-                        datetime.fromisoformat(metadata["updated_at"])
+                        as_utc(datetime.fromisoformat(metadata["updated_at"]))
                         if "updated_at" in metadata else now
                     ),
                 ),
@@ -293,7 +294,7 @@ class WideMemory:
             ts_str = metadata.get(ts_field)
             if ts_str:
                 try:
-                    kwargs[ts_field] = datetime.fromisoformat(ts_str)
+                    kwargs[ts_field] = as_utc(datetime.fromisoformat(ts_str))
                 except (ValueError, TypeError):
                     pass
         return Memory(**kwargs)

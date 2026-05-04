@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pytest
@@ -569,8 +569,8 @@ class TestTTL:
         mem = WideMemory(config=config, llm=MockLLM(), embedder=embedder, vector_store=vs)
 
         from datetime import timedelta
-        old_time = (datetime.utcnow() - timedelta(days=30)).isoformat()
-        new_time = datetime.utcnow().isoformat()
+        old_time = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        new_time = datetime.now(timezone.utc).isoformat()
 
         vec1 = embedder.embed("old fact")
         vs.insert("id1", vec1, {
@@ -595,7 +595,7 @@ class TestTTL:
         mem = WideMemory(config=config, llm=MockLLM(), embedder=embedder, vector_store=vs)
 
         from datetime import timedelta
-        old_time = (datetime.utcnow() - timedelta(days=365)).isoformat()
+        old_time = (datetime.now(timezone.utc) - timedelta(days=365)).isoformat()
 
         vec = embedder.embed("ancient fact")
         vs.insert("id1", vec, {
@@ -605,6 +605,28 @@ class TestTTL:
 
         results = mem.search("ancient", user_id="alice")
         assert len(results) == 1
+
+    def test_search_handles_naive_legacy_timestamps(self, tmp_dir):
+        """Search over legacy naive ISO timestamps must not TypeError against the aware now."""
+        config = MemoryConfig(history_db_path=f"{tmp_dir}/legacy.db", ttl_days=7)
+        embedder = MockEmbedder(dimensions=64)
+        vs = FAISSVectorStore(VectorStoreConfig(), dimensions=64)
+        mem = WideMemory(config=config, llm=MockLLM(), embedder=embedder, vector_store=vs)
+
+        from datetime import timedelta
+        naive_recent = (datetime.now(timezone.utc) - timedelta(days=1)).replace(tzinfo=None).isoformat()
+        assert "+" not in naive_recent and "Z" not in naive_recent
+
+        vec = embedder.embed("legacy fact")
+        vs.insert("legacy_id", vec, {
+            "content": "legacy fact", "created_at": naive_recent, "updated_at": naive_recent,
+            "user_id": "alice", "tier": "fact", "importance": 5.0,
+        })
+
+        results = mem.search("legacy", user_id="alice")
+        assert len(results) == 1
+        assert results[0].memory.content == "legacy fact"
+        assert results[0].memory.created_at.tzinfo is not None
 
 
 class TestRetryBackoff:
