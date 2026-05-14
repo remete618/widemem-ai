@@ -194,6 +194,16 @@ class MemoryConfig(BaseModel):
     collect_extractions: bool = False
     extractions_db_path: str = "~/.widemem/extractions.db"
     ttl_days: Optional[int] = None
+    parse_temporal_hints: bool = False
+    """Auto-parse temporal hints from queries into time_after / time_before filters.
+
+    When True, queries like "What happened in July 2023?" or "last month"
+    auto-set the time range used by search(), narrowing the result set to
+    memories from that period. Off by default for backwards compatibility;
+    flip on per-instance via MemoryConfig(parse_temporal_hints=True) or
+    leave off and pass time_after/time_before explicitly to search().
+    Explicit args always win over parsed hints when both are present.
+    """
 
     def get_retrieval_preset(self) -> dict:
         """Get the retrieval preset for the configured mode."""
