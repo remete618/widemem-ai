@@ -11,4 +11,4 @@ ENV WIDEMEM_DATA_PATH=/tmp/widemem-data
 ENV WIDEMEM_LLM_PROVIDER=ollama
 ENV WIDEMEM_EMBEDDING_PROVIDER=sentence-transformers
 
-CMD ["python", "-m", "widemem.server"]
+CMD sh -c "WIDEMEM_PORT=${PORT:-8000} WIDEMEM_HOST=0.0.0.0 python -m widemem.server"
