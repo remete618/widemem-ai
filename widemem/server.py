@@ -130,6 +130,6 @@ def health():
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.environ.get("WIDEMEM_PORT", "11435"))
+    port = int(os.environ.get("WIDEMEM_PORT", os.environ.get("PORT", "11435")))
     host = os.environ.get("WIDEMEM_HOST", "127.0.0.1")
     uvicorn.run("widemem.server:app", host=host, port=port)
