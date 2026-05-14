@@ -168,7 +168,12 @@ class WideMemory:
         embedding = self.embedder.embed(query)
 
         # Auto-parse temporal hints when enabled and the caller did not pass
-        # explicit time_after/time_before. Explicit args always win.
+        # explicit time_after/time_before. The parsed window is used as a
+        # SOFT BOOST in score_and_rank (not a hard filter), so a wrong parse
+        # cannot wipe out the candidate pool. Explicit caller-set time_after
+        # / time_before still filter, since the caller is asserting intent.
+        # See widemem/retrieval/temporal.py for the boost semantics.
+        temporal_boost_window: Optional[tuple] = None
         if (
             self.config.parse_temporal_hints
             and time_after is None
@@ -176,8 +181,8 @@ class WideMemory:
             and looks_temporal(query)
         ):
             parsed_after, parsed_before = parse_temporal_hints(query)
-            time_after = parsed_after
-            time_before = parsed_before
+            if parsed_after is not None or parsed_before is not None:
+                temporal_boost_window = (parsed_after, parsed_before)
 
         filters: Dict[str, Any] = {}
         if user_id:
@@ -245,6 +250,7 @@ class WideMemory:
             ymyl_config=self.config.ymyl if self.config.ymyl.enabled else None,
             similarity_first=sim_first,
             similarity_boost=preset.get("similarity_boost", 0.15),
+            temporal_boost_window=temporal_boost_window,
         )
 
         use_hierarchy = preset.get("enable_hierarchy", self.config.enable_hierarchy)
