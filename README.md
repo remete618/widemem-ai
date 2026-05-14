@@ -635,30 +635,27 @@ pytest
 
 ## Roadmap
 
-Tracked publicly as GitHub issues. Vote with reactions to prioritize. Issues tagged `good first issue` are ideal entry points for new contributors. Most have a scope, a quality bar, and a 48-hour review SLA already written in the body.
+Tracked publicly as GitHub issues. Vote with reactions to prioritize. Issues tagged `good first issue` are ideal entry points for new contributors. Each carries a scope, a quality bar, and a 48-hour review SLA in the body.
+
+### Audit-grade core
+
+- [#21 Source-message provenance](https://github.com/remete618/widemem-ai/issues/21) — link every fact in the history log back to the inbound message that produced it
 
 ### Framework integrations
 
 - [#22 LangChain `BaseChatMessageHistory` adapter](https://github.com/remete618/widemem-ai/issues/22) — drop-in conversation-history backend for LangChain chains and agents
 - [#23 LangChain `BaseRetriever` adapter](https://github.com/remete618/widemem-ai/issues/23) — RAG-style retrieval from widemem in any LangChain chain
-- [#24 LangGraph `BaseStore` adapter](https://github.com/remete618/widemem-ai/issues/24) — memory backend for stateful LangGraph agents (namespaces, TTL, batch ops)
+- [#24 LangGraph `BaseStore` adapter](https://github.com/remete618/widemem-ai/issues/24) — memory backend for stateful LangGraph agents
 
 ### Providers
 
-- [#25 Anthropic Claude LLM provider](https://github.com/remete618/widemem-ai/issues/25) — third frontier provider alongside OpenAI and Ollama
-- [#26 Voyage AI embeddings provider](https://github.com/remete618/widemem-ai/issues/26) — MTEB-leading embeddings for retrieval-heavy workloads
-- [#7 ChromaDB vector store backend](https://github.com/remete618/widemem-ai/issues/7) — third vector store option alongside FAISS and Qdrant
+- [#25 Anthropic Claude LLM provider](https://github.com/remete618/widemem-ai/issues/25) — completes frontier-lab coverage alongside OpenAI and Ollama
 
-### Audit-grade core
+### In flight
 
-- [#21 Source-message provenance](https://github.com/remete618/widemem-ai/issues/21) — link every fact in the history log back to the inbound message that produced it
 - [#6 Streaming memory search](https://github.com/remete618/widemem-ai/issues/6) — async iterator over results as they rank (claimed by @harishkotra)
 
-### Tools
-
-- [#27 widemem CLI](https://github.com/remete618/widemem-ai/issues/27) — `widemem add/search/list/delete/history` from the terminal
-
-What we are explicitly **not** building: 20-provider integration matrix, hosted multi-tenant service, web UI for memory management, GraphQL API. The 80/20 is the audit-grade core for regulated deployments. Everything else is application code.
+What we are explicitly **not** building: 20-provider integration matrix, additional vector store backends beyond FAISS and Qdrant, hosted multi-tenant service, web UI for memory management, GraphQL API, command-line interface. The 80/20 is the audit-grade core for regulated deployments. Everything else is application code.
 
 ---
 
