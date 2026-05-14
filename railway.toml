@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python -m widemem.server"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
