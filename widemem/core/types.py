@@ -204,6 +204,21 @@ class MemoryConfig(BaseModel):
     leave off and pass time_after/time_before explicitly to search().
     Explicit args always win over parsed hints when both are present.
     """
+    enable_hybrid_search: bool = False
+    """Blend BM25 keyword scores into the vector similarity signal.
+
+    When True, the vector-search candidate pool is reranked once via BM25
+    over the candidates' content. The blended score (50/50 by default)
+    replaces each candidate's similarity_score before the existing scoring
+    pipeline (importance + recency + YMYL boosts) runs. Catches exact
+    keyword matches that pure cosine similarity misses (names, dates,
+    numeric identifiers). Off by default for backwards compatibility.
+    Requires the [bm25] extra: pip install widemem-ai[bm25].
+    """
+    hybrid_bm25_weight: float = 0.5
+    """Proportion of the blended similarity_score taken from the BM25 side
+    when enable_hybrid_search is True. 0.0 disables BM25 (vector-only),
+    1.0 disables vector (pure keyword). Range [0, 1], default 0.5."""
 
     def get_retrieval_preset(self) -> dict:
         """Get the retrieval preset for the configured mode."""

@@ -225,6 +225,17 @@ class WideMemory:
                 similarity_score=score,
             ))
 
+        # Hybrid retrieval: blend BM25 keyword scores into similarity_score
+        # within the candidate pool. Default off; opt-in via
+        # MemoryConfig.enable_hybrid_search.
+        if self.config.enable_hybrid_search and search_results:
+            from widemem.retrieval.hybrid import blend_hybrid_scores
+            blend_hybrid_scores(
+                search_results,
+                query,
+                bm25_weight=self.config.hybrid_bm25_weight,
+            )
+
         ranked = score_and_rank(
             results=search_results,
             config=scoring_config,
