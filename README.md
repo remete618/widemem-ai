@@ -629,7 +629,20 @@ pip install -e ".[dev,faiss]"
 pytest
 ```
 
-170+ tests. They all pass. We checked.
+200+ tests. They all pass. We checked.
+
+---
+
+## Roadmap
+
+Tracked publicly as GitHub issues. Vote with reactions if you want one of these prioritized.
+
+- [#21 Source-message provenance](https://github.com/remete618/widemem-ai/issues/21) — Link every fact in the history log back to the inbound message that introduced it. Required for clinical, legal, and financial audit workflows where the auditor wants the original transcript line, not just the timestamp.
+- [#8 LangChain integration](https://github.com/remete618/widemem-ai/issues/8) — `from widemem.integrations.langchain import WidememMemory`. BaseMemory interface, one file, drop-in.
+- [#7 ChromaDB backend](https://github.com/remete618/widemem-ai/issues/7) — Third vector store option alongside FAISS and Qdrant.
+- [#6 Streaming memory search](https://github.com/remete618/widemem-ai/issues/6) — Async iterator over results as they rank.
+
+What we are explicitly **not** building: 20-provider integration matrix, hosted multi-tenant service, web UI for memory management, GraphQL API. The 80/20 is the audit-grade core for regulated deployments. Everything else is application code.
 
 ---
 
