@@ -29,3 +29,6 @@ venv/
 *.swp
 *.swo
 .DS_Store
+
+# Per-run mini-LoCoMo results; the baseline file is tracked.
+benchmark/results/mini_locomo_*Z.json
