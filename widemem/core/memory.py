@@ -232,14 +232,23 @@ class WideMemory:
 
         # Hybrid retrieval: blend BM25 keyword scores into similarity_score
         # within the candidate pool. Default off; opt-in via
-        # MemoryConfig.enable_hybrid_search.
+        # MemoryConfig.enable_hybrid_search. The BM25 weight scales by
+        # detected query type: disabled for multi-hop queries (where the
+        # importance-weighted vector signal already wins), full for
+        # factual queries (where keyword matching helps surface specific
+        # terms), reduced for temporal and broad queries. See
+        # WideMemory._adapt_bm25_weight for the mapping.
         if self.config.enable_hybrid_search and search_results:
-            from widemem.retrieval.hybrid import blend_hybrid_scores
-            blend_hybrid_scores(
-                search_results,
-                query,
-                bm25_weight=self.config.hybrid_bm25_weight,
+            effective_bm25_weight = self._adapt_bm25_weight(
+                query, self.config.hybrid_bm25_weight
             )
+            if effective_bm25_weight > 0:
+                from widemem.retrieval.hybrid import blend_hybrid_scores
+                blend_hybrid_scores(
+                    search_results,
+                    query,
+                    bm25_weight=effective_bm25_weight,
+                )
 
         ranked = score_and_rank(
             results=search_results,
@@ -452,6 +461,52 @@ class WideMemory:
 
         # Multi-hop / broad / default — keep configured weights, no similarity_first
         return default, False
+
+    @staticmethod
+    def _adapt_bm25_weight(query: str, configured_weight: float) -> float:
+        """Scale hybrid BM25 weight by detected query type.
+
+        Multi-hop queries need importance-weighted retrieval to surface
+        the right connecting facts; BM25's keyword matching dilutes that
+        signal (the v1.5 regression had 41 multi-hop failures where the
+        BM25 blend pulled keyword-matching but topically-wrong memories
+        to the top of the pool). For multi-hop we disable BM25 entirely.
+
+        Factual queries benefit from keyword matching for specific terms
+        (names, dates, numbers). We pass the configured weight through
+        unchanged.
+
+        Temporal and broad queries get reduced weight to keep BM25 from
+        dominating signals that matter more for those question shapes
+        (recency for temporal, importance for broad).
+
+        Classification follows the same signal lists as _adapt_scoring
+        to keep query-type behavior consistent across the scoring and
+        the hybrid paths.
+        """
+        q = query.lower().strip()
+
+        multi_hop_signals = ("relationship between", "how does", "compare", "contrast",
+                            "connection between", "relate to", "in common")
+        if any(s in q for s in multi_hop_signals):
+            return 0.0
+
+        temporal_signals = ("when ", "what time", "what date", "how long ago",
+                           "last time", "recently", "before the", "after the",
+                           "how recent", "what year", "what month")
+        if any(q.startswith(s) or s in q for s in temporal_signals):
+            return configured_weight * 0.4
+
+        factual_starts = ("where ", "who ", "what is ", "what was ", "what does ",
+                         "what did ", "what are ", "what were ", "what do ",
+                         "how old ", "how much ", "how many ",
+                         "which ", "name ")
+        is_short_what = q.startswith("what ") and len(q.split()) <= 10
+        if any(q.startswith(s) for s in factual_starts) or is_short_what:
+            return configured_weight
+
+        # Broad / unknown
+        return configured_weight * 0.6
 
     def _create_llm(self) -> BaseLLM:
         provider = self._resolve_provider(self.config.llm.provider, self.config.llm.api_key, "llm")
