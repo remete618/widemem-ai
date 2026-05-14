@@ -51,12 +51,14 @@ qdrant = ["qdrant-client>=1.9"]
 sentence-transformers = ["sentence-transformers>=2.0"]
 server = ["fastapi>=0.110", "uvicorn>=0.29"]
 mcp = ["mcp>=1.0"]
+bm25 = ["rank-bm25>=0.2.2"]
 all = [
     "anthropic>=0.30",
     "faiss-cpu>=1.7",
     "mcp>=1.0",
     "ollama>=0.2",
     "qdrant-client>=1.9",
+    "rank-bm25>=0.2.2",
     "sentence-transformers>=2.0",
 ]
 
