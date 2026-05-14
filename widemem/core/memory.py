@@ -515,6 +515,13 @@ class WideMemory:
                 self.config.vector_store,
                 dimensions=self.config.embedding.dimensions,
             )
+        if provider == "pgvector":
+            from widemem.storage.vector.pgvector_store import PgVectorStore
+            return PgVectorStore(
+                self.config.vector_store,
+                dimensions=self.config.embedding.dimensions,
+            )
         raise ValueError(
-            f"Unknown vector store provider: {provider}. Supported: faiss, qdrant"
+            f"Unknown vector store provider: {provider}. "
+            "Supported: faiss, qdrant, pgvector"
         )

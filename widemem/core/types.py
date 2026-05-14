@@ -142,6 +142,12 @@ class EmbeddingConfig(BaseModel):
 class VectorStoreConfig(BaseModel):
     provider: str = "faiss"
     path: Optional[str] = None
+    url: Optional[str] = None
+    """Connection URL for network-backed stores (pgvector, Qdrant Cloud).
+    For pgvector: postgresql://user:pass@host:port/dbname?sslmode=require.
+    Honored only by backends that accept a URL; ignored otherwise."""
+    table_name: str = "widemem_vectors"
+    """Table name for pgvector. Ignored by other backends."""
 
 
 class ScoringConfig(BaseModel):
