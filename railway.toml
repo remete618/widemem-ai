@@ -1,7 +1,7 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
 
 [deploy]
-startCommand = "python -m widemem.server"
+startCommand = "WIDEMEM_PORT=$PORT WIDEMEM_HOST=0.0.0.0 python -m widemem.server"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
