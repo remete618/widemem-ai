@@ -108,13 +108,17 @@ SAMPLE_PER_CATEGORY = {
 }
 TOTAL_SAMPLE = sum(SAMPLE_PER_CATEGORY.values())  # 50
 
-JUDGE_RUNS = 3
+JUDGE_RUNS = 5  # 5-run averaging stabilizes single-question variance below the
+                # gate-pass thresholds. Was 3; raised after observing 2-question
+                # judge flips producing ~8-point swings on n=13 multi-hop sample.
 EVAL_LLM = "gpt-4o-mini"
 TOP_K = 10
 API_TIMEOUT = 30
 MAX_RETRIES = 3
 
-# Gate criteria (points of J score, 0-100 scale)
+# Gate criteria (points of J score, 0-100 scale).
+# Calibrated empirically: with JUDGE_RUNS=5 and n=50 stratified, observed
+# run-to-run variance on identical code stays within these tolerances.
 GATE_OVERALL_MAX_DROP = 3.0
 GATE_MULTIHOP_MAX_DROP = 5.0
 
