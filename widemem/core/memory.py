@@ -32,6 +32,7 @@ from widemem.providers.llm.base import BaseLLM
 from widemem.providers.llm.openai import OpenAILLM
 from widemem.retrieval.active import ActiveRetrieval, Clarification
 from widemem.retrieval.temporal import score_and_rank
+from widemem.retrieval.temporal_parser import looks_temporal, parse_temporal_hints
 from widemem.retrieval.uncertainty import assess_confidence
 from widemem.storage.history import HistoryStore
 from widemem.storage.vector.base import BaseVectorStore
@@ -165,6 +166,18 @@ class WideMemory:
         effective_top_k = min(top_k or preset["top_k"], 1000)
 
         embedding = self.embedder.embed(query)
+
+        # Auto-parse temporal hints when enabled and the caller did not pass
+        # explicit time_after/time_before. Explicit args always win.
+        if (
+            self.config.parse_temporal_hints
+            and time_after is None
+            and time_before is None
+            and looks_temporal(query)
+        ):
+            parsed_after, parsed_before = parse_temporal_hints(query)
+            time_after = parsed_after
+            time_before = parsed_before
 
         filters: Dict[str, Any] = {}
         if user_id:
