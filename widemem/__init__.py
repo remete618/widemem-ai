@@ -7,4 +7,4 @@ __all__ = [
     "WideMemory", "MemoryConfig", "RetrievalMode", "RetrievalConfidence",
     "UncertaintyMode", "SearchResult", "AddResult", "Clarification",
 ]
-__version__ = "1.4.0"
+__version__ = "1.4.1"

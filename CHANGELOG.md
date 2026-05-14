@@ -6,22 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-05-13
+
 ### Added
 
+- **Semantic YMYL classification** — Two-stage YMYL pipeline. Strong patterns fire from regex; implied or weak patterns get LLM classification during the existing extraction call. Catches "my chest hurts" while rejecting "bank of the river". Zero additional API cost. Full writeup: https://widemem.ai/blog/semantic-ymyl.
 - **Prompt-injection sanitizer** — `widemem.security.sanitize()` strips well-known prompt-injection patterns (instruction overrides, system tags, role markers, jailbreak vocabulary, memory-targeted destructive actions) from input before LLM extraction. Conservative by design to avoid false positives on legitimate clinical or operational content. Wired into `LLMExtractor.extract()`.
 - **Healthcare quickstart** — `examples/healthcare_quickstart.py` demonstrates the regulated-industry happy path: ingest a clinical encounter, retrieve YMYL facts, abstain gracefully on a memory miss, pin a critical correction.
+- **LRU embedding cache** — `BaseEmbedder` now caches embeddings in process (default size 1024). Cache hits skip the provider call entirely. Significant latency win for repeated queries.
+- **Configurable confidence thresholds + `created_at` in search response** — Confidence thresholds for HIGH/MODERATE/LOW are now configurable via env vars or `MemoryConfig`. `MemorySearchResult` exposes `created_at` for downstream temporal logic.
+- **`glama.json`** — Manifest for Glama MCP server verification.
 
 ### Fixed
 
 - **`Memory.get()` metadata loss** — Was discarding `ymyl_category`, `content_hash`, `run_id`, `created_at`, and `updated_at` when reconstructing from vector store metadata. Now copies all persisted fields and parses ISO timestamps back to `datetime`.
 - **`import_json` crash on missing IDs** — `Memory().id` placeholder failed because `content` is required. Now uses `str(uuid.uuid4())` for entries without IDs.
 - **Qdrant `host` parameter** — `QdrantClient(url='localhost', ...)` is invalid; switched to `host='localhost'` for non-path connections.
+- **`datetime.utcnow()` deprecation** — Migrated internal timestamps to `datetime.now(timezone.utc)`. Removes Python 3.12 deprecation warnings; stored timestamps remain ISO-8601 with UTC offset.
+- **macOS libomp pytest segfault** — Lazy-import FAISS in the vector store to avoid OpenMP runtime conflict during pytest collection on Apple Silicon. Pytest now runs to completion on stock macOS Homebrew installs.
 
 ### Changed
 
 - **README structure** — Compressed provider sections into a single table, moved full configuration reference to `docs/configuration.md`, full API reference to `docs/api.md`, and MCP setup to `docs/mcp.md`. README now ~640 lines, scannable in 90 seconds.
+- **Default LLM is now `gpt-4o-mini`** — Calibrated similarity thresholds for `all-MiniLM-L6-v2` embeddings. Old defaults assumed Ollama llama3.2, which produced poor extraction quality. Opt back into local with `MemoryConfig(llm=LLMConfig(provider="ollama", ...))`.
+- **`faiss-cpu` is now optional** — Install via `pip install widemem-ai[faiss]` to keep base install lighter. Qdrant remains the alternative.
 - **CI install** — Added `[faiss]` extra to test job; without it FAISS-backed tests fail after v1.4 made `faiss-cpu` an optional dependency.
 - **Confidence/abstention framing** — Reframed retrieval confidence as graceful memory-miss handling rather than uncertainty quantification. The implementation is a similarity-threshold abstention; clearer naming reflects that.
+- **LICENSE** — Replaced short notice with full Apache 2.0 license text for GitHub license detection.
 
 ## [1.4.0] - 2026-03-19
 
