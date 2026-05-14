@@ -35,9 +35,9 @@ For extraction quality, use the full LoCoMo run.
 
 ## Cost and time per run
 
-- ~200 API calls (50 answer-gen + 150 judge runs)
-- ~$0.05 per run on gpt-4o-mini
-- ~2-3 minutes elapsed
+- ~300 API calls (50 answer-gen + 250 judge runs at 5 runs per question)
+- ~$0.07 per run on gpt-4o-mini
+- ~3-4 minutes elapsed
 
 Cheap enough to run on every feature branch.
 
@@ -51,6 +51,12 @@ A PR fails the gate if **either**:
 | Multi-hop J drop vs baseline | > 5.0 points | Multi-hop is widemem's current strength; tighter tolerance |
 
 Other categories (`single-hop`, `open-domain`, `temporal`) are reported as informational; they can fluctuate freely. They are currently weak categories, and the v1.5 work is specifically targeting them, so a real improvement there should not be gated against by the previous-baseline.
+
+## Judge-run averaging
+
+Each question is judged 5 times by GPT-4o-mini, and the score is the fraction of CORRECT verdicts. 3 runs was the initial setting; raised to 5 after observing that a single judge flip on a single question could push a category by ~8 points (1 of 13 × 100 / 3). The Mem0 paper uses 10 runs; we use 5 as the cost/stability balance for a gate that runs on every PR.
+
+If gate flapping returns at this setting, the next escalation is 10 judge runs (~$0.10, ~5 minutes) rather than widening the tolerance, because the tolerance is the load-bearing safety check.
 
 ## Usage
 

@@ -1,25 +1,25 @@
 {
   "metadata": {
     "widemem_version": "1.4.1",
-    "git_sha": "875caef",
-    "timestamp": "2026-05-14T09:29:53.891779+00:00",
+    "git_sha": "bcf6fa0",
+    "timestamp": "2026-05-14T11:00:31.382494+00:00",
     "sample_size": 50,
     "sample_seed": 42,
-    "judge_runs": 3,
+    "judge_runs": 5,
     "top_k_per_speaker": 10,
     "eval_llm": "gpt-4o-mini",
-    "elapsed_seconds": 138.5
+    "elapsed_seconds": 216.7
   },
   "summary": {
     "overall_j": 40.0,
     "by_category": {
-      "single-hop": 58.33,
+      "single-hop": 60.0,
       "temporal": 7.69,
       "open-domain": 25.0,
-      "multi-hop": 69.23
+      "multi-hop": 67.69
     },
     "avg_memory_tokens": 157.0,
-    "avg_search_latency": 0.1848,
+    "avg_search_latency": 0.2266,
     "n_questions": 50
   },
   "predictions": [
@@ -31,10 +31,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 182,
-      "search_latency": 1.157,
-      "generation_latency": 0.6233,
+      "search_latency": 1.4311,
+      "generation_latency": 0.8542,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-43",
@@ -44,10 +44,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 156,
-      "search_latency": 0.2478,
-      "generation_latency": 0.9385,
-      "j_score": 0.6666666666666666,
-      "judge_valid_runs": 3
+      "search_latency": 0.4894,
+      "generation_latency": 0.8996,
+      "j_score": 0.8,
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-50",
@@ -57,10 +57,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 185,
-      "search_latency": 0.1349,
-      "generation_latency": 0.6354,
+      "search_latency": 0.196,
+      "generation_latency": 0.7548,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-42",
@@ -70,10 +70,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 157,
-      "search_latency": 0.1466,
-      "generation_latency": 0.5934,
+      "search_latency": 0.1488,
+      "generation_latency": 0.6566,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-44",
@@ -83,10 +83,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 140,
-      "search_latency": 0.1758,
-      "generation_latency": 0.9457,
+      "search_latency": 0.2139,
+      "generation_latency": 2.0798,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-26",
@@ -96,10 +96,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 154,
-      "search_latency": 0.1323,
-      "generation_latency": 1.1818,
+      "search_latency": 0.2423,
+      "generation_latency": 1.3142,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-47",
@@ -109,10 +109,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 194,
-      "search_latency": 0.1286,
-      "generation_latency": 0.8387,
+      "search_latency": 0.1288,
+      "generation_latency": 0.7328,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-26",
@@ -122,10 +122,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 155,
-      "search_latency": 0.2555,
-      "generation_latency": 0.7277,
-      "j_score": 0.3333333333333333,
-      "judge_valid_runs": 3
+      "search_latency": 0.1388,
+      "generation_latency": 0.7555,
+      "j_score": 0.4,
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-49",
@@ -135,10 +135,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 149,
-      "search_latency": 0.129,
-      "generation_latency": 0.6301,
+      "search_latency": 0.144,
+      "generation_latency": 0.6395,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-41",
@@ -148,10 +148,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 185,
-      "search_latency": 0.1499,
-      "generation_latency": 0.6255,
+      "search_latency": 0.243,
+      "generation_latency": 0.6866,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-42",
@@ -161,10 +161,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 155,
-      "search_latency": 0.1543,
-      "generation_latency": 0.6341,
+      "search_latency": 0.1402,
+      "generation_latency": 0.621,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-43",
@@ -174,10 +174,10 @@
       "category": 1,
       "category_name": "single-hop",
       "memory_tokens": 148,
-      "search_latency": 0.1366,
-      "generation_latency": 0.6259,
+      "search_latency": 0.2451,
+      "generation_latency": 0.6392,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-43",
@@ -187,10 +187,10 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 117,
-      "search_latency": 0.0956,
-      "generation_latency": 0.5853,
+      "search_latency": 0.1217,
+      "generation_latency": 0.5896,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-47",
@@ -200,36 +200,36 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 177,
-      "search_latency": 0.1862,
-      "generation_latency": 0.7937,
+      "search_latency": 0.1497,
+      "generation_latency": 0.5474,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-49",
       "question": "Which hobby did Sam take up in May 2023?",
       "gold": "painting",
-      "predicted": "No specific hobby mentioned.",
+      "predicted": "No specific date found.",
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 160,
-      "search_latency": 0.2476,
-      "generation_latency": 0.5182,
+      "search_latency": 0.1583,
+      "generation_latency": 0.5522,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-41",
       "question": "When did John take a road trip to the Pacific Northwest?",
       "gold": "2022",
-      "predicted": "The memories do not provide a specific date for John's road trip to the Pacific Northwest.",
+      "predicted": "The specific date is not provided.",
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 154,
-      "search_latency": 0.1457,
-      "generation_latency": 0.5947,
+      "search_latency": 0.1115,
+      "generation_latency": 0.5232,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-42",
@@ -239,10 +239,10 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 130,
-      "search_latency": 0.1452,
-      "generation_latency": 0.478,
+      "search_latency": 0.1749,
+      "generation_latency": 0.5656,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-50",
@@ -252,10 +252,10 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 150,
-      "search_latency": 0.2596,
-      "generation_latency": 0.6519,
+      "search_latency": 0.1371,
+      "generation_latency": 2.6077,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-47",
@@ -265,10 +265,10 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 170,
-      "search_latency": 0.1381,
-      "generation_latency": 0.5109,
+      "search_latency": 0.169,
+      "generation_latency": 0.9406,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-43",
@@ -278,10 +278,10 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 121,
-      "search_latency": 0.1424,
-      "generation_latency": 0.4108,
+      "search_latency": 0.5468,
+      "generation_latency": 0.5648,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-42",
@@ -291,23 +291,23 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 148,
-      "search_latency": 0.1414,
-      "generation_latency": 0.4327,
+      "search_latency": 0.1458,
+      "generation_latency": 0.8549,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-50",
       "question": "How long did Dave's work on the Ford Mustang take?",
       "gold": "nearly two months",
-      "predicted": "No specific date available.",
+      "predicted": "Not specified in memories.",
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 188,
-      "search_latency": 0.1417,
-      "generation_latency": 0.4705,
+      "search_latency": 0.2075,
+      "generation_latency": 0.6897,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-47",
@@ -317,23 +317,23 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 179,
-      "search_latency": 0.1441,
-      "generation_latency": 0.5208,
+      "search_latency": 0.1174,
+      "generation_latency": 0.749,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-43",
       "question": "In which month's game did John achieve a career-high score in points?",
       "gold": "June 2023",
-      "predicted": "October 2023",
+      "predicted": "Last Friday in October 2023.",
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 105,
-      "search_latency": 0.1293,
-      "generation_latency": 0.5892,
+      "search_latency": 0.1533,
+      "generation_latency": 0.4982,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-50",
@@ -343,10 +343,10 @@
       "category": 2,
       "category_name": "temporal",
       "memory_tokens": 171,
-      "search_latency": 0.1381,
-      "generation_latency": 0.5113,
+      "search_latency": 0.5663,
+      "generation_latency": 0.6245,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-44",
@@ -356,10 +356,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 122,
-      "search_latency": 0.1816,
-      "generation_latency": 0.617,
+      "search_latency": 0.1502,
+      "generation_latency": 0.645,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-50",
@@ -369,10 +369,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 139,
-      "search_latency": 0.1197,
-      "generation_latency": 0.6271,
+      "search_latency": 0.6948,
+      "generation_latency": 0.7827,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-47",
@@ -382,10 +382,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 122,
-      "search_latency": 0.1347,
-      "generation_latency": 0.6963,
+      "search_latency": 0.2419,
+      "generation_latency": 0.6567,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-48",
@@ -395,10 +395,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 139,
-      "search_latency": 0.1414,
-      "generation_latency": 0.7196,
+      "search_latency": 0.1676,
+      "generation_latency": 0.7128,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-26",
@@ -408,10 +408,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 184,
-      "search_latency": 0.1187,
-      "generation_latency": 0.6061,
+      "search_latency": 0.1621,
+      "generation_latency": 1.0473,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-49",
@@ -421,10 +421,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 183,
-      "search_latency": 0.1258,
-      "generation_latency": 0.756,
+      "search_latency": 0.1441,
+      "generation_latency": 0.6354,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-41",
@@ -434,10 +434,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 140,
-      "search_latency": 0.1257,
-      "generation_latency": 0.7101,
+      "search_latency": 0.1239,
+      "generation_latency": 1.4457,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-48",
@@ -447,10 +447,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 190,
-      "search_latency": 0.1289,
-      "generation_latency": 0.8611,
+      "search_latency": 0.1584,
+      "generation_latency": 0.657,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-26",
@@ -460,10 +460,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 161,
-      "search_latency": 0.1487,
-      "generation_latency": 4.7857,
+      "search_latency": 0.1507,
+      "generation_latency": 0.7393,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-49",
@@ -473,10 +473,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 145,
-      "search_latency": 0.1331,
-      "generation_latency": 3.1295,
+      "search_latency": 0.2567,
+      "generation_latency": 0.6204,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-48",
@@ -486,10 +486,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 120,
-      "search_latency": 0.168,
-      "generation_latency": 0.6784,
+      "search_latency": 0.1512,
+      "generation_latency": 0.868,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-26",
@@ -499,10 +499,10 @@
       "category": 3,
       "category_name": "open-domain",
       "memory_tokens": 210,
-      "search_latency": 0.1806,
-      "generation_latency": 0.611,
+      "search_latency": 0.2743,
+      "generation_latency": 0.6135,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-49",
@@ -512,23 +512,23 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 169,
-      "search_latency": 0.1444,
-      "generation_latency": 0.5729,
+      "search_latency": 0.2333,
+      "generation_latency": 0.5856,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-44",
       "question": "What kind of flowers does Audrey have a tattoo of?",
       "gold": "sunflowers",
-      "predicted": "No information available.",
+      "predicted": "The memories do not specify the type of flowers.",
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 92,
-      "search_latency": 0.1487,
-      "generation_latency": 0.9282,
+      "search_latency": 0.15,
+      "generation_latency": 0.6662,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-43",
@@ -538,10 +538,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 198,
-      "search_latency": 0.1483,
-      "generation_latency": 0.5687,
+      "search_latency": 0.1502,
+      "generation_latency": 0.6821,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-48",
@@ -551,10 +551,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 173,
-      "search_latency": 0.1952,
-      "generation_latency": 0.6152,
+      "search_latency": 0.144,
+      "generation_latency": 0.6408,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-48",
@@ -564,23 +564,23 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 142,
-      "search_latency": 0.1187,
-      "generation_latency": 0.7003,
+      "search_latency": 0.1181,
+      "generation_latency": 1.678,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-44",
       "question": "What did Audrey do with her pups over the weekend before 4th October, 2023?",
       "gold": "Took them to the beach",
-      "predicted": "Audrey took her pups to the beach.",
+      "predicted": "Went to the beach.",
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 104,
-      "search_latency": 0.125,
-      "generation_latency": 0.7134,
+      "search_latency": 0.284,
+      "generation_latency": 0.659,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-50",
@@ -590,10 +590,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 164,
-      "search_latency": 0.1245,
-      "generation_latency": 1.0506,
+      "search_latency": 0.1423,
+      "generation_latency": 0.9249,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-42",
@@ -603,10 +603,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 191,
-      "search_latency": 0.7326,
-      "generation_latency": 0.702,
+      "search_latency": 0.1638,
+      "generation_latency": 0.7717,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-41",
@@ -616,10 +616,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 176,
-      "search_latency": 0.1509,
-      "generation_latency": 0.6133,
-      "j_score": 1.0,
-      "judge_valid_runs": 3
+      "search_latency": 0.1492,
+      "generation_latency": 0.7768,
+      "j_score": 0.8,
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-30",
@@ -629,10 +629,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 182,
-      "search_latency": 0.1399,
-      "generation_latency": 0.5986,
+      "search_latency": 0.17,
+      "generation_latency": 0.6493,
       "j_score": 0.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-43",
@@ -642,10 +642,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 135,
-      "search_latency": 0.1756,
-      "generation_latency": 0.5978,
+      "search_latency": 0.1419,
+      "generation_latency": 0.6423,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-42",
@@ -655,10 +655,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 157,
-      "search_latency": 0.1896,
-      "generation_latency": 0.749,
+      "search_latency": 0.131,
+      "generation_latency": 0.5954,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     },
     {
       "sample_id": "conv-26",
@@ -668,10 +668,10 @@
       "category": 4,
       "category_name": "multi-hop",
       "memory_tokens": 181,
-      "search_latency": 0.1357,
-      "generation_latency": 1.0485,
+      "search_latency": 0.1562,
+      "generation_latency": 0.8478,
       "j_score": 1.0,
-      "judge_valid_runs": 3
+      "judge_valid_runs": 5
     }
   ]
 }
