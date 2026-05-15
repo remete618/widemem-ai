@@ -712,6 +712,25 @@ class TestEventTime:
         assert with_ts["event_time"] == dt.isoformat()
         assert "event_time" not in without_ts
 
+    def test_leading_date_in_text_populates_event_time(self, memory):
+        memory.pipeline.extractor = MockExtractor()
+        memory.pipeline.extractor.facts_to_return = [Fact(content="Caroline went to pride", importance=7.0)]
+
+        memory.add("[2023-07-03] Caroline went to a pride parade", user_id="caro")
+        results = memory.search("pride parade", user_id="caro")
+        assert len(results) == 1
+        et = results[0].memory.event_time
+        assert et is not None and (et.year, et.month, et.day) == (2023, 7, 3)
+
+    def test_explicit_timestamp_beats_leading_date_in_text(self, memory):
+        memory.pipeline.extractor = MockExtractor()
+        memory.pipeline.extractor.facts_to_return = [Fact(content="Caroline event", importance=7.0)]
+        explicit = datetime(2023, 5, 7, tzinfo=timezone.utc)
+
+        memory.add("[2020-01-01] some old-looking prefix", user_id="caro", timestamp=explicit)
+        results = memory.search("Caroline event", user_id="caro")
+        assert results[0].memory.event_time == as_utc(explicit)
+
 
 class TestRetryBackoff:
     def test_retry_on_transient_error(self):
