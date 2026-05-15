@@ -22,6 +22,7 @@ from widemem.core.types import (
     SearchResult,
 )
 from widemem.extraction.collector import ExtractionCollector
+from widemem.extraction.datetime_parse import parse_leading_datetime
 from widemem.extraction.llm_extractor import LLMExtractor
 from widemem.hierarchy.manager import HierarchyManager
 from widemem.hierarchy.query_router import classify_query, route_results
@@ -141,12 +142,13 @@ class WideMemory:
             raise ValueError(
                 f"Text too long ({len(text)} chars). Maximum is {self.MAX_TEXT_LENGTH}."
             )
+        event_time = as_utc(timestamp) if timestamp else parse_leading_datetime(text)
         return self.pipeline.process(
             text=text,
             user_id=user_id,
             agent_id=agent_id,
             run_id=run_id,
-            event_time=as_utc(timestamp) if timestamp else None,
+            event_time=event_time,
             on_clarification=on_clarification,
         )
 
