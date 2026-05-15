@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Callable, List, Optional
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
@@ -63,6 +64,7 @@ class MemoryPipeline:
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         run_id: Optional[str] = None,
+        event_time: Optional[datetime] = None,
         on_clarification: Optional[Callable[[List[Clarification]], Optional[List[str]]]] = None,
     ) -> AddResult:
         facts = self.extractor.extract(text)
@@ -94,7 +96,10 @@ class MemoryPipeline:
             m.memory.metadata.get("content_hash") or content_hash(m.memory.content)
             for m in existing
         }
-        memories = self._execute_actions(actions, user_id=user_id, agent_id=agent_id, run_id=run_id, existing_hashes=existing_hashes)
+        memories = self._execute_actions(
+            actions, user_id=user_id, agent_id=agent_id, run_id=run_id,
+            event_time=event_time, existing_hashes=existing_hashes,
+        )
         return AddResult(memories=memories, clarifications=clarifications)
 
     def _find_existing(
@@ -143,6 +148,7 @@ class MemoryPipeline:
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         run_id: Optional[str] = None,
+        event_time: Optional[datetime] = None,
         existing_hashes: Optional[set] = None,
     ) -> list[Memory]:
         existing_hashes = existing_hashes or set()
@@ -162,6 +168,7 @@ class MemoryPipeline:
                     importance=action.importance,
                     content_hash=new_hash,
                     ymyl_category=action.ymyl_category,
+                    event_time=event_time,
                 )
                 embedding = self.embedder.embed(action.fact)
                 self.vector_store.insert(
@@ -192,6 +199,7 @@ class MemoryPipeline:
                     importance=action.importance,
                     content_hash=new_hash,
                     ymyl_category=action.ymyl_category,
+                    event_time=event_time,
                 )
                 embedding = self.embedder.embed(action.fact)
                 self.vector_store.update(
@@ -230,4 +238,6 @@ class MemoryPipeline:
         }
         if memory.ymyl_category:
             meta["ymyl_category"] = memory.ymyl_category
+        if memory.event_time:
+            meta["event_time"] = memory.event_time.isoformat()
         return meta
