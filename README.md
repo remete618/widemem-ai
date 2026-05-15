@@ -54,7 +54,7 @@ widemem gives your AI a real memory: one that scores what matters, forgets what 
 
 ## TL;DR
 
-Eight features, one library. Here's what widemem does that most memory systems don't:
+Seven features, one library. Here's what widemem does that most memory systems don't:
 
 | # | Feature | What it does | Why it matters |
 |---|---|---|---|
@@ -66,7 +66,7 @@ Eight features, one library. Here's what widemem does that most memory systems d
 | 6 | **Confidence & abstention** | Returns confidence level for every retrieval; abstains on memory miss | Lets the agent fall back to "I don't have that" instead of guessing |
 | 7 | **Retrieval modes** | fast / balanced / deep, pick your accuracy-cost tradeoff | Same system, three price points. You pick. |
 
-170+ tests. Zero external services required. SQLite plus FAISS by default. Plug in OpenAI, Anthropic, Ollama, Qdrant, or sentence-transformers as needed.
+380+ tests. Zero external services required. SQLite plus FAISS by default. Plug in OpenAI, Anthropic, Ollama, Qdrant, or sentence-transformers as needed.
 
 ---
 
@@ -629,7 +629,7 @@ pip install -e ".[dev,faiss]"
 pytest
 ```
 
-200+ tests. They all pass. We checked.
+380+ tests. They all pass. We checked.
 
 ---
 
