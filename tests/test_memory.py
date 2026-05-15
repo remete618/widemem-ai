@@ -628,6 +628,26 @@ class TestTTL:
         assert results[0].memory.content == "legacy fact"
         assert results[0].memory.created_at.tzinfo is not None
 
+    def test_search_survives_corrupt_stored_timestamp(self, tmp_dir):
+        """A garbage created_at/updated_at in stored metadata (e.g. from a bad
+        import_json) must not crash search; it falls back to an aware now."""
+        config = MemoryConfig(history_db_path=f"{tmp_dir}/corrupt.db")
+        embedder = MockEmbedder(dimensions=64)
+        vs = FAISSVectorStore(VectorStoreConfig(), dimensions=64)
+        mem = WideMemory(config=config, llm=MockLLM(), embedder=embedder, vector_store=vs)
+
+        vec = embedder.embed("corrupt fact")
+        vs.insert("corrupt_id", vec, {
+            "content": "corrupt fact", "created_at": "not-a-timestamp",
+            "updated_at": "", "user_id": "alice", "tier": "fact", "importance": 5.0,
+        })
+
+        results = mem.search("corrupt", user_id="alice")
+        assert len(results) == 1
+        assert results[0].memory.content == "corrupt fact"
+        assert results[0].memory.created_at.tzinfo is not None
+        assert results[0].memory.updated_at.tzinfo is not None
+
 
 class TestRetryBackoff:
     def test_retry_on_transient_error(self):

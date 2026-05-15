@@ -38,6 +38,15 @@ from widemem.storage.history import HistoryStore
 from widemem.storage.vector.base import BaseVectorStore
 
 
+def _parse_ts(value: Optional[str], fallback: datetime) -> datetime:
+    if not value:
+        return fallback
+    try:
+        return as_utc(datetime.fromisoformat(value))
+    except (ValueError, TypeError):
+        return fallback
+
+
 class WideMemory:
     def __init__(
         self,
@@ -260,10 +269,7 @@ class WideMemory:
 
         search_results = []
         for id, score, metadata in raw_results:
-            created_at = (
-                as_utc(datetime.fromisoformat(metadata["created_at"]))
-                if "created_at" in metadata else now
-            )
+            created_at = _parse_ts(metadata.get("created_at"), now)
             if ttl_cutoff and created_at < ttl_cutoff:
                 continue
             search_results.append(MemorySearchResult(
@@ -276,10 +282,7 @@ class WideMemory:
                     tier=MemoryTier(metadata.get("tier", "fact")),
                     ymyl_category=metadata.get("ymyl_category"),
                     created_at=created_at,
-                    updated_at=(
-                        as_utc(datetime.fromisoformat(metadata["updated_at"]))
-                        if "updated_at" in metadata else now
-                    ),
+                    updated_at=_parse_ts(metadata.get("updated_at"), now),
                 ),
                 similarity_score=score,
             ))

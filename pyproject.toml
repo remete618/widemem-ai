@@ -33,9 +33,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.0",
-    "openai>=1.0",
-    "numpy>=1.24",
+    "pydantic>=2.0,<3",
+    "openai>=1.0,<2",
+    "numpy>=1.24,<3",
 ]
 
 [project.optional-dependencies]
@@ -44,22 +44,22 @@ dev = [
     "pytest-asyncio>=0.21",
     "ruff>=0.4",
 ]
-faiss = ["faiss-cpu>=1.7"]
-anthropic = ["anthropic>=0.30"]
-ollama = ["ollama>=0.2"]
-qdrant = ["qdrant-client>=1.9"]
-sentence-transformers = ["sentence-transformers>=2.0"]
-server = ["fastapi>=0.110", "uvicorn>=0.29"]
-mcp = ["mcp>=1.0"]
-bm25 = ["rank-bm25>=0.2.2"]
+faiss = ["faiss-cpu>=1.7,<2"]
+anthropic = ["anthropic>=0.30,<1"]
+ollama = ["ollama>=0.2,<1"]
+qdrant = ["qdrant-client>=1.9,<2"]
+sentence-transformers = ["sentence-transformers>=2.0,<6"]
+server = ["fastapi>=0.110,<1", "uvicorn>=0.29,<1"]
+mcp = ["mcp>=1.0,<2"]
+bm25 = ["rank-bm25>=0.2.2,<1"]
 all = [
-    "anthropic>=0.30",
-    "faiss-cpu>=1.7",
-    "mcp>=1.0",
-    "ollama>=0.2",
-    "qdrant-client>=1.9",
-    "rank-bm25>=0.2.2",
-    "sentence-transformers>=2.0",
+    "anthropic>=0.30,<1",
+    "faiss-cpu>=1.7,<2",
+    "mcp>=1.0,<2",
+    "ollama>=0.2,<1",
+    "qdrant-client>=1.9,<2",
+    "rank-bm25>=0.2.2,<1",
+    "sentence-transformers>=2.0,<6",
 ]
 
 [tool.hatch.build.targets.wheel]
