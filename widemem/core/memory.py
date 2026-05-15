@@ -38,13 +38,17 @@ from widemem.storage.history import HistoryStore
 from widemem.storage.vector.base import BaseVectorStore
 
 
-def _parse_ts(value: Optional[str], fallback: datetime) -> datetime:
+def _parse_ts_opt(value: Optional[str]) -> Optional[datetime]:
     if not value:
-        return fallback
+        return None
     try:
         return as_utc(datetime.fromisoformat(value))
     except (ValueError, TypeError):
-        return fallback
+        return None
+
+
+def _parse_ts(value: Optional[str], fallback: datetime) -> datetime:
+    return _parse_ts_opt(value) or fallback
 
 
 class WideMemory:
@@ -128,6 +132,7 @@ class WideMemory:
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         run_id: Optional[str] = None,
+        timestamp: Optional[datetime] = None,
         on_clarification: Optional[Callable[[List[Clarification]], Optional[List[str]]]] = None,
     ) -> AddResult:
         if not text or not text.strip():
@@ -141,6 +146,7 @@ class WideMemory:
             user_id=user_id,
             agent_id=agent_id,
             run_id=run_id,
+            event_time=as_utc(timestamp) if timestamp else None,
             on_clarification=on_clarification,
         )
 
@@ -150,10 +156,11 @@ class WideMemory:
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         run_id: Optional[str] = None,
+        timestamp: Optional[datetime] = None,
     ) -> List[AddResult]:
         results = []
         for text in texts:
-            result = self.add(text, user_id=user_id, agent_id=agent_id, run_id=run_id)
+            result = self.add(text, user_id=user_id, agent_id=agent_id, run_id=run_id, timestamp=timestamp)
             results.append(result)
         return results
 
@@ -283,6 +290,7 @@ class WideMemory:
                     ymyl_category=metadata.get("ymyl_category"),
                     created_at=created_at,
                     updated_at=_parse_ts(metadata.get("updated_at"), now),
+                    event_time=_parse_ts_opt(metadata.get("event_time")),
                 ),
                 similarity_score=score,
             ))
@@ -384,7 +392,7 @@ class WideMemory:
             "content_hash": metadata.get("content_hash", ""),
             "ymyl_category": metadata.get("ymyl_category"),
         }
-        for ts_field in ("created_at", "updated_at"):
+        for ts_field in ("created_at", "updated_at", "event_time"):
             ts_str = metadata.get(ts_field)
             if ts_str:
                 try:
@@ -473,6 +481,8 @@ class WideMemory:
                 "created_at": item.get("created_at", memory.created_at.isoformat()),
                 "updated_at": item.get("updated_at", memory.updated_at.isoformat()),
             }
+            if item.get("event_time"):
+                metadata["event_time"] = item["event_time"]
             self.vector_store.insert(id=memory.id, vector=embedding, metadata=metadata)
             imported += 1
         return imported
