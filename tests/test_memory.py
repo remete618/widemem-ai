@@ -10,11 +10,13 @@ import numpy as np
 import pytest
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
+from widemem.core._time import as_utc
 from widemem.core.memory import WideMemory
 from widemem.core.types import (
     EmbeddingConfig,
     Fact,
     LLMConfig,
+    Memory,
     MemoryConfig,
     MemorySearchResult,
     VectorStoreConfig,
@@ -627,6 +629,107 @@ class TestTTL:
         assert len(results) == 1
         assert results[0].memory.content == "legacy fact"
         assert results[0].memory.created_at.tzinfo is not None
+
+    def test_search_survives_corrupt_stored_timestamp(self, tmp_dir):
+        """A garbage created_at/updated_at in stored metadata (e.g. from a bad
+        import_json) must not crash search; it falls back to an aware now."""
+        config = MemoryConfig(history_db_path=f"{tmp_dir}/corrupt.db")
+        embedder = MockEmbedder(dimensions=64)
+        vs = FAISSVectorStore(VectorStoreConfig(), dimensions=64)
+        mem = WideMemory(config=config, llm=MockLLM(), embedder=embedder, vector_store=vs)
+
+        vec = embedder.embed("corrupt fact")
+        vs.insert("corrupt_id", vec, {
+            "content": "corrupt fact", "created_at": "not-a-timestamp",
+            "updated_at": "", "user_id": "alice", "tier": "fact", "importance": 5.0,
+        })
+
+        results = mem.search("corrupt", user_id="alice")
+        assert len(results) == 1
+        assert results[0].memory.content == "corrupt fact"
+        assert results[0].memory.created_at.tzinfo is not None
+        assert results[0].memory.updated_at.tzinfo is not None
+
+
+class TestEventTime:
+    def test_memory_event_time_defaults_none(self):
+        assert Memory(content="x").event_time is None
+
+    def test_add_timestamp_sets_event_time(self, memory):
+        memory.pipeline.extractor = MockExtractor()
+        memory.pipeline.extractor.facts_to_return = [Fact(content="Caroline joined the LGBTQ group", importance=8.0)]
+        dt = datetime(2023, 5, 7, tzinfo=timezone.utc)
+
+        memory.add("Caroline joined the LGBTQ support group", user_id="caro", timestamp=dt)
+        results = memory.search("LGBTQ group", user_id="caro")
+        assert len(results) == 1
+        assert results[0].memory.event_time == as_utc(dt)
+
+    def test_add_without_timestamp_leaves_event_time_none(self, memory):
+        memory.pipeline.extractor = MockExtractor()
+        memory.pipeline.extractor.facts_to_return = [Fact(content="Caroline likes hiking", importance=6.0)]
+
+        memory.add("Caroline likes hiking", user_id="caro")
+        results = memory.search("hiking", user_id="caro")
+        assert len(results) == 1
+        assert results[0].memory.event_time is None
+
+    def test_naive_timestamp_normalized_to_utc(self, memory):
+        memory.pipeline.extractor = MockExtractor()
+        memory.pipeline.extractor.facts_to_return = [Fact(content="Melanie went camping", importance=5.0)]
+
+        memory.add("Melanie went camping", user_id="mel", timestamp=datetime(2023, 6, 27))
+        results = memory.search("camping", user_id="mel")
+        assert results[0].memory.event_time is not None
+        assert results[0].memory.event_time.tzinfo is not None
+
+    def test_event_time_roundtrip_export_import(self, tmp_dir):
+        dt = datetime(2023, 7, 3, tzinfo=timezone.utc)
+        src = WideMemory(
+            config=MemoryConfig(history_db_path=f"{tmp_dir}/src.db"),
+            llm=MockLLM(), embedder=MockEmbedder(64),
+            vector_store=FAISSVectorStore(VectorStoreConfig(), dimensions=64),
+        )
+        src.pipeline.extractor = MockExtractor()
+        src.pipeline.extractor.facts_to_return = [Fact(content="Caroline went to pride", importance=7.0)]
+        src.add("Caroline went to a pride parade", user_id="caro", timestamp=dt)
+        dumped = src.export_json()
+
+        dst = WideMemory(
+            config=MemoryConfig(history_db_path=f"{tmp_dir}/dst.db"),
+            llm=MockLLM(), embedder=MockEmbedder(64),
+            vector_store=FAISSVectorStore(VectorStoreConfig(), dimensions=64),
+        )
+        assert dst.import_json(dumped) == 1
+        results = dst.search("pride parade", user_id="caro")
+        assert len(results) == 1
+        assert results[0].memory.event_time == as_utc(dt)
+
+    def test_metadata_serializes_event_time_only_when_set(self, memory):
+        dt = datetime(2023, 8, 13, tzinfo=timezone.utc)
+        with_ts = memory.pipeline._memory_to_metadata(Memory(content="a", event_time=dt))
+        without_ts = memory.pipeline._memory_to_metadata(Memory(content="b"))
+        assert with_ts["event_time"] == dt.isoformat()
+        assert "event_time" not in without_ts
+
+    def test_leading_date_in_text_populates_event_time(self, memory):
+        memory.pipeline.extractor = MockExtractor()
+        memory.pipeline.extractor.facts_to_return = [Fact(content="Caroline went to pride", importance=7.0)]
+
+        memory.add("[2023-07-03] Caroline went to a pride parade", user_id="caro")
+        results = memory.search("pride parade", user_id="caro")
+        assert len(results) == 1
+        et = results[0].memory.event_time
+        assert et is not None and (et.year, et.month, et.day) == (2023, 7, 3)
+
+    def test_explicit_timestamp_beats_leading_date_in_text(self, memory):
+        memory.pipeline.extractor = MockExtractor()
+        memory.pipeline.extractor.facts_to_return = [Fact(content="Caroline event", importance=7.0)]
+        explicit = datetime(2023, 5, 7, tzinfo=timezone.utc)
+
+        memory.add("[2020-01-01] some old-looking prefix", user_id="caro", timestamp=explicit)
+        results = memory.search("Caroline event", user_id="caro")
+        assert results[0].memory.event_time == as_utc(explicit)
 
 
 class TestRetryBackoff:

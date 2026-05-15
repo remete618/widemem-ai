@@ -1,0 +1,7 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "WIDEMEM_PORT=$PORT WIDEMEM_HOST=0.0.0.0 python -m widemem.server"
+healthcheckPath = "/health"
+healthcheckTimeout = 60

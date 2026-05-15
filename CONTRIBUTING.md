@@ -6,7 +6,7 @@ Thanks for considering a contribution. Here's how to get started.
 
 ```bash
 git clone https://github.com/remete618/widemem-ai.git
-cd widemem
+cd widemem-ai
 python3 -m pip install -e ".[dev]"
 ```
 

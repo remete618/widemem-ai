@@ -50,11 +50,45 @@ def _build_config() -> MemoryConfig:
     )
 
 
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def _enforce_auth_policy() -> None:
+    """Fail closed when bound to a non-local interface without an API key.
+
+    The auth dependency disables itself when WIDEMEM_API_KEY is unset so
+    that local development needs no setup. That is safe only while the
+    server is bound to a loopback address. If the server is reachable
+    from the network (WIDEMEM_HOST is anything other than localhost) and
+    no API key is configured, /search and /add would be an open door to
+    whatever LLM and embedding providers the deployment is configured
+    with. Refuse to start in that case rather than silently exposing the
+    endpoints.
+    """
+    host = os.environ.get("WIDEMEM_HOST", "127.0.0.1")
+    has_key = bool(os.environ.get("WIDEMEM_API_KEY"))
+    is_public = host not in _LOCAL_HOSTS
+
+    if is_public and not has_key:
+        raise RuntimeError(
+            f"Refusing to start: WIDEMEM_HOST is bound to a non-local "
+            f"interface ({host!r}) but WIDEMEM_API_KEY is not set. This "
+            f"would expose /search and /add without authentication. Set "
+            f"WIDEMEM_API_KEY to a strong secret, or bind to 127.0.0.1 "
+            f"for local development."
+        )
+    if not has_key:
+        logger.warning(
+            "WIDEMEM_API_KEY not set; API authentication is disabled. "
+            "Acceptable only for local development (host=%s).",
+            host,
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _memory
-    if not os.environ.get("WIDEMEM_API_KEY"):
-        logger.warning("WIDEMEM_API_KEY not set — API authentication is disabled. Set it for production use.")
+    _enforce_auth_policy()
     _memory = WideMemory(config=_build_config())
     yield
     _memory.close()
@@ -130,6 +164,10 @@ def health():
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.environ.get("WIDEMEM_PORT", "11435"))
+    port = int(os.environ.get("WIDEMEM_PORT", os.environ.get("PORT", "11435")))
     host = os.environ.get("WIDEMEM_HOST", "127.0.0.1")
+    # Fail fast with a clear message before uvicorn spawns the app, in
+    # addition to the lifespan check (the authoritative guard for any
+    # other ASGI entrypoint such as gunicorn).
+    _enforce_auth_policy()
     uvicorn.run("widemem.server:app", host=host, port=port)
