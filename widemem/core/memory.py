@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
 from widemem.core._time import as_utc
@@ -159,6 +159,60 @@ class WideMemory:
         tier: Optional[MemoryTier] = None,
         mode: Optional[RetrievalMode] = None,
     ) -> SearchResult:
+        final = self._search_ranked(
+            query=query,
+            user_id=user_id,
+            agent_id=agent_id,
+            top_k=top_k,
+            time_after=time_after,
+            time_before=time_before,
+            tier=tier,
+            mode=mode,
+        )
+        confidence = assess_confidence(final)
+        return SearchResult(results=final, confidence=confidence)
+
+    async def search_stream(
+        self,
+        query: str,
+        user_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        top_k: Optional[int] = None,
+        time_after: Optional[datetime] = None,
+        time_before: Optional[datetime] = None,
+        tier: Optional[MemoryTier] = None,
+        mode: Optional[RetrievalMode] = None,
+    ) -> AsyncGenerator[MemorySearchResult, None]:
+        """Yield search results one at a time.
+
+        Example:
+            >>> async for result in memory.search_stream("where does alice live", user_id="alice"):
+            ...     print(result.memory.content)
+        """
+        final = self._search_ranked(
+            query=query,
+            user_id=user_id,
+            agent_id=agent_id,
+            top_k=top_k,
+            time_after=time_after,
+            time_before=time_before,
+            tier=tier,
+            mode=mode,
+        )
+        for result in final:
+            yield result
+
+    def _search_ranked(
+        self,
+        query: str,
+        user_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        top_k: Optional[int] = None,
+        time_after: Optional[datetime] = None,
+        time_before: Optional[datetime] = None,
+        tier: Optional[MemoryTier] = None,
+        mode: Optional[RetrievalMode] = None,
+    ) -> list[MemorySearchResult]:
         # Resolve retrieval preset: per-query mode > config mode > defaults
         preset = self.config.get_retrieval_preset()
         if mode is not None:
@@ -252,9 +306,7 @@ class WideMemory:
             preferred = classify_query(query)
             ranked = route_results(ranked, preferred)
 
-        final = ranked[:effective_top_k]
-        confidence = assess_confidence(final)
-        return SearchResult(results=final, confidence=confidence)
+        return ranked[:effective_top_k]
 
     def summarize(
         self,
