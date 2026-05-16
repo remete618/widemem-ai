@@ -11,6 +11,83 @@ from widemem.scoring.topics import get_topic_boost
 from widemem.scoring.ymyl import classify_ymyl_detailed
 
 
+def score_candidate(
+    result: MemorySearchResult,
+    config: ScoringConfig,
+    now: datetime,
+    time_after: Optional[datetime] = None,
+    time_before: Optional[datetime] = None,
+    topic_weights: Optional[Dict[str, float]] = None,
+    ymyl_config: Optional[YMYLConfig] = None,
+    temporal_boost_window: Optional[tuple] = None,
+    temporal_boost_strength: float = 0.10,
+) -> MemorySearchResult | None:
+    """Score one candidate in-place and return it, or None when hard-filtered."""
+    created_at = as_utc(result.memory.created_at)
+
+    if time_after and created_at < time_after:
+        return None
+    if time_before and created_at > time_before:
+        return None
+
+    ymyl_config = ymyl_config or YMYLConfig()
+    content = result.memory.content
+
+    # Check stored YMYL classification first (from LLM extraction), fall back to regex
+    mem_is_ymyl_strong = False
+    if ymyl_config.enabled:
+        if result.memory.ymyl_category is not None:
+            mem_is_ymyl_strong = True
+        else:
+            ymyl_result = classify_ymyl_detailed(content, ymyl_config)
+            mem_is_ymyl_strong = ymyl_result is not None and ymyl_result.is_strong
+
+    if mem_is_ymyl_strong and ymyl_config.decay_immune:
+        recency = 1.0
+    else:
+        recency = compute_recency_score(
+            created_at=created_at,
+            now=now,
+            decay_function=config.decay_function,
+            decay_rate=config.decay_rate,
+        )
+
+    importance = normalize_importance(result.memory.importance)
+
+    final = (
+        config.similarity_weight * result.similarity_score
+        + config.importance_weight * importance
+        + config.recency_weight * recency
+    )
+
+    boost_after: Optional[datetime] = None
+    boost_before: Optional[datetime] = None
+    if temporal_boost_window is not None:
+        raw_after, raw_before = temporal_boost_window
+        boost_after = as_utc(raw_after) if raw_after is not None else None
+        boost_before = as_utc(raw_before) if raw_before is not None else None
+
+    # Soft temporal boost: nudge in-window memories up rather than
+    # excluding out-of-window ones.
+    if temporal_boost_window is not None and (boost_after or boost_before):
+        in_window = True
+        if boost_after and created_at < boost_after:
+            in_window = False
+        if boost_before and created_at > boost_before:
+            in_window = False
+        if in_window:
+            final += temporal_boost_strength
+
+    if topic_weights:
+        boost = get_topic_boost(content, topic_weights)
+        final *= boost
+
+    result.temporal_score = recency
+    result.importance_score = importance
+    result.final_score = final
+    return result
+
+
 def score_and_rank(
     results: list[MemorySearchResult],
     config: ScoringConfig,
@@ -41,71 +118,21 @@ def score_and_rank(
     time_before = as_utc(time_before) if time_before is not None else None
     ymyl_config = ymyl_config or YMYLConfig()
 
-    boost_after: Optional[datetime] = None
-    boost_before: Optional[datetime] = None
-    if temporal_boost_window is not None:
-        raw_after, raw_before = temporal_boost_window
-        boost_after = as_utc(raw_after) if raw_after is not None else None
-        boost_before = as_utc(raw_before) if raw_before is not None else None
-
     scored = []
     for result in results:
-        created_at = as_utc(result.memory.created_at)
-
-        if time_after and created_at < time_after:
-            continue
-        if time_before and created_at > time_before:
-            continue
-
-        content = result.memory.content
-        # Check stored YMYL classification first (from LLM extraction), fall back to regex
-        mem_is_ymyl_strong = False
-        if ymyl_config.enabled:
-            if result.memory.ymyl_category is not None:
-                mem_is_ymyl_strong = True
-            else:
-                ymyl_result = classify_ymyl_detailed(content, ymyl_config)
-                mem_is_ymyl_strong = ymyl_result is not None and ymyl_result.is_strong
-
-        if mem_is_ymyl_strong and ymyl_config.decay_immune:
-            recency = 1.0
-        else:
-            recency = compute_recency_score(
-                created_at=created_at,
-                now=now,
-                decay_function=config.decay_function,
-                decay_rate=config.decay_rate,
-            )
-
-        importance = normalize_importance(result.memory.importance)
-
-        final = (
-            config.similarity_weight * result.similarity_score
-            + config.importance_weight * importance
-            + config.recency_weight * recency
+        scored_result = score_candidate(
+            result=result,
+            config=config,
+            now=now,
+            time_after=time_after,
+            time_before=time_before,
+            topic_weights=topic_weights,
+            ymyl_config=ymyl_config,
+            temporal_boost_window=temporal_boost_window,
+            temporal_boost_strength=temporal_boost_strength,
         )
-
-        # Soft temporal boost: nudge in-window memories up rather than
-        # excluding out-of-window ones. Applied additively so that a
-        # high-similarity, high-importance memory outside the parsed
-        # window can still rank above a marginal in-window match.
-        if temporal_boost_window is not None and (boost_after or boost_before):
-            in_window = True
-            if boost_after and created_at < boost_after:
-                in_window = False
-            if boost_before and created_at > boost_before:
-                in_window = False
-            if in_window:
-                final += temporal_boost_strength
-
-        if topic_weights:
-            boost = get_topic_boost(content, topic_weights)
-            final *= boost
-
-        result.temporal_score = recency
-        result.importance_score = importance
-        result.final_score = final
-        scored.append(result)
+        if scored_result is not None:
+            scored.append(scored_result)
 
     scored.sort(key=lambda r: r.final_score, reverse=True)
 
