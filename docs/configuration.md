@@ -1,128 +1,212 @@
 # Configuration Reference
 
-All settings live in `MemoryConfig`. Most defaults are sane; you only touch what you need.
+`MemoryConfig` is the top-level configuration object for `WideMemory`. This page documents the public configuration fields defined in `widemem/core/types.py`.
 
 ```python
-from widemem import WideMemory, MemoryConfig
+from widemem import MemoryConfig, WideMemory
+
+config = MemoryConfig()
+memory = WideMemory(config)
+```
+
+For nested configuration objects, import them from `widemem.core.types`:
+
+```python
 from widemem.core.types import (
-    LLMConfig,
     EmbeddingConfig,
-    VectorStoreConfig,
+    LLMConfig,
+    MemoryConfig,
     ScoringConfig,
-    YMYLConfig,
     TopicConfig,
-    DecayFunction,
-    RetrievalMode,
-    UncertaintyMode,
+    VectorStoreConfig,
+    YMYLConfig,
 )
+```
+
+## MemoryConfig
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `llm` | `LLMConfig` | `LLMConfig()` | LLM provider settings used for extraction, summarization, and conflict resolution. |
+| `embedding` | `EmbeddingConfig` | `EmbeddingConfig()` | Embedding provider settings used to convert text into vectors. |
+| `vector_store` | `VectorStoreConfig` | `VectorStoreConfig()` | Vector database settings for memory storage and search. |
+| `scoring` | `ScoringConfig` | `ScoringConfig()` | Ranking weights and time-decay settings for search results. |
+| `ymyl` | `YMYLConfig` | `YMYLConfig()` | Your Money or Your Life settings for high-stakes facts. |
+| `topics` | `TopicConfig` | `TopicConfig()` | Topic boost and custom extraction hint settings. |
+| `history_db_path` | `str` | `"~/.widemem/history.db"` | SQLite path for the memory history and audit trail. |
+| `retrieval_mode` | `RetrievalMode` | `RetrievalMode.BALANCED` | Default retrieval preset: `FAST`, `BALANCED`, or `DEEP`. |
+| `uncertainty_mode` | `UncertaintyMode` | `UncertaintyMode.HELPFUL` | How responses handle low-confidence retrieval: `STRICT`, `HELPFUL`, or `CREATIVE`. |
+| `enable_hierarchy` | `bool` | `False` | Forces hierarchical memory routing on when set. |
+| `enable_active_retrieval` | `bool` | `False` | Enables contradiction checks and clarification callbacks for new memories. |
+| `active_retrieval_threshold` | `float` | `0.6` | Similarity threshold used by active retrieval conflict detection. |
+| `collect_extractions` | `bool` | `False` | Stores extraction input/output pairs for later self-supervised training. |
+| `extractions_db_path` | `str` | `"~/.widemem/extractions.db"` | SQLite path for collected extraction training examples. |
+| `ttl_days` | `Optional[int]` | `None` | Filters memories older than this many days at search time when set. |
+| `parse_temporal_hints` | `bool` | `False` | Auto-parses time ranges from temporal search queries when explicit time filters are not provided. |
+| `enable_hybrid_search` | `bool` | `False` | Blends BM25 keyword scores into vector similarity before ranking. |
+| `hybrid_bm25_weight` | `float` | `0.5` | Fraction of hybrid similarity taken from BM25 when hybrid search is enabled. |
+
+## LLMConfig
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `provider` | `str` | `"openai"` | LLM backend name. Supported by `WideMemory`: `openai`, `anthropic`, `ollama`. |
+| `model` | `str` | `"gpt-4o-mini"` | Provider-specific model name. |
+| `api_key` | `Optional[SecretStr]` | `None` | API key passed to providers that need one. |
+| `base_url` | `Optional[str]` | `None` | Provider base URL override, commonly used for local or compatible endpoints. |
+| `temperature` | `float` | `0.0` | Sampling temperature for LLM generation. |
+| `max_tokens` | `int` | `2000` | Maximum tokens requested from the LLM response. |
+
+## EmbeddingConfig
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `provider` | `str` | `"openai"` | Embedding backend name. Supported by `WideMemory`: `openai`, `sentence-transformers`, `ollama`. |
+| `model` | `str` | `"text-embedding-3-small"` | Provider-specific embedding model name. |
+| `api_key` | `Optional[SecretStr]` | `None` | API key passed to embedding providers that need one. |
+| `base_url` | `Optional[str]` | `None` | Provider base URL override, commonly used for Ollama or compatible endpoints. |
+| `dimensions` | `int` | `1536` | Expected embedding vector size; must match the selected embedding model. |
+
+## VectorStoreConfig
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `provider` | `str` | `"faiss"` | Vector store backend name. Supported by `WideMemory`: `faiss`, `qdrant`, `pgvector`. |
+| `path` | `Optional[str]` | `None` | Local persistence path for backends that support file-backed storage. |
+| `url` | `Optional[str]` | `None` | Connection URL for network-backed stores such as pgvector and Qdrant Cloud. |
+| `table_name` | `str` | `"widemem_vectors"` | Table name used by the pgvector backend. |
+
+## ScoringConfig
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `decay_function` | `DecayFunction` | `DecayFunction.EXPONENTIAL` | Time-decay function: `EXPONENTIAL`, `LINEAR`, `STEP`, or `NONE`. |
+| `decay_rate` | `float` | `0.01` | Decay speed; higher values reduce older memories faster. |
+| `similarity_weight` | `float` | `0.5` | Weight applied to vector similarity in the final score. |
+| `importance_weight` | `float` | `0.3` | Weight applied to memory importance in the final score. |
+| `recency_weight` | `float` | `0.2` | Weight applied to time-decay recency in the final score. |
+
+## YMYLConfig
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `enabled` | `bool` | `False` | Enables YMYL handling for high-stakes facts. |
+| `categories` | `list` | `["health", "medical", "financial", "legal", "safety", "insurance", "tax", "pharmaceutical"]` | YMYL category names used for classification and prioritization. |
+| `min_importance` | `float` | `8.0` | Minimum importance assigned to strong YMYL facts. |
+| `decay_immune` | `bool` | `True` | Prevents YMYL facts from losing score through time decay. |
+| `force_active_retrieval` | `bool` | `True` | Runs active retrieval checks for YMYL facts even when global active retrieval is off. |
+
+## TopicConfig
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `weights` | `Dict[str, float]` | `{}` | Topic-to-multiplier map used to boost matching memories during scoring. |
+| `custom_topics` | `list` | `[]` | Topic hints passed to extraction so domain-specific facts can be labeled. |
+
+## Retrieval mode presets
+
+`MemoryConfig.get_retrieval_preset()` starts from the selected `retrieval_mode`. If `enable_hierarchy=True`, the returned preset always has `enable_hierarchy` set to `True`.
+
+| Mode | `top_k` | `fetch_k_multiplier` | `similarity_boost` | `enable_hierarchy` |
+| --- | --- | --- | --- | --- |
+| `RetrievalMode.FAST` | `10` | `3` | `0.10` | `False` |
+| `RetrievalMode.BALANCED` | `25` | `4` | `0.15` | `True` |
+| `RetrievalMode.DEEP` | `50` | `5` | `0.20` | `True` |
+
+## Common configurations
+
+### Local-only
+
+Use Ollama for the LLM, sentence-transformers for embeddings, and FAISS for local vector storage. This setup avoids hosted LLM and embedding API keys.
+
+```python
+from widemem import MemoryConfig, WideMemory
+from widemem.core.types import EmbeddingConfig, LLMConfig, VectorStoreConfig
 
 config = MemoryConfig(
-    llm=LLMConfig(
-        provider="openai",          # "openai", "anthropic", or "ollama"
-        model="gpt-4o-mini",
-        api_key="sk-...",           # Or set OPENAI_API_KEY env var
-        base_url=None,
-        temperature=0.0,
-        max_tokens=2000,
-    ),
+    llm=LLMConfig(provider="ollama", model="llama3", base_url="http://localhost:11434"),
     embedding=EmbeddingConfig(
-        provider="openai",          # "openai" or "sentence-transformers"
-        model="text-embedding-3-small",
-        api_key=None,
-        base_url=None,
-        dimensions=1536,
+        provider="sentence-transformers",
+        model="all-MiniLM-L6-v2",
+        dimensions=384,
     ),
-    vector_store=VectorStoreConfig(
-        provider="faiss",           # "faiss" or "qdrant"
-        path=None,                  # Optional path for persistent storage
-    ),
-    scoring=ScoringConfig(
-        decay_function=DecayFunction.EXPONENTIAL,
-        decay_rate=0.01,            # Higher means faster decay
-        similarity_weight=0.5,
-        importance_weight=0.3,
-        recency_weight=0.2,
-    ),
-    ymyl=YMYLConfig(
-        enabled=False,
-        categories=[
-            "health", "medical", "financial", "legal",
-            "safety", "insurance", "tax", "pharmaceutical",
-        ],
-        min_importance=8.0,
-        decay_immune=True,
-        force_active_retrieval=True,
-    ),
-    topics=TopicConfig(
-        weights={},                 # Topic boost multipliers
-        custom_topics=[],           # Hints for extraction
-    ),
-    history_db_path="~/.widemem/history.db",
-    retrieval_mode=RetrievalMode.BALANCED,
-    uncertainty_mode=UncertaintyMode.HELPFUL,
-    enable_hierarchy=False,
-    enable_active_retrieval=False,
-    active_retrieval_threshold=0.6,
-    collect_extractions=False,
-    extractions_db_path="~/.widemem/extractions.db",
-    ttl_days=None,
+    vector_store=VectorStoreConfig(provider="faiss", path="./widemem_faiss"),
 )
 
 memory = WideMemory(config)
 ```
 
-## Field reference
+### OpenAI default
 
-| Field | Type | Default | Notes |
-|---|---|---|---|
-| `llm.provider` | str | `"openai"` | `"openai"`, `"anthropic"`, `"ollama"` |
-| `llm.model` | str | `"gpt-4o-mini"` | Provider-specific model name |
-| `llm.api_key` | SecretStr | None | Reads `OPENAI_API_KEY` env var if not set |
-| `llm.base_url` | str | None | Override for self-hosted providers |
-| `llm.temperature` | float | 0.0 | LLM sampling temperature |
-| `llm.max_tokens` | int | 2000 | Max tokens per LLM response |
-| `embedding.provider` | str | `"openai"` | `"openai"` or `"sentence-transformers"` |
-| `embedding.model` | str | `"text-embedding-3-small"` | |
-| `embedding.dimensions` | int | 1536 | Must match the model |
-| `vector_store.provider` | str | `"faiss"` | `"faiss"` or `"qdrant"` |
-| `vector_store.path` | str | None | If set, FAISS persists to this directory |
-| `scoring.decay_function` | DecayFunction | `EXPONENTIAL` | `EXPONENTIAL`, `LINEAR`, `STEP`, `NONE` |
-| `scoring.decay_rate` | float | 0.01 | Higher means faster decay |
-| `scoring.similarity_weight` | float | 0.5 | Cosine similarity weight in `final_score` |
-| `scoring.importance_weight` | float | 0.3 | Importance weight in `final_score` |
-| `scoring.recency_weight` | float | 0.2 | Recency weight in `final_score` |
-| `ymyl.enabled` | bool | False | Toggle YMYL prioritization |
-| `ymyl.categories` | list | 8 categories | Subset of YMYL categories to enable |
-| `ymyl.min_importance` | float | 8.0 | Floor for strong YMYL facts |
-| `ymyl.decay_immune` | bool | True | Whether YMYL facts skip decay |
-| `ymyl.force_active_retrieval` | bool | True | Force conflict checks on YMYL adds |
-| `topics.weights` | dict | {} | `{topic: multiplier}` for retrieval boost |
-| `topics.custom_topics` | list | [] | Extraction hints for the LLM |
-| `history_db_path` | str | `~/.widemem/history.db` | SQLite path for audit trail |
-| `retrieval_mode` | RetrievalMode | `BALANCED` | `FAST`, `BALANCED`, `DEEP` |
-| `uncertainty_mode` | UncertaintyMode | `HELPFUL` | `STRICT`, `HELPFUL`, `CREATIVE` |
-| `enable_hierarchy` | bool | False | Enable summary/theme tiers |
-| `enable_active_retrieval` | bool | False | Enable contradiction detection callbacks |
-| `active_retrieval_threshold` | float | 0.6 | Similarity threshold for conflict detection |
-| `collect_extractions` | bool | False | Log extraction pairs for self-supervised distillation |
-| `extractions_db_path` | str | `~/.widemem/extractions.db` | SQLite path for extraction logs |
-| `ttl_days` | int | None | If set, memories older than N days are filtered at search time |
+The config defaults point to OpenAI for the LLM and embeddings, and FAISS for vector storage. At runtime, `WideMemory` falls back to Ollama for OpenAI-configured providers if no OpenAI API key is available.
 
-## Retrieval mode presets
+```python
+from widemem import MemoryConfig, WideMemory
 
-| Mode | top_k | fetch_k_multiplier | similarity_boost | enable_hierarchy |
-|---|---|---|---|---|
-| `FAST` | 10 | 3 | 0.10 | False |
-| `BALANCED` (default) | 25 | 4 | 0.15 | True |
-| `DEEP` | 50 | 5 | 0.20 | True |
+config = MemoryConfig()
+memory = WideMemory(config)
+```
 
-Setting `enable_hierarchy=True` at the config level forces hierarchy on regardless of mode.
+You can also set the fields explicitly:
+
+```python
+from widemem import MemoryConfig, WideMemory
+from widemem.core.types import EmbeddingConfig, LLMConfig, VectorStoreConfig
+
+config = MemoryConfig(
+    llm=LLMConfig(provider="openai", model="gpt-4o-mini"),
+    embedding=EmbeddingConfig(
+        provider="openai",
+        model="text-embedding-3-small",
+        dimensions=1536,
+    ),
+    vector_store=VectorStoreConfig(provider="faiss"),
+)
+
+memory = WideMemory(config)
+```
+
+### Anthropic
+
+Use Anthropic for the LLM while keeping the default OpenAI embeddings and FAISS vector storage.
+
+```python
+from widemem import MemoryConfig, WideMemory
+from widemem.core.types import LLMConfig
+
+config = MemoryConfig(
+    llm=LLMConfig(provider="anthropic", model="claude-sonnet-4-20250514"),
+)
+
+memory = WideMemory(config)
+```
+
+### Ollama
+
+Use Ollama for the LLM and embeddings. The default OpenAI model names are remapped internally when the provider is `ollama`, but setting local model names explicitly makes the configuration easier to read.
+
+```python
+from widemem import MemoryConfig, WideMemory
+from widemem.core.types import EmbeddingConfig, LLMConfig
+
+config = MemoryConfig(
+    llm=LLMConfig(provider="ollama", model="llama3.2", base_url="http://localhost:11434"),
+    embedding=EmbeddingConfig(
+        provider="ollama",
+        model="nomic-embed-text",
+        base_url="http://localhost:11434",
+        dimensions=768,
+    ),
+)
+
+memory = WideMemory(config)
+```
 
 ## Environment variables
 
 | Variable | Used by |
-|---|---|
-| `OPENAI_API_KEY` | OpenAI LLM and embedding providers |
-| `ANTHROPIC_API_KEY` | Anthropic LLM provider |
-| `OLLAMA_BASE_URL` | Ollama provider (default `http://localhost:11434`) |
-| `QDRANT_URL` | Remote Qdrant vector store |
+| --- | --- |
+| `OPENAI_API_KEY` | OpenAI LLM and embedding providers. |
+| `ANTHROPIC_API_KEY` | Anthropic LLM provider. |
+| `OLLAMA_BASE_URL` | Ollama defaults used by the server and MCP server. |
+| `QDRANT_URL` | Remote Qdrant configuration used by environment-driven server setup. |
