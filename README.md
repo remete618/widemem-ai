@@ -17,8 +17,6 @@ __  _  _|__| __| _/____   _____   ____   _____      _____  |__|
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
 
-> **NEW in v1.4**: Confidence scoring, abstention modes (strict/helpful/creative), `mem.pin()` for persistent memories, frustration detection, and retrieval modes (fast/balanced/deep). Graceful memory-miss handling for high-stakes contexts. [See what's new ↓](#uncertainty--confidence)
-
 **Background reading:**
 - [Whitepaper: How LLMs Handle Memory](https://github.com/remete618/llm-memory-whitepaper). Technical paper on memory architectures, security risks, and in-weights personalisation.
 - [Why Context Windows Aren't Memory](https://widemem.ai/blog/context-windows). The problem widemem solves.
@@ -223,7 +221,7 @@ ScoringConfig(decay_function=DecayFunction.NONE)
 | Type | Provider | Install | One-line example |
 |---|---|---|---|
 | LLM | OpenAI (default) | `pip install widemem-ai[faiss]` | `LLMConfig(provider="openai", model="gpt-4o-mini")` |
-| LLM | Anthropic | `pip install widemem-ai[anthropic]` | `LLMConfig(provider="anthropic", model="claude-sonnet-4-20250514")` |
+| LLM | Anthropic | `pip install widemem-ai[anthropic]` | `LLMConfig(provider="anthropic", model="claude-haiku-4-5-20251001")` |
 | LLM | Ollama (local) | `pip install widemem-ai[ollama]` | `LLMConfig(provider="ollama", model="llama3")` |
 | Embedding | OpenAI (default) | `pip install widemem-ai[faiss]` | `EmbeddingConfig(provider="openai", model="text-embedding-3-small", dimensions=1536)` |
 | Embedding | Sentence Transformers | `pip install widemem-ai[sentence-transformers]` | `EmbeddingConfig(provider="sentence-transformers", model="all-MiniLM-L6-v2", dimensions=384)` |
