@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -32,7 +33,7 @@ from widemem.providers.embeddings.openai import OpenAIEmbedder
 from widemem.providers.llm.base import BaseLLM
 from widemem.providers.llm.openai import OpenAILLM
 from widemem.retrieval.active import ActiveRetrieval, Clarification
-from widemem.retrieval.temporal import score_and_rank
+from widemem.retrieval.temporal import score_and_rank, score_candidate
 from widemem.retrieval.temporal_parser import looks_temporal, parse_temporal_hints
 from widemem.retrieval.uncertainty import assess_confidence
 from widemem.storage.history import HistoryStore
@@ -53,6 +54,8 @@ def _parse_ts(value: Optional[str], fallback: datetime) -> datetime:
 
 
 class WideMemory:
+    STREAM_WINDOW_SIZE = 16
+
     def __init__(
         self,
         config: Optional[MemoryConfig] = None,
@@ -201,24 +204,158 @@ class WideMemory:
         tier: Optional[MemoryTier] = None,
         mode: Optional[RetrievalMode] = None,
     ) -> AsyncGenerator[MemorySearchResult, None]:
-        """Yield search results one at a time.
+        """Yield search results one at a time with approximate ranking.
+
+        Contract:
+            - `search_stream` is optimized for low time-to-first-result.
+            - Ordering is approximate and may differ from `search()`.
+            - Full-pool hierarchy routing and two-pass similarity rerank are skipped.
+            - Use `search()` when ranking fidelity matters.
 
         Example:
             >>> async for result in memory.search_stream("where does alice live", user_id="alice"):
             ...     print(result.memory.content)
         """
-        final = self._search_ranked(
-            query=query,
-            user_id=user_id,
-            agent_id=agent_id,
-            top_k=top_k,
-            time_after=time_after,
-            time_before=time_before,
-            tier=tier,
-            mode=mode,
-        )
-        for result in final:
-            yield result
+        # Resolve retrieval preset: per-query mode > config mode > defaults
+        preset = self.config.get_retrieval_preset()
+        if mode is not None:
+            preset = dict(RETRIEVAL_MODE_PRESETS[mode])
+        effective_top_k = min(top_k or preset["top_k"], 1000)
+
+        # Auto-parse temporal hints when enabled and explicit hard filters were
+        # not provided. Parsed range is used only as a soft boost.
+        temporal_boost_window: Optional[tuple] = None
+        if (
+            self.config.parse_temporal_hints
+            and time_after is None
+            and time_before is None
+            and looks_temporal(query)
+        ):
+            parsed_after, parsed_before = parse_temporal_hints(query)
+            if parsed_after is not None or parsed_before is not None:
+                temporal_boost_window = (parsed_after, parsed_before)
+
+        filters: Dict[str, Any] = {}
+        if user_id:
+            filters["user_id"] = user_id
+        if agent_id:
+            filters["agent_id"] = agent_id
+        if tier:
+            filters["tier"] = tier.value
+
+        scoring_config, sim_first = self._adapt_scoring(query, self.config.scoring)
+        fetch_multiplier = preset["fetch_k_multiplier"] if sim_first else 3
+        fetch_k = effective_top_k * fetch_multiplier
+        topic_weights = self.config.topics.weights or None
+        ymyl_config = self.config.ymyl if self.config.ymyl.enabled else None
+
+        queue: asyncio.Queue[object] = asyncio.Queue()
+        stop_event = asyncio.Event()
+        stream_end = object()
+        loop = asyncio.get_running_loop()
+
+        def _producer() -> None:
+            try:
+                embedding = self.embedder.embed(query)
+                raw_results = self.vector_store.search(
+                    vector=embedding,
+                    top_k=fetch_k,
+                    filters=filters or None,
+                )
+
+                now = datetime.now(timezone.utc)
+                ttl_cutoff = (
+                    now - timedelta(days=self.config.ttl_days)
+                    if self.config.ttl_days
+                    else None
+                )
+
+                search_results: list[MemorySearchResult] = []
+                for id, score, metadata in raw_results:
+                    if stop_event.is_set():
+                        return
+                    created_at = _parse_ts(metadata.get("created_at"), now)
+                    if ttl_cutoff and created_at < ttl_cutoff:
+                        continue
+                    search_results.append(MemorySearchResult(
+                        memory=Memory(
+                            id=id,
+                            content=metadata.get("content", ""),
+                            user_id=metadata.get("user_id"),
+                            agent_id=metadata.get("agent_id"),
+                            importance=metadata.get("importance", 5.0),
+                            tier=MemoryTier(metadata.get("tier", "fact")),
+                            ymyl_category=metadata.get("ymyl_category"),
+                            created_at=created_at,
+                            updated_at=_parse_ts(metadata.get("updated_at"), now),
+                            event_time=_parse_ts_opt(metadata.get("event_time")),
+                        ),
+                        similarity_score=score,
+                    ))
+
+                if self.config.enable_hybrid_search and search_results:
+                    effective_bm25_weight = self._adapt_bm25_weight(
+                        query, self.config.hybrid_bm25_weight
+                    )
+                    if effective_bm25_weight > 0:
+                        from widemem.retrieval.hybrid import blend_hybrid_scores
+                        blend_hybrid_scores(
+                            search_results,
+                            query,
+                            bm25_weight=effective_bm25_weight,
+                        )
+
+                stream_batch: list[MemorySearchResult] = []
+                for result in search_results:
+                    if stop_event.is_set():
+                        return
+                    scored = score_candidate(
+                        result=result,
+                        config=scoring_config,
+                        now=now,
+                        time_after=time_after,
+                        time_before=time_before,
+                        topic_weights=topic_weights,
+                        ymyl_config=ymyl_config,
+                        temporal_boost_window=temporal_boost_window,
+                    )
+                    if scored is None:
+                        continue
+                    stream_batch.append(scored)
+
+                    if len(stream_batch) >= self.STREAM_WINDOW_SIZE:
+                        stream_batch.sort(key=lambda r: r.final_score, reverse=True)
+                        for item in stream_batch:
+                            if stop_event.is_set():
+                                return
+                            loop.call_soon_threadsafe(queue.put_nowait, item)
+                        stream_batch.clear()
+
+                if stream_batch and not stop_event.is_set():
+                    stream_batch.sort(key=lambda r: r.final_score, reverse=True)
+                    for item in stream_batch:
+                        if stop_event.is_set():
+                            return
+                        loop.call_soon_threadsafe(queue.put_nowait, item)
+            except Exception as exc:  # pragma: no cover - exercised via caller
+                loop.call_soon_threadsafe(queue.put_nowait, exc)
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, stream_end)
+
+        producer_task = asyncio.create_task(asyncio.to_thread(_producer))
+        emitted = 0
+        try:
+            while emitted < effective_top_k:
+                item = await queue.get()
+                if item is stream_end:
+                    break
+                if isinstance(item, Exception):
+                    raise item
+                emitted += 1
+                yield item  # type: ignore[misc]
+        finally:
+            stop_event.set()
+            await producer_task
 
     def _search_ranked(
         self,

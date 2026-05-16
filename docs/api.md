@@ -7,6 +7,7 @@
 | `add(text, user_id, agent_id, run_id, on_clarification)` | Extract and store memories. Returns `AddResult`. |
 | `add_batch(texts, user_id, agent_id, run_id)` | Process multiple texts. Returns `List[AddResult]`. |
 | `search(query, user_id, agent_id, top_k, time_after, time_before, tier, mode)` | Search memories. Returns `SearchResult` (list-compatible, with `.confidence`). |
+| `search_stream(query, user_id, agent_id, top_k, time_after, time_before, tier, mode)` | Async generator for incremental results. Approximate order; skips hierarchy routing and two-pass similarity rerank. Use `search()` for exact ranking fidelity. |
 | `pin(text, user_id, agent_id, importance=9.0)` | Store memory with elevated importance. For facts that must not be forgotten. |
 | `get(memory_id)` | Get a single memory by ID. Returns `Memory` or `None`. |
 | `delete(memory_id)` | Delete a memory by ID. |
