@@ -75,6 +75,7 @@ class Memory(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     event_time: Optional[datetime] = None
+    entities: list[str] = Field(default_factory=list)
 
 
 class MemorySearchResult(BaseModel):
@@ -226,6 +227,13 @@ class MemoryConfig(BaseModel):
     """Proportion of the blended similarity_score taken from the BM25 side
     when enable_hybrid_search is True. 0.0 disables BM25 (vector-only),
     1.0 disables vector (pure keyword). Range [0, 1], default 0.5."""
+    enable_entity_index: bool = False
+    """Extract and store lightweight entity tags on each memory at write
+    time (zero-dependency, no LLM). Off by default for backwards
+    compatibility and behavior parity: when False, nothing changes. When
+    True, memories carry an `entities` list usable by entity-aware
+    retrieval. Existing stores are populated without re-ingestion via
+    WideMemory.backfill_entities()."""
 
     def get_retrieval_preset(self) -> dict:
         """Get the retrieval preset for the configured mode."""

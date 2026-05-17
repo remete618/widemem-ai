@@ -13,6 +13,7 @@ from widemem.core.types import (
     YMYLConfig,
 )
 from widemem.extraction.base import BaseExtractor
+from widemem.extraction.entities import extract_entities
 from widemem.providers.embeddings.base import BaseEmbedder
 from widemem.retrieval.active import ActiveRetrieval, Clarification
 from widemem.scoring.ymyl import is_ymyl_strong
@@ -48,7 +49,9 @@ class MemoryPipeline:
         active_retrieval: Optional[ActiveRetrieval] = None,
         ymyl_active_retrieval: Optional[ActiveRetrieval] = None,
         ymyl_config: Optional[YMYLConfig] = None,
+        enable_entity_index: bool = False,
     ) -> None:
+        self.enable_entity_index = enable_entity_index
         self.extractor = extractor
         self.resolver = resolver
         self.embedder = embedder
@@ -169,6 +172,7 @@ class MemoryPipeline:
                     content_hash=new_hash,
                     ymyl_category=action.ymyl_category,
                     event_time=event_time,
+                    entities=extract_entities(action.fact) if self.enable_entity_index else [],
                 )
                 embedding = self.embedder.embed(action.fact)
                 self.vector_store.insert(
@@ -200,6 +204,7 @@ class MemoryPipeline:
                     content_hash=new_hash,
                     ymyl_category=action.ymyl_category,
                     event_time=event_time,
+                    entities=extract_entities(action.fact) if self.enable_entity_index else [],
                 )
                 embedding = self.embedder.embed(action.fact)
                 self.vector_store.update(
@@ -240,4 +245,6 @@ class MemoryPipeline:
             meta["ymyl_category"] = memory.ymyl_category
         if memory.event_time:
             meta["event_time"] = memory.event_time.isoformat()
+        if memory.entities:
+            meta["entities"] = memory.entities
         return meta
