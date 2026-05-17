@@ -234,6 +234,18 @@ class MemoryConfig(BaseModel):
     True, memories carry an `entities` list usable by entity-aware
     retrieval. Existing stores are populated without re-ingestion via
     WideMemory.backfill_entities()."""
+    entity_boost_weight: float = 0.0
+    """Weight of the entity-overlap additive re-rank at search time.
+    Requires enable_entity_index. Default 0.0 is a strict no-op: the
+    feature is fully behavior-neutral until this is set > 0 (typical
+    starting point ~0.5). The boost only reorders the already-retrieved
+    pool; it never adds candidates and never changes how many are
+    returned, so it is token-neutral."""
+    entity_boost_attenuation: float = 0.001
+    """Attenuation k in 1 / (1 + k * (n - 1)^2), where n is how many
+    pooled candidates share a query entity. Damps very common entities
+    so a frequently-mentioned name does not dominate. Only active when
+    entity_boost_weight > 0."""
 
     def get_retrieval_preset(self) -> dict:
         """Get the retrieval preset for the configured mode."""

@@ -34,6 +34,7 @@ from widemem.providers.embeddings.openai import OpenAIEmbedder
 from widemem.providers.llm.base import BaseLLM
 from widemem.providers.llm.openai import OpenAILLM
 from widemem.retrieval.active import ActiveRetrieval, Clarification
+from widemem.retrieval.entity_boost import apply_entity_boost
 from widemem.retrieval.temporal import score_and_rank, score_candidate
 from widemem.retrieval.temporal_parser import looks_temporal, parse_temporal_hints
 from widemem.retrieval.uncertainty import assess_confidence
@@ -469,6 +470,14 @@ class WideMemory:
             similarity_boost=preset.get("similarity_boost", 0.15),
             temporal_boost_window=temporal_boost_window,
         )
+
+        if self.config.enable_entity_index and self.config.entity_boost_weight > 0:
+            ranked = apply_entity_boost(
+                ranked,
+                extract_entities(query),
+                weight=self.config.entity_boost_weight,
+                attenuation=self.config.entity_boost_attenuation,
+            )
 
         use_hierarchy = preset.get("enable_hierarchy", self.config.enable_hierarchy)
         if use_hierarchy and tier is None:
