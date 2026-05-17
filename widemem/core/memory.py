@@ -24,6 +24,7 @@ from widemem.core.types import (
 )
 from widemem.extraction.collector import ExtractionCollector
 from widemem.extraction.datetime_parse import parse_leading_datetime
+from widemem.extraction.entities import extract_entities
 from widemem.extraction.llm_extractor import LLMExtractor
 from widemem.hierarchy.manager import HierarchyManager
 from widemem.hierarchy.query_router import classify_query, route_results
@@ -102,6 +103,7 @@ class WideMemory:
             active_retrieval=active,
             ymyl_active_retrieval=ymyl_active,
             ymyl_config=self.config.ymyl,
+            enable_entity_index=self.config.enable_entity_index,
         )
 
         self._hierarchy = HierarchyManager(
@@ -289,6 +291,7 @@ class WideMemory:
                             created_at=created_at,
                             updated_at=_parse_ts(metadata.get("updated_at"), now),
                             event_time=_parse_ts_opt(metadata.get("event_time")),
+                            entities=metadata.get("entities") or [],
                         ),
                         similarity_score=score,
                     ))
@@ -430,6 +433,7 @@ class WideMemory:
                     created_at=created_at,
                     updated_at=_parse_ts(metadata.get("updated_at"), now),
                     event_time=_parse_ts_opt(metadata.get("event_time")),
+                    entities=metadata.get("entities") or [],
                 ),
                 similarity_score=score,
             ))
@@ -530,6 +534,7 @@ class WideMemory:
             "importance": metadata.get("importance", 5.0),
             "content_hash": metadata.get("content_hash", ""),
             "ymyl_category": metadata.get("ymyl_category"),
+            "entities": metadata.get("entities") or [],
         }
         for ts_field in ("created_at", "updated_at", "event_time"):
             ts_str = metadata.get(ts_field)
@@ -622,9 +627,35 @@ class WideMemory:
             }
             if item.get("event_time"):
                 metadata["event_time"] = item["event_time"]
+            if item.get("entities"):
+                metadata["entities"] = item["entities"]
             self.vector_store.insert(id=memory.id, vector=embedding, metadata=metadata)
             imported += 1
         return imported
+
+    def backfill_entities(self, max_memories: int = 1_000_000) -> int:
+        """Populate `entities` on existing stored memories without
+        re-ingestion and without any LLM or embedding call. The stored
+        vector is reused as-is. Deterministic and idempotent: memories
+        that already carry entities are skipped. Returns the count
+        updated."""
+        items = self.vector_store.list_all(max_results=max_memories)
+        updated = 0
+        for mem_id, metadata in items:
+            if metadata.get("entities"):
+                continue
+            ents = extract_entities(metadata.get("content", ""))
+            if not ents:
+                continue
+            got = self.vector_store.get(mem_id)
+            if got is None:
+                continue
+            vector, meta = got
+            meta = dict(meta)
+            meta["entities"] = ents
+            self.vector_store.update(id=mem_id, vector=vector, metadata=meta)
+            updated += 1
+        return updated
 
     @staticmethod
     def _adapt_scoring(query: str, default: ScoringConfig) -> tuple:
