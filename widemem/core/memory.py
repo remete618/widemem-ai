@@ -260,54 +260,13 @@ class WideMemory:
         def _producer() -> None:
             try:
                 embedding = self.embedder.embed(query)
-                raw_results = self.vector_store.search(
-                    vector=embedding,
-                    top_k=fetch_k,
+                search_results, now = self._collect_search_candidates(
+                    query=query,
+                    embedding=embedding,
+                    fetch_k=fetch_k,
                     filters=filters or None,
+                    stop_event=stop_event,
                 )
-
-                now = datetime.now(timezone.utc)
-                ttl_cutoff = (
-                    now - timedelta(days=self.config.ttl_days)
-                    if self.config.ttl_days
-                    else None
-                )
-
-                search_results: list[MemorySearchResult] = []
-                for id, score, metadata in raw_results:
-                    if stop_event.is_set():
-                        return
-                    created_at = _parse_ts(metadata.get("created_at"), now)
-                    if ttl_cutoff and created_at < ttl_cutoff:
-                        continue
-                    search_results.append(MemorySearchResult(
-                        memory=Memory(
-                            id=id,
-                            content=metadata.get("content", ""),
-                            user_id=metadata.get("user_id"),
-                            agent_id=metadata.get("agent_id"),
-                            importance=metadata.get("importance", 5.0),
-                            tier=MemoryTier(metadata.get("tier", "fact")),
-                            ymyl_category=metadata.get("ymyl_category"),
-                            created_at=created_at,
-                            updated_at=_parse_ts(metadata.get("updated_at"), now),
-                            event_time=_parse_ts_opt(metadata.get("event_time")),
-                            entities=metadata.get("entities") or [],
-                        ),
-                        similarity_score=score,
-                    ))
-
-                if self.config.enable_hybrid_search and search_results:
-                    effective_bm25_weight = self._adapt_bm25_weight(
-                        query, self.config.hybrid_bm25_weight
-                    )
-                    if effective_bm25_weight > 0:
-                        from widemem.retrieval.hybrid import blend_hybrid_scores
-                        blend_hybrid_scores(
-                            search_results,
-                            query,
-                            bm25_weight=effective_bm25_weight,
-                        )
 
                 stream_batch: list[MemorySearchResult] = []
                 for result in search_results:
@@ -408,17 +367,61 @@ class WideMemory:
         scoring_config, sim_first = self._adapt_scoring(query, self.config.scoring)
         fetch_multiplier = preset["fetch_k_multiplier"] if sim_first else 3
         fetch_k = effective_top_k * fetch_multiplier
+        search_results, now = self._collect_search_candidates(
+            query=query,
+            embedding=embedding,
+            fetch_k=fetch_k,
+            filters=filters or None,
+        )
+
+        ranked = score_and_rank(
+            results=search_results,
+            config=scoring_config,
+            time_after=time_after,
+            time_before=time_before,
+            topic_weights=self.config.topics.weights or None,
+            ymyl_config=self.config.ymyl if self.config.ymyl.enabled else None,
+            similarity_first=sim_first,
+            similarity_boost=preset.get("similarity_boost", 0.15),
+            temporal_boost_window=temporal_boost_window,
+        )
+
+        if self.config.enable_entity_index and self.config.entity_boost_weight > 0:
+            ranked = apply_entity_boost(
+                ranked,
+                extract_entities(query),
+                weight=self.config.entity_boost_weight,
+                attenuation=self.config.entity_boost_attenuation,
+            )
+
+        use_hierarchy = preset.get("enable_hierarchy", self.config.enable_hierarchy)
+        if use_hierarchy and tier is None:
+            preferred = classify_query(query)
+            ranked = route_results(ranked, preferred)
+
+        return ranked[:effective_top_k]
+
+    def _collect_search_candidates(
+        self,
+        query: str,
+        embedding: list[float],
+        fetch_k: int,
+        filters: Optional[Dict[str, Any]] = None,
+        stop_event: Optional[asyncio.Event] = None,
+    ) -> tuple[list[MemorySearchResult], datetime]:
         raw_results = self.vector_store.search(
             vector=embedding,
             top_k=fetch_k,
-            filters=filters or None,
+            filters=filters,
         )
 
         now = datetime.now(timezone.utc)
         ttl_cutoff = now - timedelta(days=self.config.ttl_days) if self.config.ttl_days else None
 
-        search_results = []
+        search_results: list[MemorySearchResult] = []
         for id, score, metadata in raw_results:
+            if stop_event is not None and stop_event.is_set():
+                break
             created_at = _parse_ts(metadata.get("created_at"), now)
             if ttl_cutoff and created_at < ttl_cutoff:
                 continue
@@ -459,32 +462,7 @@ class WideMemory:
                     bm25_weight=effective_bm25_weight,
                 )
 
-        ranked = score_and_rank(
-            results=search_results,
-            config=scoring_config,
-            time_after=time_after,
-            time_before=time_before,
-            topic_weights=self.config.topics.weights or None,
-            ymyl_config=self.config.ymyl if self.config.ymyl.enabled else None,
-            similarity_first=sim_first,
-            similarity_boost=preset.get("similarity_boost", 0.15),
-            temporal_boost_window=temporal_boost_window,
-        )
-
-        if self.config.enable_entity_index and self.config.entity_boost_weight > 0:
-            ranked = apply_entity_boost(
-                ranked,
-                extract_entities(query),
-                weight=self.config.entity_boost_weight,
-                attenuation=self.config.entity_boost_attenuation,
-            )
-
-        use_hierarchy = preset.get("enable_hierarchy", self.config.enable_hierarchy)
-        if use_hierarchy and tier is None:
-            preferred = classify_query(query)
-            ranked = route_results(ranked, preferred)
-
-        return ranked[:effective_top_k]
+        return search_results, now
 
     def summarize(
         self,
