@@ -19,11 +19,61 @@ from widemem.scoring.importance import normalize_importance
 
 
 class TestDecayFunctions:
+    @staticmethod
+    def _score(decay_function, age, now, decay_rate=0.01):
+        return compute_recency_score(now - age, now, decay_function, decay_rate=decay_rate)
+
     def test_no_decay(self):
         now = datetime(2026, 3, 8)
         old = datetime(2025, 1, 1)
         score = compute_recency_score(old, now, DecayFunction.NONE)
         assert score == 1.0
+
+    @pytest.mark.parametrize(
+        "age",
+        [
+            timedelta(days=0),
+            timedelta(days=1),
+            timedelta(days=7),
+            timedelta(days=30),
+            timedelta(days=90),
+            timedelta(days=365),
+        ],
+    )
+    def test_none_decay_is_constant(self, age):
+        now = datetime(2026, 3, 8)
+        assert self._score(DecayFunction.NONE, age, now) == 1.0
+
+    @pytest.mark.parametrize("decay_function", [DecayFunction.EXPONENTIAL, DecayFunction.LINEAR, DecayFunction.STEP])
+    @pytest.mark.parametrize(
+        "age",
+        [
+            timedelta(days=0),
+            timedelta(days=1),
+            timedelta(days=7),
+            timedelta(days=30),
+            timedelta(days=90),
+            timedelta(days=365),
+        ],
+    )
+    def test_decay_scores_stay_bounded(self, decay_function, age):
+        now = datetime(2026, 3, 8)
+        score = self._score(decay_function, age, now)
+        assert 0.0 <= score <= 1.0
+
+    @pytest.mark.parametrize("decay_function", [DecayFunction.EXPONENTIAL, DecayFunction.LINEAR])
+    def test_decay_is_monotonic_non_increasing(self, decay_function):
+        now = datetime(2026, 3, 8)
+        ages = [
+            timedelta(days=0),
+            timedelta(days=1),
+            timedelta(days=7),
+            timedelta(days=30),
+            timedelta(days=90),
+            timedelta(days=365),
+        ]
+        scores = [self._score(decay_function, age, now) for age in ages]
+        assert all(left >= right for left, right in zip(scores, scores[1:]))
 
     def test_exponential_decay_recent(self):
         now = datetime(2026, 3, 8)
@@ -75,9 +125,24 @@ class TestDecayFunctions:
         old = now - timedelta(days=180)
         assert compute_recency_score(old, now, DecayFunction.STEP) == 0.1
 
+    @pytest.mark.parametrize(
+        "age, expected",
+        [
+            (timedelta(days=6, hours=23), 1.0),
+            (timedelta(days=7), 0.7),
+            (timedelta(days=29, hours=23), 0.7),
+            (timedelta(days=30), 0.4),
+            (timedelta(days=89, hours=23), 0.4),
+            (timedelta(days=90), 0.1),
+        ],
+    )
+    def test_step_decay_hits_documented_boundaries(self, age, expected):
+        now = datetime(2026, 3, 8)
+        assert self._score(DecayFunction.STEP, age, now) == expected
+
     def test_same_time_returns_one(self):
         now = datetime(2026, 3, 8)
-        for fn in [DecayFunction.EXPONENTIAL, DecayFunction.LINEAR, DecayFunction.STEP]:
+        for fn in [DecayFunction.NONE, DecayFunction.EXPONENTIAL, DecayFunction.LINEAR, DecayFunction.STEP]:
             assert compute_recency_score(now, now, fn) == 1.0
 
 
