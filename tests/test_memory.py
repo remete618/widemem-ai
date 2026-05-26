@@ -811,6 +811,67 @@ class TestIDMapping:
         idx2 = mapper.add("uuid-1")
         assert idx1 == idx2
 
+    @pytest.mark.parametrize(
+        "uuids",
+        [
+            ["uuid-1"],
+            ["uuid-1", "uuid-2", "uuid-3"],
+            ["a", "b", "a", "c"],
+        ],
+    )
+    def test_round_trip(self, uuids):
+        from widemem.utils.id_mapping import IDMapper
+
+        mapper = IDMapper()
+        for u in uuids:
+            idx = mapper.add(u)
+            assert mapper.to_uuid(idx) == u
+
+    @pytest.mark.parametrize(
+        "uuids",
+        [
+            ["uuid-1"],
+            ["uuid-1", "uuid-2", "uuid-3"],
+        ],
+    )
+    def test_reverse_round_trip(self, uuids):
+        from widemem.utils.id_mapping import IDMapper
+
+        mapper = IDMapper()
+        for u in uuids:
+            idx = mapper.add(u)
+            assert mapper.to_int(u) == idx
+
+    def test_unknown_lookups_return_none(self):
+        from widemem.utils.id_mapping import IDMapper
+
+        mapper = IDMapper()
+        assert mapper.to_uuid(1) is None
+        assert mapper.to_int("missing") is None
+
+        mapper.add("uuid-1")
+        assert mapper.to_uuid(99) is None
+        assert mapper.to_int("other") is None
+
+    def test_monotonic_allocation_with_duplicates(self):
+        from widemem.utils.id_mapping import IDMapper
+
+        mapper = IDMapper()
+        a1 = mapper.add("a")
+        b1 = mapper.add("b")
+        a2 = mapper.add("a")
+        c1 = mapper.add("c")
+        assert (a1, b1, a2, c1) == (1, 2, 1, 3)
+
+    def test_duplicate_does_not_advance_counter(self):
+        from widemem.utils.id_mapping import IDMapper
+
+        mapper = IDMapper()
+        mapper.add("a")
+        mapper.add("a")
+        mapper.add("a")
+        assert mapper.add("b") == 2
+
 
 class TestEmbeddingCache:
     def test_cache_avoids_recomputation(self):
