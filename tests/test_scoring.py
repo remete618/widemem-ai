@@ -145,6 +145,59 @@ class TestDecayFunctions:
         for fn in [DecayFunction.NONE, DecayFunction.EXPONENTIAL, DecayFunction.LINEAR, DecayFunction.STEP]:
             assert compute_recency_score(now, now, fn) == 1.0
 
+    @pytest.mark.parametrize(
+        "decay_function",
+        [DecayFunction.EXPONENTIAL, DecayFunction.LINEAR, DecayFunction.NONE],
+    )
+    @pytest.mark.parametrize("age", [timedelta(days=1), timedelta(days=30), timedelta(days=365)])
+    def test_decay_rate_zero_disables_decay(self, decay_function, age):
+        now = datetime(2026, 3, 8)
+        assert self._score(decay_function, age, now, decay_rate=0.0) == 1.0
+
+    @pytest.mark.parametrize(
+        "decay_function",
+        [DecayFunction.NONE, DecayFunction.EXPONENTIAL, DecayFunction.LINEAR, DecayFunction.STEP],
+    )
+    @pytest.mark.parametrize(
+        "future_offset",
+        [timedelta(seconds=1), timedelta(days=1), timedelta(days=365)],
+    )
+    def test_future_timestamps_clamp_to_one(self, decay_function, future_offset):
+        now = datetime(2026, 3, 8)
+        future = now + future_offset
+        assert compute_recency_score(future, now, decay_function) == 1.0
+
+    @pytest.mark.parametrize(
+        "decay_function, expected",
+        [
+            (DecayFunction.LINEAR, 0.0),
+            (DecayFunction.STEP, 0.1),
+            (DecayFunction.NONE, 1.0),
+        ],
+    )
+    def test_very_large_age_hits_floor(self, decay_function, expected):
+        now = datetime(2026, 3, 8)
+        ancient = now - timedelta(days=10_000)
+        assert compute_recency_score(ancient, now, decay_function) == expected
+
+    def test_very_large_age_exponential_approaches_zero(self):
+        now = datetime(2026, 3, 8)
+        ancient = now - timedelta(days=10_000)
+        score = compute_recency_score(ancient, now, DecayFunction.EXPONENTIAL, decay_rate=0.01)
+        assert 0.0 < score < 1e-30
+
+    def test_step_decay_is_monotonic_non_increasing(self):
+        now = datetime(2026, 3, 8)
+        ages = [
+            timedelta(days=0),
+            timedelta(days=7),
+            timedelta(days=30),
+            timedelta(days=90),
+            timedelta(days=365),
+        ]
+        scores = [self._score(DecayFunction.STEP, age, now) for age in ages]
+        assert all(left >= right for left, right in zip(scores, scores[1:]))
+
 
 class TestImportanceScoring:
     def test_normalize_mid(self):
