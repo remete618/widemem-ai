@@ -127,7 +127,11 @@ def test_weight_zero_matches_baseline():
     base = _mk(0.0).search("Caroline", user_id="u")
     again = _mk(0.0).search("Caroline", user_id="u")
     assert [r.memory.id for r in base] == [r.memory.id for r in again]
-    assert [round(r.final_score, 9) for r in base] == [round(r.final_score, 9) for r in again]
+    # FAISS similarity uses non-bit-reproducible parallel reductions (~1e-8
+    # run-to-run noise), so compare scores with a tolerance, not exact rounding.
+    assert [r.final_score for r in base] == pytest.approx(
+        [r.final_score for r in again], abs=1e-6
+    )
 
 
 def test_weight_on_lifts_entity_match_token_neutral():
