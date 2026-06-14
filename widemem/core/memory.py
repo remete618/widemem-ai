@@ -167,9 +167,10 @@ class WideMemory:
         timestamp: Optional[datetime] = None,
     ) -> List[AddResult]:
         results = []
-        for text in texts:
-            result = self.add(text, user_id=user_id, agent_id=agent_id, run_id=run_id, timestamp=timestamp)
-            results.append(result)
+        with self.vector_store.batch_writes():
+            for text in texts:
+                result = self.add(text, user_id=user_id, agent_id=agent_id, run_id=run_id, timestamp=timestamp)
+                results.append(result)
         return results
 
     def search(
@@ -572,51 +573,52 @@ class WideMemory:
     def import_json(self, data: str) -> int:
         parsed = json.loads(data)
         imported = 0
-        for item in parsed.get("memories", []):
-            memory_id = item.get("id")
-            content = item.get("content", "")
-            if not content or len(content) > 50000:
-                continue
-            existing = self.vector_store.get(memory_id) if memory_id else None
-            if existing:
-                continue
-            raw_importance = item.get("importance", 5.0)
-            try:
-                importance = max(0.0, min(10.0, float(raw_importance)))
-            except (TypeError, ValueError):
-                importance = 5.0
-            raw_tier = item.get("tier", "fact")
-            try:
-                tier = MemoryTier(raw_tier)
-            except ValueError:
-                tier = MemoryTier.FACT
-            embedding = self.embedder.embed(content)
-            memory = Memory(
-                id=memory_id or str(uuid.uuid4()),
-                content=content,
-                user_id=item.get("user_id"),
-                agent_id=item.get("agent_id"),
-                importance=importance,
-                tier=tier,
-                content_hash=item.get("content_hash", ""),
-            )
-            metadata = {
-                "content": memory.content,
-                "user_id": memory.user_id,
-                "agent_id": memory.agent_id,
-                "run_id": memory.run_id,
-                "tier": memory.tier.value,
-                "importance": memory.importance,
-                "content_hash": memory.content_hash,
-                "created_at": item.get("created_at", memory.created_at.isoformat()),
-                "updated_at": item.get("updated_at", memory.updated_at.isoformat()),
-            }
-            if item.get("event_time"):
-                metadata["event_time"] = item["event_time"]
-            if item.get("entities"):
-                metadata["entities"] = item["entities"]
-            self.vector_store.insert(id=memory.id, vector=embedding, metadata=metadata)
-            imported += 1
+        with self.vector_store.batch_writes():
+            for item in parsed.get("memories", []):
+                memory_id = item.get("id")
+                content = item.get("content", "")
+                if not content or len(content) > 50000:
+                    continue
+                existing = self.vector_store.get(memory_id) if memory_id else None
+                if existing:
+                    continue
+                raw_importance = item.get("importance", 5.0)
+                try:
+                    importance = max(0.0, min(10.0, float(raw_importance)))
+                except (TypeError, ValueError):
+                    importance = 5.0
+                raw_tier = item.get("tier", "fact")
+                try:
+                    tier = MemoryTier(raw_tier)
+                except ValueError:
+                    tier = MemoryTier.FACT
+                embedding = self.embedder.embed(content)
+                memory = Memory(
+                    id=memory_id or str(uuid.uuid4()),
+                    content=content,
+                    user_id=item.get("user_id"),
+                    agent_id=item.get("agent_id"),
+                    importance=importance,
+                    tier=tier,
+                    content_hash=item.get("content_hash", ""),
+                )
+                metadata = {
+                    "content": memory.content,
+                    "user_id": memory.user_id,
+                    "agent_id": memory.agent_id,
+                    "run_id": memory.run_id,
+                    "tier": memory.tier.value,
+                    "importance": memory.importance,
+                    "content_hash": memory.content_hash,
+                    "created_at": item.get("created_at", memory.created_at.isoformat()),
+                    "updated_at": item.get("updated_at", memory.updated_at.isoformat()),
+                }
+                if item.get("event_time"):
+                    metadata["event_time"] = item["event_time"]
+                if item.get("entities"):
+                    metadata["entities"] = item["entities"]
+                self.vector_store.insert(id=memory.id, vector=embedding, metadata=metadata)
+                imported += 1
         return imported
 
     def backfill_entities(self, max_memories: int = 1_000_000) -> int:
