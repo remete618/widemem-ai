@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -36,6 +39,7 @@ class FAISSVectorStore(BaseVectorStore):
         self._idx_to_id: Dict[int, str] = {}
         self._next_idx = 0
         self._lock = threading.Lock()
+        self._defer_save = False
 
         flat_index = faiss.IndexFlatIP(dimensions)
         self._index = faiss.IndexIDMap2(flat_index)
@@ -65,7 +69,7 @@ class FAISSVectorStore(BaseVectorStore):
             self._idx_to_id[idx] = id
             self._metadata[id] = metadata
             self._next_idx += 1
-            self._save()
+            self._maybe_save()
 
     def search(
         self,
@@ -118,7 +122,7 @@ class FAISSVectorStore(BaseVectorStore):
             self._idx_to_id[idx] = id
             self._metadata[id] = metadata
             self._next_idx += 1
-            self._save()
+            self._maybe_save()
 
     def delete(self, id: str) -> None:
         with self._lock:
@@ -129,7 +133,7 @@ class FAISSVectorStore(BaseVectorStore):
             del self._id_to_idx[id]
             del self._idx_to_id[idx]
             self._metadata.pop(id, None)
-            self._save()
+            self._maybe_save()
 
     def get(self, id: str) -> Optional[Tuple[List[float], Dict[str, Any]]]:
         with self._lock:
@@ -163,19 +167,67 @@ class FAISSVectorStore(BaseVectorStore):
                 return False
         return True
 
+    @contextmanager
+    def batch_writes(self) -> Iterator[None]:
+        """Defer the per-mutation snapshot until the block exits, then save once.
+
+        Without this, a bulk load of N items triggers N full index + metadata
+        rewrites (O(n) each, O(n^2) overall). Inside the block, mutations update
+        the in-memory index immediately but skip the disk write; a single flush
+        on exit persists everything. The flush runs even if the block raises, so
+        writes that already succeeded are not lost.
+        """
+        with self._lock:
+            self._defer_save = True
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._defer_save = False
+                self._save()
+
+    def flush(self) -> None:
+        with self._lock:
+            self._save()
+
+    def _maybe_save(self) -> None:
+        if not self._defer_save:
+            self._save()
+
     def _save(self) -> None:
         if not self._storage_path:
             return
         self._storage_path.mkdir(parents=True, exist_ok=True)
-        faiss.write_index(self._index, str(self._storage_path / "index.faiss"))
+
+        index_path = self._storage_path / "index.faiss"
+        state_path = self._storage_path / "state.json"
+        index_tmp = self._storage_path / "index.faiss.tmp"
+        state_tmp = self._storage_path / "state.json.tmp"
+
         state = {
             "metadata": self._metadata,
             "id_to_idx": self._id_to_idx,
             "idx_to_id": {str(k): v for k, v in self._idx_to_id.items()},
             "next_idx": self._next_idx,
         }
-        with open(self._storage_path / "state.json", "w") as f:
-            json.dump(state, f)
+
+        # Write both files to temporary paths first, so a failure here never
+        # touches the live, consistent on-disk state. Only once both temps are
+        # fully written do we atomically swap them into place via os.replace.
+        try:
+            faiss.write_index(self._index, str(index_tmp))
+            with open(state_tmp, "w") as f:
+                json.dump(state, f)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(index_tmp, index_path)
+            os.replace(state_tmp, state_path)
+        finally:
+            for tmp in (index_tmp, state_tmp):
+                try:
+                    tmp.unlink()
+                except FileNotFoundError:
+                    pass
 
     def _load(self) -> None:
         if not self._storage_path:

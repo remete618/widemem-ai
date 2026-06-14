@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from widemem.core.types import VectorStoreConfig
@@ -9,6 +11,20 @@ from widemem.core.types import VectorStoreConfig
 class BaseVectorStore(ABC):
     def __init__(self, config: VectorStoreConfig) -> None:
         self.config = config
+
+    @contextmanager
+    def batch_writes(self) -> Iterator[None]:
+        """Defer persistence until the block exits, then flush once.
+
+        Default is a no-op for stores that persist per-operation (e.g. a
+        database commit per write). Stores that rewrite a whole snapshot per
+        mutation override this to avoid O(n) work per item during bulk loads.
+        """
+        yield
+
+    def flush(self) -> None:
+        """Persist any deferred state. No-op by default."""
+        return None
 
     @abstractmethod
     def insert(self, id: str, vector: list[float], metadata: dict[str, Any]) -> None:
