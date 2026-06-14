@@ -267,7 +267,6 @@ class WideMemory:
                     filters=filters or None,
                     stop_event=stop_event,
                 )
-
                 stream_batch: list[MemorySearchResult] = []
                 for result in search_results:
                     if stop_event.is_set():
