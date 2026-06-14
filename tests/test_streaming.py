@@ -295,8 +295,14 @@ def test_search_scoring_refactor_keeps_search_identical() -> None:
     finally:
         monkey.undo()
 
+    # FAISS computes the inner-product similarity with non-bit-reproducible
+    # parallel reductions, so final_score carries ~1e-8 run-to-run noise.
+    # Compare with a tolerance well above that floor but far below the real
+    # score gaps (~1e-3 here), so equivalence is still meaningfully checked.
     assert [r.memory.id for r in current] == [r.memory.id for r in legacy]
-    assert [round(r.final_score, 8) for r in current] == [round(r.final_score, 8) for r in legacy]
+    assert [r.final_score for r in current] == pytest.approx(
+        [r.final_score for r in legacy], abs=1e-6
+    )
 
 
 def test_search_stream_does_not_block_event_loop() -> None:
