@@ -1,0 +1,56 @@
+# widemem-ai
+
+> Open-source AI memory layer for LLM apps and agents: hierarchical memory, importance scoring, temporal decay, automatic conflict resolution, and confidence-aware retrieval. Python 3.10+, pip-installable, works with OpenAI / Anthropic / Ollama and FAISS / Qdrant.
+
+widemem gives an AI persistent memory. It extracts facts from text, stores them in a vector store, resolves contradictions automatically, decays stale memories over time, and returns ranked, confidence-scored results. Defaults are sane, so a working memory takes six lines.
+
+Install and run:
+
+```bash
+pip install widemem-ai[faiss]   # core + the default local vector store
+```
+
+```python
+from widemem import WideMemory
+
+memory = WideMemory()
+memory.add("I live in San Francisco and work as a software engineer", user_id="alice")
+results = memory.search("where does alice live", user_id="alice")
+for r in results:
+    print(r.memory.content, round(r.final_score, 2))
+
+# Contradictions are resolved automatically:
+memory.add("I just moved to Boston", user_id="alice")
+```
+
+`WideMemory()` defaults to OpenAI for the LLM and embeddings (set `OPENAI_API_KEY`) and FAISS for storage. For local, no-API-key use, configure Ollama plus sentence-transformers (see Configuration).
+
+## Start here
+- [README](README.md): full overview, features, and install matrix
+- [Quick Start](README.md#quick-start): the six-line working example
+- [Install and optional providers](README.md#install): faiss / qdrant, openai / anthropic / ollama, sentence-transformers, mcp
+
+## Docs
+- [Configuration](docs/configuration.md): every config field, its default, and the tradeoff
+- [API reference](docs/api.md): WideMemory methods and the core types
+- [MCP server](docs/mcp.md): run widemem as a Model Context Protocol server for agents
+
+## Concepts
+- [Scoring and decay](README.md#scoring--decay): the ranking formula and decay functions
+- [YMYL prioritization](README.md#ymyl-your-money-or-your-life): two-stage semantic classification for high-stakes facts
+- [Hierarchical memory and tiers](README.md#hierarchical-memory): summarization and memory tiers
+- [Temporal search](README.md#temporal-search): time-aware retrieval and boosts
+- [Uncertainty and confidence](README.md#uncertainty--confidence): confidence modes and frustration recovery
+- [Batch conflict resolution](README.md#batch-conflict-resolution): single-call ADD/UPDATE/DELETE resolution
+- [Prompt-injection sanitizer](README.md#prompt-injection-sanitizer): input sanitization for stored content
+
+## Examples
+- [basic_usage.py](examples/basic_usage.py): add and search
+- [hierarchical_memory.py](examples/hierarchical_memory.py): tiers and summarization
+- [temporal_queries.py](examples/temporal_queries.py): time-aware search
+- [ymyl_active_retrieval.py](examples/ymyl_active_retrieval.py): YMYL plus active retrieval
+- [healthcare_quickstart.py](examples/healthcare_quickstart.py): a domain example
+
+## Optional
+- [Claude Code skill](README.md#claude-code-skill): persistent-memory skill powered by widemem
+- [Development](README.md#development): running tests and contributing
