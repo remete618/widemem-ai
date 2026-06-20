@@ -114,17 +114,10 @@ class WideMemory:
             history=self._history_store,
         )
 
-        self._graph_store = None
-        if self.config.enable_graph:
-            from widemem.graph.store import GraphStore
-            self._graph_store = GraphStore(self.config.graph_db_path)
-
     def close(self) -> None:
         self._history_store.close()
         if self._collector:
             self._collector.close()
-        if self._graph_store:
-            self._graph_store.close()
 
     def __enter__(self):
         return self
@@ -156,7 +149,7 @@ class WideMemory:
                 f"Text too long ({len(text)} chars). Maximum is {self.MAX_TEXT_LENGTH}."
             )
         event_time = as_utc(timestamp) if timestamp else parse_leading_datetime(text)
-        result = self.pipeline.process(
+        return self.pipeline.process(
             text=text,
             user_id=user_id,
             agent_id=agent_id,
@@ -164,22 +157,6 @@ class WideMemory:
             event_time=event_time,
             on_clarification=on_clarification,
         )
-        if self._graph_store is not None and result.memories:
-            self._ingest_graph(result.memories, user_id)
-        return result
-
-    def _ingest_graph(self, memories: List[Memory], user_id: Optional[str]) -> None:
-        """Extract typed triples from newly-stored memories and add them to the
-        graph. Best-effort: a triple-extraction failure never blocks the flat
-        add (the memory is already persisted)."""
-        from widemem.graph.extract import extract_triples
-        for mem in memories:
-            try:
-                triples = extract_triples(self.llm, mem.content)
-                if triples:
-                    self._graph_store.add_triples(triples, memory_id=mem.id, user_id=user_id)
-            except Exception:
-                continue
 
     def add_batch(
         self,
@@ -432,29 +409,6 @@ class WideMemory:
         if use_hierarchy and tier is None:
             preferred = classify_query(query)
             ranked = route_results(ranked, preferred)
-
-        # Graph augmentation: for NON-factual queries, surface relationally-
-        # connected memories the similarity pool missed. Gated off factual
-        # queries (classify_query == FACT) so single-hop and the importance-
-        # weighted multi-hop path are untouched.
-        if (
-            self._graph_store is not None
-            and tier is None
-            and classify_query(query) != MemoryTier.FACT
-        ):
-            from widemem.graph.retrieve import augment_with_graph
-            ranked = augment_with_graph(
-                ranked,
-                query=query,
-                graph_store=self._graph_store,
-                vector_store=self.vector_store,
-                user_id=user_id,
-                now=datetime.now(timezone.utc),
-                hops=self.config.graph_hops,
-                max_nodes=self.config.graph_max_nodes,
-                boost_weight=self.config.graph_boost_weight,
-                max_inject=self.config.graph_max_inject,
-            )
 
         return ranked[:effective_top_k]
 

@@ -272,30 +272,6 @@ class MemoryConfig(BaseModel):
     pooled candidates share a query entity. Damps very common entities
     so a frequently-mentioned name does not dominate. Only active when
     entity_boost_weight > 0."""
-    enable_graph: bool = False
-    """Optional typed entity-relationship graph layer (v1.6 experiment).
-
-    When True, ingestion extracts (subject, relation, object) triples
-    alongside flat facts (one extra LLM call per add) and stores them in a
-    SQLite graph at graph_db_path. At search time, for NON-factual queries
-    (open-domain / broad), the query's entity anchors are traversed up to
-    graph_hops to surface relationally-connected memories that pure vector
-    similarity misses, targeting the structurally-capped open-domain
-    category. Off by default: when False, the graph package is never
-    imported and behavior is byte-identical to the flat store."""
-    graph_db_path: str = "~/.widemem/graph.db"
-    graph_hops: int = 2
-    """BFS depth from query-entity anchors during graph augmentation."""
-    graph_max_nodes: int = 40
-    """Cap on entities visited per traversal (runaway / hub-node guard)."""
-    graph_boost_weight: float = 0.30
-    """Additive score for graph-connected memories: in-pool candidates the
-    graph links to a query anchor get +weight; relationally-connected
-    memories absent from the similarity pool are injected at this score.
-    The primary tuning knob for the graph layer."""
-    graph_max_inject: int = 10
-    """Max memories injected per query that were NOT in the similarity pool.
-    Bounds token growth and stops a hub entity from flooding the context."""
 
     def get_retrieval_preset(self) -> dict:
         """Get the retrieval preset for the configured mode."""
