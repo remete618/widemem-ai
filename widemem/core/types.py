@@ -115,6 +115,28 @@ class SearchResult:
         return len(self.results) > 0
 
 
+class ExplainedMemory(BaseModel):
+    """A retrieved memory with its 'why matched' score breakdown, for the
+    explain=True trust path."""
+    content: str
+    final_score: float
+    similarity: float
+    importance: float
+    recency: float
+    ymyl_category: Optional[str] = None
+
+
+class RetrievalExplanation(BaseModel):
+    """Trust verdict returned by search(explain=True). Tells an agent not just
+    what was retrieved but whether it is safe to use in an answer."""
+    answerable: bool
+    confidence: float
+    confidence_level: str
+    requires_review: bool
+    reason: str
+    memories: list[ExplainedMemory] = Field(default_factory=list)
+
+
 class HistoryEntry(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     memory_id: str
@@ -203,14 +225,18 @@ class MemoryConfig(BaseModel):
     extractions_db_path: str = "~/.widemem/extractions.db"
     ttl_days: Optional[int] = None
     parse_temporal_hints: bool = False
-    """Auto-parse temporal hints from queries into time_after / time_before filters.
+    """Auto-parse temporal hints from queries into a soft recency boost.
 
     When True, queries like "What happened in July 2023?" or "last month"
-    auto-set the time range used by search(), narrowing the result set to
-    memories from that period. Off by default for backwards compatibility;
-    flip on per-instance via MemoryConfig(parse_temporal_hints=True) or
-    leave off and pass time_after/time_before explicitly to search().
-    Explicit args always win over parsed hints when both are present.
+    are parsed into a time window that is applied as a SOFT BOOST in
+    ranking: in-window memories are nudged up, out-of-window memories are
+    NOT excluded. This is deliberate; a wrong heuristic parse cannot wipe
+    out the candidate pool. For a HARD filter that excludes out-of-window
+    memories, pass time_after/time_before explicitly to search() (caller
+    intent), which always wins over parsed hints. Off by default for
+    backwards compatibility; flip on per-instance via
+    MemoryConfig(parse_temporal_hints=True). See widemem/retrieval/temporal.py
+    for the boost-vs-filter semantics.
     """
     enable_hybrid_search: bool = False
     """Blend BM25 keyword scores into the vector similarity signal.
@@ -246,6 +272,30 @@ class MemoryConfig(BaseModel):
     pooled candidates share a query entity. Damps very common entities
     so a frequently-mentioned name does not dominate. Only active when
     entity_boost_weight > 0."""
+    enable_graph: bool = False
+    """Optional typed entity-relationship graph layer (v1.6 experiment).
+
+    When True, ingestion extracts (subject, relation, object) triples
+    alongside flat facts (one extra LLM call per add) and stores them in a
+    SQLite graph at graph_db_path. At search time, for NON-factual queries
+    (open-domain / broad), the query's entity anchors are traversed up to
+    graph_hops to surface relationally-connected memories that pure vector
+    similarity misses, targeting the structurally-capped open-domain
+    category. Off by default: when False, the graph package is never
+    imported and behavior is byte-identical to the flat store."""
+    graph_db_path: str = "~/.widemem/graph.db"
+    graph_hops: int = 2
+    """BFS depth from query-entity anchors during graph augmentation."""
+    graph_max_nodes: int = 40
+    """Cap on entities visited per traversal (runaway / hub-node guard)."""
+    graph_boost_weight: float = 0.30
+    """Additive score for graph-connected memories: in-pool candidates the
+    graph links to a query anchor get +weight; relationally-connected
+    memories absent from the similarity pool are injected at this score.
+    The primary tuning knob for the graph layer."""
+    graph_max_inject: int = 10
+    """Max memories injected per query that were NOT in the similarity pool.
+    Bounds token growth and stops a hub entity from flooding the context."""
 
     def get_retrieval_preset(self) -> dict:
         """Get the retrieval preset for the configured mode."""

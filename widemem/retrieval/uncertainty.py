@@ -13,9 +13,14 @@ from widemem.core.types import (
 )
 
 _DEFAULT_THRESHOLDS = {
-    "high": 0.45,
-    "moderate": 0.25,
-    "low": 0.12,
+    # Calibrated for text-embedding-3-small, whose cosine similarity has a high
+    # baseline: unrelated short texts routinely score ~0.35-0.50, so the old
+    # high=0.45 read an unrelated memory as "high confidence / safe to answer"
+    # (the explain=True false positive). Genuine matches sit ~0.6+. Heuristic
+    # defaults, env-overridable; refine with a labeled relevant/irrelevant sweep.
+    "high": 0.60,
+    "moderate": 0.50,
+    "low": 0.30,
 }
 
 
