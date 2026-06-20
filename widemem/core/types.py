@@ -115,6 +115,28 @@ class SearchResult:
         return len(self.results) > 0
 
 
+class ExplainedMemory(BaseModel):
+    """A retrieved memory with its 'why matched' score breakdown, for the
+    explain=True trust path."""
+    content: str
+    final_score: float
+    similarity: float
+    importance: float
+    recency: float
+    ymyl_category: Optional[str] = None
+
+
+class RetrievalExplanation(BaseModel):
+    """Trust verdict returned by search(explain=True). Tells an agent not just
+    what was retrieved but whether it is safe to use in an answer."""
+    answerable: bool
+    confidence: float
+    confidence_level: str
+    requires_review: bool
+    reason: str
+    memories: list[ExplainedMemory] = Field(default_factory=list)
+
+
 class HistoryEntry(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     memory_id: str
@@ -203,14 +225,18 @@ class MemoryConfig(BaseModel):
     extractions_db_path: str = "~/.widemem/extractions.db"
     ttl_days: Optional[int] = None
     parse_temporal_hints: bool = False
-    """Auto-parse temporal hints from queries into time_after / time_before filters.
+    """Auto-parse temporal hints from queries into a soft recency boost.
 
     When True, queries like "What happened in July 2023?" or "last month"
-    auto-set the time range used by search(), narrowing the result set to
-    memories from that period. Off by default for backwards compatibility;
-    flip on per-instance via MemoryConfig(parse_temporal_hints=True) or
-    leave off and pass time_after/time_before explicitly to search().
-    Explicit args always win over parsed hints when both are present.
+    are parsed into a time window that is applied as a SOFT BOOST in
+    ranking: in-window memories are nudged up, out-of-window memories are
+    NOT excluded. This is deliberate; a wrong heuristic parse cannot wipe
+    out the candidate pool. For a HARD filter that excludes out-of-window
+    memories, pass time_after/time_before explicitly to search() (caller
+    intent), which always wins over parsed hints. Off by default for
+    backwards compatibility; flip on per-instance via
+    MemoryConfig(parse_temporal_hints=True). See widemem/retrieval/temporal.py
+    for the boost-vs-filter semantics.
     """
     enable_hybrid_search: bool = False
     """Blend BM25 keyword scores into the vector similarity signal.

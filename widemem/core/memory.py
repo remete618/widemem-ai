@@ -183,7 +183,15 @@ class WideMemory:
         time_before: Optional[datetime] = None,
         tier: Optional[MemoryTier] = None,
         mode: Optional[RetrievalMode] = None,
-    ) -> SearchResult:
+        explain: bool = False,
+    ):
+        """Search memory. Returns a SearchResult (list-like) normally.
+
+        With explain=True, returns a RetrievalExplanation trust verdict
+        instead: answerable, confidence, requires_review, reason, and per-memory
+        score provenance, so an agent can decide whether the memory is safe to
+        use in an answer.
+        """
         final = self._search_ranked(
             query=query,
             user_id=user_id,
@@ -195,6 +203,9 @@ class WideMemory:
             mode=mode,
         )
         confidence = assess_confidence(final)
+        if explain:
+            from widemem.retrieval.explain import build_explanation
+            return build_explanation(final, confidence)
         return SearchResult(results=final, confidence=confidence)
 
     async def search_stream(

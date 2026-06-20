@@ -32,3 +32,12 @@ venv/
 
 # Per-run mini-LoCoMo results; the baseline file is tracked.
 benchmark/results/mini_locomo_*Z.json
+
+# Benchmark artifacts: stores, result JSONs, logs, chunks (regenerable, large).
+# Keep only the tracked mini-LoCoMo baseline.
+/benchmark/results/*
+!/benchmark/results/mini_locomo_baseline.json
+# LoCoMo dataset (downloaded from snap-research/locomo, not part of the package)
+/benchmark/locomo-data/
+# Logs anywhere
+*.log
