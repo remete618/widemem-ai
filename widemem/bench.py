@@ -43,6 +43,14 @@ def build_report(result: Dict[str, Any], judge_prompt: str | None = None) -> Tup
         f"| {c} | {counts.get(c, '?')} | {by_cat.get(c, 0):.2f} |"
         for c in _CATEGORIES
     )
+    # Built outside the f-string: backslash escapes inside f-string expressions
+    # are only valid on Python 3.12+, and the package targets 3.10.
+    fence = "```"
+    judge_block = (
+        f"{fence}\n{judge_prompt.strip()}\n{fence}"
+        if judge_prompt
+        else "_(embed the judge prompt used; see harness)_"
+    )
     md = f"""# Widemem LoCoMo benchmark report
 
 **Reproducibility hash:** `{rhash}`
@@ -64,7 +72,7 @@ def build_report(result: Dict[str, Any], judge_prompt: str | None = None) -> Tup
 - run cost: ${meta.get('cost_usd')}
 
 ## Judge prompt
-{('```\n' + judge_prompt.strip() + '\n```') if judge_prompt else '_(embed the judge prompt used; see harness)_'}
+{judge_block}
 
 ## Raw predictions
 {len(preds)} predictions included in the source result file (question, gold, predicted, per-question j_score).
