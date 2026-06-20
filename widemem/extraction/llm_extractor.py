@@ -41,7 +41,16 @@ class LLMExtractor(BaseExtractor):
         facts = []
         for item in result.get("facts", []):
             if isinstance(item, dict) and "content" in item:
-                importance = float(item.get("importance", 5.0))
+                # Defensive importance parse: the LLM occasionally emits
+                # "importance": null (dict.get returns None, not the default),
+                # a string, or an out-of-range number. Any of these previously
+                # raised and dropped the ENTIRE turn's facts. Coerce safely and
+                # clamp to the Fact-valid [0, 10] range.
+                try:
+                    importance = float(item.get("importance"))
+                except (TypeError, ValueError):
+                    importance = 5.0
+                importance = max(0.0, min(10.0, importance))
                 content = item["content"]
                 ymyl_category = None
 
