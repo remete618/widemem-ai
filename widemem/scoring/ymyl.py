@@ -13,11 +13,13 @@ _YMYL_STRONG_PATTERNS = {
     "medical": [
         r"\b(lab results|medical condition|chronic condition"
         r"|medical history|treatment plan|medical emergency"
-        # Allergies and active prescriptions are safety-critical: an agent must
-        # never treat them as casual. Force-tag as strong rather than leave to
-        # the LLM, which missed "allergic to penicillin".
-        r"|allergic to|allergy|allergies|anaphylaxis|allergic reaction"
-        r"|prescribed)\b",
+        # Allergies are safety-critical (anaphylaxis risk): an agent must never
+        # treat them as casual. Force-tag as strong rather than leave to the
+        # LLM, which missed "allergic to penicillin". (Bare "prescribed" is
+        # deliberately NOT here: it collides with the health-tier "doctor
+        # prescribed medication" case and is less acutely critical than an
+        # allergy.)
+        r"|allergic to|allergy|allergies|anaphylaxis|allergic reaction)\b",
     ],
     "financial": [
         r"\b(bank account|savings account|credit score|credit card|mortgage rate"

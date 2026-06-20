@@ -19,12 +19,16 @@ def test_allergy_noun_is_strong():
     assert is_ymyl_strong("I have a severe peanut allergy.", CFG)
 
 
-def test_prescribed_medication_is_strong():
-    assert is_ymyl_strong("She was prescribed amoxicillin for the infection.", CFG)
-
-
 def test_anaphylaxis_is_strong():
     assert is_ymyl_strong("He had an anaphylaxis episode last year.", CFG)
+
+
+def test_doctor_prescribed_medication_stays_health_not_medical():
+    # Guard the collision: the pre-existing health-tier two-weak-hit case must
+    # not be captured by the new allergy patterns.
+    r = classify_ymyl_detailed("doctor prescribed medication", CFG)
+    assert r.category == "health"
+    assert r.is_strong
 
 
 def test_non_medical_stays_clean():
