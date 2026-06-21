@@ -210,8 +210,14 @@ class PgVectorStore(BaseVectorStore):
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Tuple[str, float, Dict[str, Any]]]:
         self._validate_vector(vector)
+        # Pass the query vector as a pgvector string literal with an explicit
+        # ::vector cast. psycopg adapts a plain Python list to double precision[]
+        # (register_vector only adapts numpy arrays), and the bare <=> operator
+        # cannot infer the vector type from a bound array param the way an INSERT
+        # into a vector column can. Casting makes search work on real Postgres.
+        vec_literal = "[" + ",".join(repr(float(x)) for x in vector) + "]"
         where_clauses: List[str] = []
-        params: List[Any] = [vector]
+        params: List[Any] = [vec_literal]
         if filters:
             for key, value in filters.items():
                 if key in _INDEXED_FIELDS:
@@ -225,16 +231,16 @@ class PgVectorStore(BaseVectorStore):
 
         # Cosine distance via pgvector's <=> operator. similarity = 1 - distance.
         sql = f"""
-            SELECT id, 1 - (embedding <=> %s) AS similarity, content,
+            SELECT id, 1 - (embedding <=> %s::vector) AS similarity, content,
                    user_id, agent_id, run_id, tier, ymyl_category,
                    importance, metadata, created_at, updated_at
             FROM {self.table_name}
             {where}
-            ORDER BY embedding <=> %s
+            ORDER BY embedding <=> %s::vector
             LIMIT %s
         """
         # Add the second vector binding for ORDER BY, plus the top_k.
-        params.append(vector)
+        params.append(vec_literal)
         params.append(top_k)
         with self._conn.cursor() as cur:
             cur.execute(sql, params)

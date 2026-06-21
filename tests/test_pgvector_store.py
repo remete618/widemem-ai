@@ -236,9 +236,22 @@ def test_search_orders_by_cosine_distance(store, fake_conn):
     cur.fetchall.return_value = []
     store.search([0.1, 0.2, 0.3, 0.4], top_k=5)
     sql = cur.execute.call_args.args[0]
-    assert "1 - (embedding <=> %s)" in sql
-    assert "ORDER BY embedding <=> %s" in sql
+    # The query vector MUST be cast to ::vector. Without it, real Postgres
+    # rejects the bound list param as double precision[] (verified live on
+    # Supabase; the bare-operator form passed mocks but failed in production).
+    assert "1 - (embedding <=> %s::vector)" in sql
+    assert "ORDER BY embedding <=> %s::vector" in sql
     assert "LIMIT %s" in sql
+
+
+def test_search_passes_vector_as_castable_literal(store, fake_conn):
+    # Param must be a pgvector string literal, not a raw list (which psycopg
+    # adapts to double precision[] and the <=> operator can't match).
+    _, cur = fake_conn
+    cur.fetchall.return_value = []
+    store.search([0.1, 0.2, 0.3, 0.4], top_k=5)
+    params = cur.execute.call_args.args[1]
+    assert params[0] == "[0.1,0.2,0.3,0.4]"
 
 
 def test_search_returns_similarity_as_one_minus_distance(store, fake_conn):

@@ -64,6 +64,25 @@ def test_non_safety_ymyl_high_confidence_no_review():
     assert e.answerable is True
 
 
+def test_abstained_answer_overrides_high_confidence():
+    # Even with a strong retrieval match, a refusal answer => not answerable.
+    e = build_explanation([_res(0.82)], RetrievalConfidence.HIGH,
+                          answer="I don't have that information.")
+    assert e.answerable is False
+    assert "refusal" in e.reason
+
+
+def test_real_answer_with_high_confidence_is_answerable():
+    e = build_explanation([_res(0.82)], RetrievalConfidence.HIGH, answer="Sweden")
+    assert e.answerable is True
+
+
+def test_no_answer_arg_preserves_prior_behavior():
+    # answer omitted => behaves as before (retrieval-only verdict)
+    e = build_explanation([_res(0.82)], RetrievalConfidence.HIGH)
+    assert e.answerable is True
+
+
 def test_score_provenance_surfaced():
     e = build_explanation([_res(0.5)], RetrievalConfidence.HIGH)
     m = e.memories[0]
