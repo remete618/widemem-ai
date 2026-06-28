@@ -223,6 +223,13 @@ class MemoryConfig(BaseModel):
     active_retrieval_threshold: float = 0.6
     collect_extractions: bool = False
     extractions_db_path: str = "~/.widemem/extractions.db"
+    enable_fact_consolidation: bool = False
+    """Enable per-fact consolidation against linked memories during writes.
+
+    When True, the extraction pipeline passes each fact's top similar memory
+    IDs into the batch conflict resolver, which can then choose ADD, UPDATE,
+    DELETE, or NONE against those linked candidates. Off by default so the
+    write-side change can be measured cleanly and opt-in per config."""
     ttl_days: Optional[int] = None
     parse_temporal_hints: bool = False
     """Auto-parse temporal hints from queries into a soft recency boost.

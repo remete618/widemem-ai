@@ -50,8 +50,10 @@ class MemoryPipeline:
         ymyl_active_retrieval: Optional[ActiveRetrieval] = None,
         ymyl_config: Optional[YMYLConfig] = None,
         enable_entity_index: bool = False,
+        enable_fact_consolidation: bool = False,
     ) -> None:
         self.enable_entity_index = enable_entity_index
+        self.enable_fact_consolidation = enable_fact_consolidation
         self.extractor = extractor
         self.resolver = resolver
         self.embedder = embedder
@@ -74,7 +76,7 @@ class MemoryPipeline:
         if not facts:
             return AddResult(memories=[])
 
-        existing = self._find_existing(facts, user_id=user_id, agent_id=agent_id)
+        existing, linked_by_fact = self._find_existing(facts, user_id=user_id, agent_id=agent_id)
 
         clarifications: List[Clarification] = []
         active = self.active_retrieval
@@ -94,7 +96,8 @@ class MemoryPipeline:
                 if responses is None:
                     return AddResult(memories=[], clarifications=clarifications)
 
-        actions = self.resolver.resolve(facts, existing)
+        linked_memories = linked_by_fact if self.enable_fact_consolidation else None
+        actions = self.resolver.resolve(facts, existing, linked_memories)
         existing_hashes = {
             m.memory.metadata.get("content_hash") or content_hash(m.memory.content)
             for m in existing
@@ -110,8 +113,9 @@ class MemoryPipeline:
         facts: list[Fact],
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
-    ) -> list[MemorySearchResult]:
+    ) -> tuple[list[MemorySearchResult], list[list[MemorySearchResult]]]:
         all_results: dict[str, MemorySearchResult] = {}
+        linked_by_fact: list[list[MemorySearchResult]] = []
 
         embeddings = self.embedder.embed_batch([f.content for f in facts])
 
@@ -127,20 +131,28 @@ class MemoryPipeline:
                 top_k=5,
                 filters=filters or None,
             )
+            fact_results: list[MemorySearchResult] = []
+            seen_ids: set[str] = set()
             for id, score, metadata in results:
+                if id in seen_ids:
+                    continue
+                seen_ids.add(id)
+                result = MemorySearchResult(
+                    memory=Memory(
+                        id=id,
+                        content=metadata.get("content", ""),
+                        user_id=metadata.get("user_id"),
+                        agent_id=metadata.get("agent_id"),
+                        importance=metadata.get("importance", 5.0),
+                    ),
+                    similarity_score=score,
+                )
+                fact_results.append(result)
                 if id not in all_results:
-                    all_results[id] = MemorySearchResult(
-                        memory=Memory(
-                            id=id,
-                            content=metadata.get("content", ""),
-                            user_id=metadata.get("user_id"),
-                            agent_id=metadata.get("agent_id"),
-                            importance=metadata.get("importance", 5.0),
-                        ),
-                        similarity_score=score,
-                    )
+                    all_results[id] = result
+            linked_by_fact.append(fact_results)
 
-        return list(all_results.values())
+        return list(all_results.values()), linked_by_fact
 
     def _hash_exists(self, hash_val: str, existing_hashes: set) -> bool:
         return hash_val in existing_hashes
