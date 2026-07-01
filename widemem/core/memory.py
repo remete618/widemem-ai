@@ -105,6 +105,7 @@ class WideMemory:
             ymyl_active_retrieval=ymyl_active,
             ymyl_config=self.config.ymyl,
             enable_entity_index=self.config.enable_entity_index,
+            enable_fact_consolidation=self.config.enable_fact_consolidation,
         )
 
         self._hierarchy = HierarchyManager(
