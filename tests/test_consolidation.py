@@ -165,6 +165,52 @@ def test_resolver_invalid_update_degrades_to_none_when_unchanged() -> None:
     assert actions[0].target_id is None
 
 
+def test_resolver_invalid_delete_degrades_to_none() -> None:
+    llm = CountingLLM(
+        responses=[
+            {
+                "actions": [
+                    {"fact_index": 0, "action": "delete", "target_id": 999, "importance": 7},
+                ]
+            }
+        ]
+    )
+    resolver = BatchConflictResolver(llm)
+    existing = [_make_existing("mem-a", "Lives in Berlin")]
+    facts = [Fact(content="Lives in Berlin", importance=7.0)]
+    linked = [[existing[0]]]
+
+    actions = resolver.resolve(facts, existing, linked)
+
+    assert llm.calls == 1
+    assert len(actions) == 1
+    assert actions[0].action == MemoryAction.NONE
+    assert actions[0].target_id is None
+
+
+def test_resolver_valid_update_noops_when_content_matches() -> None:
+    llm = CountingLLM(
+        responses=[
+            {
+                "actions": [
+                    {"fact_index": 0, "action": "update", "target_id": 0, "importance": 7},
+                ]
+            }
+        ]
+    )
+    resolver = BatchConflictResolver(llm)
+    existing = [_make_existing("mem-a", "Lives in Berlin")]
+    facts = [Fact(content="Lives in Berlin", importance=7.0)]
+    linked = [[existing[0]]]
+
+    actions = resolver.resolve(facts, existing, linked)
+
+    assert llm.calls == 1
+    assert len(actions) == 1
+    assert actions[0].action == MemoryAction.NONE
+    assert actions[0].target_id is None
+
+
 def test_pipeline_is_idempotent_for_same_input() -> None:
     llm = CountingLLM(
         responses=[

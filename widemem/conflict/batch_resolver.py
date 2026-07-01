@@ -51,21 +51,7 @@ class BatchConflictResolver:
         try:
             result = self.llm.generate_json(prompt, system=BATCH_CONFLICT_RESOLUTION_SYSTEM)
         except (OSError, ConnectionError, TimeoutError, RuntimeError, ProviderError) as exc:
-            logger.warning(
-                "Conflict resolver LLM call failed (%s), falling back to ADD with dedup",
-                exc,
-            )
-            existing_hashes = {content_hash(m.memory.content) for m in existing_memories}
-            return [
-                ActionItem(
-                    action=MemoryAction.ADD,
-                    fact=f.content,
-                    importance=f.importance,
-                    ymyl_category=f.ymyl_category,
-                )
-                for f in new_facts
-                if content_hash(f.content) not in existing_hashes
-            ]
+            return self._fallback_add_with_dedup(new_facts, existing_memories, exc)
 
         return self._parse_actions(
             new_facts=new_facts,
@@ -101,21 +87,7 @@ class BatchConflictResolver:
         try:
             result = self.llm.generate_json(prompt, system=BATCH_CONFLICT_RESOLUTION_SYSTEM)
         except (OSError, ConnectionError, TimeoutError, RuntimeError, ProviderError) as exc:
-            logger.warning(
-                "Conflict resolver LLM call failed (%s), falling back to ADD with dedup",
-                exc,
-            )
-            existing_hashes = {content_hash(m.memory.content) for m in existing_memories}
-            return [
-                ActionItem(
-                    action=MemoryAction.ADD,
-                    fact=f.content,
-                    importance=f.importance,
-                    ymyl_category=f.ymyl_category,
-                )
-                for f in new_facts
-                if content_hash(f.content) not in existing_hashes
-            ]
+            return self._fallback_add_with_dedup(new_facts, existing_memories, exc)
 
         return self._parse_actions(
             new_facts=new_facts,
@@ -277,6 +249,10 @@ class BatchConflictResolver:
             return action, None
 
         if target_id in valid_ids:
+            if action == MemoryAction.UPDATE:
+                target = next((mem for mem in linked_group if mem.memory.id == target_id), None)
+                if target and content_hash(target.memory.content) == content_hash(fact.content):
+                    return MemoryAction.NONE, None
             return action, target_id
 
         if linked_group:
@@ -287,8 +263,32 @@ class BatchConflictResolver:
                 and content_hash(fallback.memory.content) == content_hash(fact.content)
             ):
                 return MemoryAction.NONE, None
-            return action, fallback_id
+            if action == MemoryAction.UPDATE:
+                return action, fallback_id
+            return MemoryAction.NONE, None
 
         if action == MemoryAction.UPDATE:
             return MemoryAction.ADD, None
         return MemoryAction.NONE, None
+
+    def _fallback_add_with_dedup(
+        self,
+        new_facts: list[Fact],
+        existing_memories: list[MemorySearchResult],
+        exc: Exception,
+    ) -> list[ActionItem]:
+        logger.warning(
+            "Conflict resolver LLM call failed (%s), falling back to ADD with dedup",
+            exc,
+        )
+        existing_hashes = {content_hash(m.memory.content) for m in existing_memories}
+        return [
+            ActionItem(
+                action=MemoryAction.ADD,
+                fact=f.content,
+                importance=f.importance,
+                ymyl_category=f.ymyl_category,
+            )
+            for f in new_facts
+            if content_hash(f.content) not in existing_hashes
+        ]
