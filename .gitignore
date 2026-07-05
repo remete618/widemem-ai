@@ -41,3 +41,4 @@ benchmark/results/mini_locomo_*Z.json
 /benchmark/locomo-data/
 # Logs anywhere
 *.log
+.vercel
