@@ -59,3 +59,12 @@ class BaseVectorStore(ABC):
     ) -> list[tuple[str, dict[str, Any]]]:
         """Returns list of (id, metadata) for all matching entries. Override for efficiency."""
         raise NotImplementedError
+
+    def count(self, filters: dict[str, Any] | None = None) -> int:
+        """Return the number of entries matching ``filters`` (all if None).
+
+        Default falls back to materializing ``list_all`` and taking its length.
+        Backends override this with a native count so callers never pay the
+        cost of loading every row just to size the store.
+        """
+        return len(self.list_all(filters=filters, max_results=1_000_000))

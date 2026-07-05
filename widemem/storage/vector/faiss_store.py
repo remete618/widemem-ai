@@ -161,6 +161,16 @@ class FAISSVectorStore(BaseVectorStore):
                     break
             return results
 
+    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        with self._lock:
+            if not filters:
+                return len(self._id_to_idx)
+            return sum(
+                1
+                for meta in self._metadata.values()
+                if self._matches_filters(meta, filters)
+            )
+
     def _matches_filters(self, metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
         for key, value in filters.items():
             if metadata.get(key) != value:

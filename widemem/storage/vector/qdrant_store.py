@@ -77,7 +77,10 @@ class QdrantVectorStore(BaseVectorStore):
 
         output = []
         for point in results.points:
-            payload = point.payload or {}
+            # Copy before popping: in-process (embedded) clients hand back the
+            # live cached payload object, so mutating it would corrupt their
+            # store. dict() gives us a private copy to strip the internal key.
+            payload = dict(point.payload or {})
             widemem_id = payload.pop("_widemem_id", str(point.id))
             output.append((widemem_id, point.score, payload))
         return output
@@ -102,7 +105,8 @@ class QdrantVectorStore(BaseVectorStore):
         if not results:
             return None
         point = results[0]
-        payload = point.payload or {}
+        # Copy before popping so an embedded client's cached payload is untouched.
+        payload = dict(point.payload or {})
         payload.pop("_widemem_id", None)
         vector = point.vector if isinstance(point.vector, list) else []
         return vector, payload
@@ -131,10 +135,27 @@ class QdrantVectorStore(BaseVectorStore):
 
         output = []
         for point in results[0]:
-            payload = point.payload or {}
+            # Copy before popping so an embedded client's cached payload is untouched.
+            payload = dict(point.payload or {})
             widemem_id = payload.pop("_widemem_id", str(point.id))
             output.append((widemem_id, payload))
         return output
+
+    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        count_filter = None
+        if filters:
+            from qdrant_client.models import FieldCondition, Filter, MatchValue
+            conditions = [
+                FieldCondition(key=k, match=MatchValue(value=v))
+                for k, v in filters.items()
+            ]
+            count_filter = Filter(must=conditions)
+        result = self.client.count(
+            collection_name=self.collection_name,
+            count_filter=count_filter,
+            exact=True,
+        )
+        return result.count
 
     def _to_qdrant_id(self, id: str) -> str:
         try:

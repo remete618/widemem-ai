@@ -4,7 +4,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
 from widemem.core._time import as_utc
@@ -563,8 +563,7 @@ class WideMemory:
             filters["agent_id"] = agent_id
         if tier:
             filters["tier"] = tier.value
-        items = self.vector_store.list_all(filters=filters or None, max_results=100000)
-        return len(items)
+        return self.vector_store.count(filters=filters or None)
 
     def export_json(
         self,
@@ -585,51 +584,67 @@ class WideMemory:
     def import_json(self, data: str) -> int:
         parsed = json.loads(data)
         imported = 0
+        # First pass: validate and build every (id, metadata, content) record.
+        # Second pass: embed all contents in a single batched call instead of
+        # one embedder round-trip per memory. Insertion order is preserved.
+        pending: List[Tuple[str, Dict[str, Any]]] = []
+        contents: List[str] = []
+        seen_ids: set[str] = set()
+        for item in parsed.get("memories", []):
+            memory_id = item.get("id")
+            content = item.get("content", "")
+            if not content or len(content) > 50000:
+                continue
+            if memory_id:
+                if memory_id in seen_ids:
+                    continue
+                if self.vector_store.get(memory_id):
+                    continue
+            raw_importance = item.get("importance", 5.0)
+            try:
+                importance = max(0.0, min(10.0, float(raw_importance)))
+            except (TypeError, ValueError):
+                importance = 5.0
+            raw_tier = item.get("tier", "fact")
+            try:
+                tier = MemoryTier(raw_tier)
+            except ValueError:
+                tier = MemoryTier.FACT
+            memory = Memory(
+                id=memory_id or str(uuid.uuid4()),
+                content=content,
+                user_id=item.get("user_id"),
+                agent_id=item.get("agent_id"),
+                importance=importance,
+                tier=tier,
+                content_hash=item.get("content_hash", ""),
+            )
+            metadata = {
+                "content": memory.content,
+                "user_id": memory.user_id,
+                "agent_id": memory.agent_id,
+                "run_id": memory.run_id,
+                "tier": memory.tier.value,
+                "importance": memory.importance,
+                "content_hash": memory.content_hash,
+                "created_at": item.get("created_at", memory.created_at.isoformat()),
+                "updated_at": item.get("updated_at", memory.updated_at.isoformat()),
+            }
+            if item.get("event_time"):
+                metadata["event_time"] = item["event_time"]
+            if item.get("entities"):
+                metadata["entities"] = item["entities"]
+            seen_ids.add(memory.id)
+            pending.append((memory.id, metadata))
+            contents.append(content)
+
+        if not pending:
+            return 0
+
+        embeddings = self.embedder.embed_batch(contents)
         with self.vector_store.batch_writes():
-            for item in parsed.get("memories", []):
-                memory_id = item.get("id")
-                content = item.get("content", "")
-                if not content or len(content) > 50000:
-                    continue
-                existing = self.vector_store.get(memory_id) if memory_id else None
-                if existing:
-                    continue
-                raw_importance = item.get("importance", 5.0)
-                try:
-                    importance = max(0.0, min(10.0, float(raw_importance)))
-                except (TypeError, ValueError):
-                    importance = 5.0
-                raw_tier = item.get("tier", "fact")
-                try:
-                    tier = MemoryTier(raw_tier)
-                except ValueError:
-                    tier = MemoryTier.FACT
-                embedding = self.embedder.embed(content)
-                memory = Memory(
-                    id=memory_id or str(uuid.uuid4()),
-                    content=content,
-                    user_id=item.get("user_id"),
-                    agent_id=item.get("agent_id"),
-                    importance=importance,
-                    tier=tier,
-                    content_hash=item.get("content_hash", ""),
-                )
-                metadata = {
-                    "content": memory.content,
-                    "user_id": memory.user_id,
-                    "agent_id": memory.agent_id,
-                    "run_id": memory.run_id,
-                    "tier": memory.tier.value,
-                    "importance": memory.importance,
-                    "content_hash": memory.content_hash,
-                    "created_at": item.get("created_at", memory.created_at.isoformat()),
-                    "updated_at": item.get("updated_at", memory.updated_at.isoformat()),
-                }
-                if item.get("event_time"):
-                    metadata["event_time"] = item["event_time"]
-                if item.get("entities"):
-                    metadata["entities"] = item["entities"]
-                self.vector_store.insert(id=memory.id, vector=embedding, metadata=metadata)
+            for (mem_id, metadata), embedding in zip(pending, embeddings):
+                self.vector_store.insert(id=mem_id, vector=embedding, metadata=metadata)
                 imported += 1
         return imported
 

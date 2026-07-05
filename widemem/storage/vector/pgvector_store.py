@@ -28,6 +28,7 @@ Optional dependency: install with `pip install widemem-ai[pgvector]`.
 from __future__ import annotations
 
 import json
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 from widemem.core.exceptions import StorageError
@@ -160,6 +161,16 @@ class PgVectorStore(BaseVectorStore):
                 f"Vector dimension mismatch: expected {self.dimensions}, "
                 f"got {len(vector)}"
             )
+        # Guard against inf/-inf/nan. search() builds a ::vector string literal
+        # from these components; a non-finite value produces an invalid literal
+        # that Postgres rejects with an opaque error, and inf/nan corrupts
+        # distance math. Fail early with a clear, actionable message instead.
+        for i, x in enumerate(vector):
+            if not math.isfinite(x):
+                raise ValueError(
+                    f"Vector contains a non-finite value ({x!r}) at index {i}. "
+                    "All components must be finite floats (no inf, -inf, or nan)."
+                )
 
     # ------------------------------------------------------------------
     # BaseVectorStore interface
@@ -300,6 +311,24 @@ class PgVectorStore(BaseVectorStore):
             cur.execute(sql, params)
             rows = cur.fetchall()
         return [(row[0], self._row_to_metadata(row, start_idx=1)) for row in rows]
+
+    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        where_clauses: List[str] = []
+        params: List[Any] = []
+        if filters:
+            for key, value in filters.items():
+                if key in _INDEXED_FIELDS:
+                    where_clauses.append(f"{key} = %s")
+                    params.append(value)
+                else:
+                    where_clauses.append("metadata @> %s")
+                    params.append(json.dumps({key: value}))
+        where = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+        sql = f"SELECT count(*) FROM {self.table_name} {where}"
+        with self._conn.cursor() as cur:
+            cur.execute(sql, params)
+            row = cur.fetchone()
+        return int(row[0]) if row else 0
 
     def close(self) -> None:
         if self._conn is not None and not self._conn.closed:
