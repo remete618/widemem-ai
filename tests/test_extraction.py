@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from pathlib import Path
 from typing import List
 
 import pytest
@@ -33,7 +34,7 @@ def tmp_dir():
 
 class TestExtractionCollector:
     def test_log_and_count(self, tmp_dir):
-        collector = ExtractionCollector(f"{tmp_dir}/extractions.db")
+        collector = ExtractionCollector(f"{tmp_dir}/extractions.db", enabled=True)
         assert collector.count() == 0
 
         facts = [Fact(content="Lives in Berlin", importance=8.0)]
@@ -45,7 +46,7 @@ class TestExtractionCollector:
         collector.close()
 
     def test_export_jsonl(self, tmp_dir):
-        collector = ExtractionCollector(f"{tmp_dir}/extractions.db")
+        collector = ExtractionCollector(f"{tmp_dir}/extractions.db", enabled=True)
         collector.log("I live in Berlin", [Fact(content="Lives in Berlin", importance=8.0)])
         collector.log("I like coffee", [Fact(content="Likes coffee", importance=3.0)])
 
@@ -63,7 +64,7 @@ class TestExtractionCollector:
         collector.close()
 
     def test_export_with_limit(self, tmp_dir):
-        collector = ExtractionCollector(f"{tmp_dir}/extractions.db")
+        collector = ExtractionCollector(f"{tmp_dir}/extractions.db", enabled=True)
         for i in range(5):
             collector.log(f"fact {i}", [Fact(content=f"fact {i}", importance=5.0)])
 
@@ -72,8 +73,37 @@ class TestExtractionCollector:
         assert count == 3
         collector.close()
 
-    def test_multiple_facts_per_entry(self, tmp_dir):
+    def test_disabled_by_default_is_noop(self, tmp_dir, monkeypatch):
+        # No enabled arg and no env flag: collection must be off (PII safety).
+        monkeypatch.delenv("WIDEMEM_COLLECT_EXTRACTIONS", raising=False)
+        db_path = f"{tmp_dir}/extractions.db"
+        collector = ExtractionCollector(db_path)
+        assert collector.enabled is False
+        # log is a no-op returning None, no DB file created.
+        result = collector.log("I live in Berlin", [Fact(content="Lives in Berlin", importance=8.0)])
+        assert result is None
+        assert collector.count() == 0
+        assert not Path(db_path).exists()
+        collector.close()
+
+    def test_env_flag_enables_collection(self, tmp_dir, monkeypatch):
+        monkeypatch.setenv("WIDEMEM_COLLECT_EXTRACTIONS", "1")
         collector = ExtractionCollector(f"{tmp_dir}/extractions.db")
+        assert collector.enabled is True
+        collector.log("I live in Berlin", [Fact(content="Lives in Berlin", importance=8.0)])
+        assert collector.count() == 1
+        collector.close()
+
+    def test_explicit_disable_overrides_env(self, tmp_dir, monkeypatch):
+        monkeypatch.setenv("WIDEMEM_COLLECT_EXTRACTIONS", "1")
+        collector = ExtractionCollector(f"{tmp_dir}/extractions.db", enabled=False)
+        assert collector.enabled is False
+        assert collector.log("x", [Fact(content="x", importance=1.0)]) is None
+        assert collector.count() == 0
+        collector.close()
+
+    def test_multiple_facts_per_entry(self, tmp_dir):
+        collector = ExtractionCollector(f"{tmp_dir}/extractions.db", enabled=True)
         facts = [
             Fact(content="Lives in Berlin", importance=8.0),
             Fact(content="Works at Google", importance=7.0),
@@ -139,7 +169,7 @@ class TestCollectorIntegration:
             def generate_json(self, prompt, system=None):
                 return {"facts": [{"content": "Lives in Berlin", "importance": 8}]}
 
-        collector = ExtractionCollector(f"{tmp_dir}/extractions.db")
+        collector = ExtractionCollector(f"{tmp_dir}/extractions.db", enabled=True)
         extractor = LLMExtractor(MockLLM(), collector=collector)
 
         facts = extractor.extract("I live in Berlin")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Optional
@@ -19,6 +20,8 @@ from widemem.core.types import (
     MemoryConfig,
     VectorStoreConfig,
 )
+
+logger = logging.getLogger(__name__)
 
 _memory: Optional[WideMemory] = None
 
@@ -224,14 +227,15 @@ async def _handle_add(arguments: dict) -> list[types.TextContent]:
                 for c in result.clarifications
             ]
         return [types.TextContent(type="text", text=json.dumps(response, default=str))]
-    except Exception as e:
-        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+    except Exception:
+        logger.exception("Error handling tool call")
+        return [types.TextContent(type="text", text=json.dumps({"error": "internal error"}))]
 
 
 async def _handle_search(arguments: dict) -> list[types.TextContent]:
     query = arguments.get("query", "")
     user_id = arguments.get("user_id")
-    top_k = min(arguments.get("top_k", 5), 100)
+    top_k = max(1, min(arguments.get("top_k", 5), 100))
     if not query:
         return [types.TextContent(type="text", text=json.dumps({"error": "query is required"}))]
     try:
@@ -252,8 +256,9 @@ async def _handle_search(arguments: dict) -> list[types.TextContent]:
             ],
         }
         return [types.TextContent(type="text", text=json.dumps(response, default=str))]
-    except Exception as e:
-        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+    except Exception:
+        logger.exception("Error handling tool call")
+        return [types.TextContent(type="text", text=json.dumps({"error": "internal error"}))]
 
 
 async def _handle_delete(arguments: dict) -> list[types.TextContent]:
@@ -264,8 +269,9 @@ async def _handle_delete(arguments: dict) -> list[types.TextContent]:
         mem = _get_memory()
         mem.delete(memory_id)
         return [types.TextContent(type="text", text=json.dumps({"deleted": memory_id}))]
-    except Exception as e:
-        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+    except Exception:
+        logger.exception("Error handling tool call")
+        return [types.TextContent(type="text", text=json.dumps({"error": "internal error"}))]
 
 
 async def _handle_count(arguments: dict) -> list[types.TextContent]:
@@ -274,8 +280,9 @@ async def _handle_count(arguments: dict) -> list[types.TextContent]:
         mem = _get_memory()
         count = mem.count(user_id=user_id)
         return [types.TextContent(type="text", text=json.dumps({"count": count}))]
-    except Exception as e:
-        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+    except Exception:
+        logger.exception("Error handling tool call")
+        return [types.TextContent(type="text", text=json.dumps({"error": "internal error"}))]
 
 
 async def _handle_pin(arguments: dict) -> list[types.TextContent]:
@@ -294,8 +301,9 @@ async def _handle_pin(arguments: dict) -> list[types.TextContent]:
             ],
         }
         return [types.TextContent(type="text", text=json.dumps(response, default=str))]
-    except Exception as e:
-        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+    except Exception:
+        logger.exception("Error handling tool call")
+        return [types.TextContent(type="text", text=json.dumps({"error": "internal error"}))]
 
 
 async def _handle_export(arguments: dict) -> list[types.TextContent]:
@@ -304,8 +312,9 @@ async def _handle_export(arguments: dict) -> list[types.TextContent]:
         mem = _get_memory()
         data = mem.export_json(user_id=user_id)
         return [types.TextContent(type="text", text=data)]
-    except Exception as e:
-        return [types.TextContent(type="text", text=json.dumps({"error": str(e)}))]
+    except Exception:
+        logger.exception("Error handling tool call")
+        return [types.TextContent(type="text", text=json.dumps({"error": "internal error"}))]
 
 
 async def _handle_health(arguments: dict) -> list[types.TextContent]:

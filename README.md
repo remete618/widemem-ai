@@ -65,7 +65,7 @@ Seven features, one library. Here's what widemem does that most memory systems d
 | 6 | **Confidence & abstention** | Returns confidence level for every retrieval; abstains on memory miss | Lets the agent fall back to "I don't have that" instead of guessing |
 | 7 | **Retrieval modes** | fast / balanced / deep, pick your accuracy-cost tradeoff | Same system, three price points. You pick. |
 
-380+ tests. Zero external services required. SQLite plus FAISS by default. Plug in OpenAI, Anthropic, Ollama, Qdrant, or sentence-transformers as needed.
+490+ tests. Zero external services required. SQLite plus FAISS by default. Plug in OpenAI, Anthropic, Ollama, Qdrant, or sentence-transformers as needed.
 
 ---
 
@@ -556,7 +556,9 @@ The sanitizer runs automatically inside `LLMExtractor.extract()`. This is a base
 
 ## Self-Supervised Extraction
 
-widemem can collect extraction training pairs (`collect_extractions=True` in `MemoryConfig`) and let you distill a small local model from them, falling back to the LLM when the small model's confidence is low. Code in `widemem/extraction/collector.py`. Training scripts under `scripts/`. Off by default.
+widemem can collect extraction training pairs (`collect_extractions=True` in `MemoryConfig`) and let you distill a small local model from them, falling back to the LLM when the small model's confidence is low. Code in `widemem/extraction/collector.py`. Training scripts under `scripts/`.
+
+Collection is off by default and opt-in, because it persists raw, pre-sanitization input text (a PII risk). `ExtractionCollector` stays disabled unless you pass `enabled=True` or set `WIDEMEM_COLLECT_EXTRACTIONS=1`; while disabled it opens no database and every operation is a no-op.
 
 ---
 
@@ -628,7 +630,7 @@ pip install -e ".[dev,faiss]"
 pytest
 ```
 
-380+ tests. They all pass. We checked.
+490+ tests. They all pass. We checked.
 
 ---
 
