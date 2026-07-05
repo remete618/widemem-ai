@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Callable, List, Optional
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
+from widemem.core._time import as_utc
 from widemem.core.types import (
     ActionItem,
     Fact,
@@ -20,6 +21,16 @@ from widemem.scoring.ymyl import is_ymyl_strong
 from widemem.storage.history import HistoryStore
 from widemem.storage.vector.base import BaseVectorStore
 from widemem.utils.hashing import content_hash
+
+
+def _parse_stored_created_at(metadata: dict) -> Optional[datetime]:
+    raw = metadata.get("created_at")
+    if not raw:
+        return None
+    try:
+        return as_utc(datetime.fromisoformat(raw))
+    except (ValueError, TypeError):
+        return None
 
 
 class AddResult:
@@ -199,8 +210,10 @@ class MemoryPipeline:
             elif action.action == MemoryAction.UPDATE and action.target_id:
                 existing = self.vector_store.get(action.target_id)
                 old_content = None
+                preserved_created_at = None
                 if existing:
                     old_content = existing[1].get("content")
+                    preserved_created_at = _parse_stored_created_at(existing[1])
 
                 new_hash = content_hash(action.fact)
                 if existing and existing[1].get("content_hash") == new_hash:
@@ -218,6 +231,12 @@ class MemoryPipeline:
                     event_time=event_time,
                     entities=extract_entities(action.fact) if self.enable_entity_index else [],
                 )
+                # An update changes content, not when the memory was first
+                # learned. Keep the original created_at so TTL and recency
+                # decay don't treat the memory as newly created; updated_at
+                # (default-factory now) records the edit.
+                if preserved_created_at is not None:
+                    memory.created_at = preserved_created_at
                 embedding = self.embedder.embed(action.fact)
                 self.vector_store.update(
                     id=action.target_id,

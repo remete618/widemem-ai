@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Optional
@@ -104,7 +105,7 @@ def _require_auth(api_key: Optional[str] = Security(_api_key_header)) -> None:
     expected = os.environ.get("WIDEMEM_API_KEY")
     if not expected:
         return  # no key configured = auth disabled (local dev)
-    if api_key != expected:
+    if api_key is None or not secrets.compare_digest(api_key, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 

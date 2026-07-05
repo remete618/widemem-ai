@@ -563,6 +563,50 @@ class TestExportImport:
         assert parsed["count"] == 2
 
 
+class TestUpdatePreservesCreatedAt:
+    def test_update_keeps_original_created_at(self, tmp_dir, mock_embedder):
+        from datetime import timedelta
+
+        from widemem.core.pipeline import MemoryPipeline
+        from widemem.core.types import ActionItem, MemoryAction
+        from widemem.storage.history import HistoryStore
+
+        vs = FAISSVectorStore(VectorStoreConfig(), dimensions=64)
+        history = HistoryStore(f"{tmp_dir}/hist.db")
+        pipeline = MemoryPipeline(
+            extractor=MockExtractor(),
+            resolver=BatchConflictResolver(MockLLM()),
+            embedder=mock_embedder,
+            vector_store=vs,
+            history=history,
+        )
+
+        original_created = datetime.now(timezone.utc) - timedelta(days=90)
+        vs.insert(
+            id="mem1",
+            vector=mock_embedder.embed("old fact"),
+            metadata={
+                "content": "old fact",
+                "content_hash": "oldhash",
+                "created_at": original_created.isoformat(),
+                "updated_at": original_created.isoformat(),
+                "tier": "fact",
+                "importance": 5.0,
+            },
+        )
+
+        pipeline._execute_actions(
+            [ActionItem(action=MemoryAction.UPDATE, fact="new fact", target_id="mem1")]
+        )
+
+        _, meta = vs.get("mem1")
+        assert meta["content"] == "new fact"
+        assert as_utc(datetime.fromisoformat(meta["created_at"])) == as_utc(original_created)
+        # updated_at must move forward past the original creation time
+        assert as_utc(datetime.fromisoformat(meta["updated_at"])) > as_utc(original_created)
+        history.close()
+
+
 class TestTTL:
     def test_ttl_filters_old_memories(self, tmp_dir):
         config = MemoryConfig(history_db_path=f"{tmp_dir}/ttl.db", ttl_days=7)
