@@ -50,6 +50,18 @@ included, the full-context baseline score, the number of judge runs averaged,
 and the retrieval budget (top_k). A number without these is marked
 "not apples-to-apples" and is not used in marketing.
 
+## Dev / held-out split
+
+`benchmark/locomo_split.json` fixes two disjoint conversation sets over
+locomo10: `dev` (the harness's historical subset, conversation indices 0, 4,
+8) and `held_out` (the remaining seven). Retrieval and extraction changes are
+tuned on dev; a number is publishable only from a held-out run
+(`val.py --held-out`), which self-labels its output filename with
+`_held_out`. Tuning against the same questions a result is reported on
+overfits the subset, so the two sets never mix. The split file is committed,
+`tests/test_locomo_split.py` keeps it disjoint and complete, and result
+metadata records which split produced every number.
+
 ## Running a scored pass (next step)
 
 The scored run wires `honest_core` into the existing harness machinery

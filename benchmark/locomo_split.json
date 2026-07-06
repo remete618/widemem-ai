@@ -1,0 +1,6 @@
+{
+  "dataset": "benchmark/locomo-data/data/locomo10.json",
+  "dev": [0, 4, 8],
+  "held_out": [1, 2, 3, 5, 6, 7, 9],
+  "policy": "Tune on dev; publish from held-out runs only. dev preserves the harness's historical subset (conv-26, conv-43, conv-49) so earlier dev results stay comparable. The split is fixed and committed rather than seeded: locomo10 has exactly 10 conversations and the dev set predates this file."
+}

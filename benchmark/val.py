@@ -30,6 +30,10 @@ Usage:
     .venv/bin/python3 benchmark/val.py ingest --graph --store-dir benchmark/results/val_stores_graph
     .venv/bin/python3 benchmark/val.py eval --graph --store-dir benchmark/results/val_stores_graph \
         --out benchmark/results/val_graph.json --baseline benchmark/results/val_base.json
+    # held-out confirmation run (publishable; tune on dev only):
+    .venv/bin/python3 benchmark/val.py ingest --held-out --store-dir benchmark/results/val_stores_held_out
+    .venv/bin/python3 benchmark/val.py eval --held-out --store-dir benchmark/results/val_stores_held_out \
+        --out benchmark/results/val_held_out.json
 """
 from __future__ import annotations
 
@@ -63,9 +67,11 @@ from widemem.core.types import (
 DATA_FILE = "benchmark/locomo-data/data/locomo10.json"
 RESULTS_DIR = "benchmark/results"
 
-# Fixed validation conversations: chosen for open-domain coverage (n=40 of 96
-# total) and bounded ingest cost. idx into locomo10.json.
-VAL_CONV_IDX = [0, 4, 8]  # conv-26, conv-43, conv-49
+# Conversation subsets live in the committed split file: `dev` preserves the
+# historical [0, 4, 8] subset (chosen for open-domain coverage, n=40 of 96,
+# and bounded ingest cost) and is the tuning set; `held_out` is the
+# publishable confirmation set. Tune on dev, publish held-out only.
+SPLIT_FILE = "benchmark/locomo_split.json"
 
 JUDGE_RUNS = 10          # paper standard; stable category means on n>=26
 EVAL_LLM = "gpt-4o-mini"
@@ -222,6 +228,19 @@ def make_config(storage_dir: str, graph: bool, hybrid: bool = False) -> MemoryCo
     return MemoryConfig(**kwargs)
 
 
+def load_split(args):
+    """Resolve (split label, conversation indices) from the committed split file.
+
+    Default (no flag) is dev, matching the harness's historical behavior.
+    Held-out is opt-in and self-labels its outputs so tuned and publishable
+    results cannot be confused on disk.
+    """
+    split = json.load(open(args.split_file))
+    if getattr(args, "held_out", False):
+        return "held_out", split["held_out"]
+    return "dev", split["dev"]
+
+
 def get_sessions(conversation: dict):
     sessions = []
     i = 1
@@ -232,9 +251,9 @@ def get_sessions(conversation: dict):
     return sessions
 
 
-def load_val_questions(data):
+def load_val_questions(data, conv_idx):
     qs = []
-    for idx in VAL_CONV_IDX:
+    for idx in conv_idx:
         conv = data[idx]
         sid = conv["sample_id"]
         sa = conv["conversation"]["speaker_a"]
@@ -253,14 +272,15 @@ def load_val_questions(data):
 # ---------------------------------------------------------------------------
 def do_ingest(args):
     data = json.load(open(DATA_FILE))
+    label, conv_idx = load_split(args)
     base = args.store_dir
     if os.path.exists(base) and args.fresh:
         shutil.rmtree(base)
     os.makedirs(base, exist_ok=True)
-    print(f"ingest: graph={args.graph} store={base} convs={VAL_CONV_IDX}", flush=True)
+    print(f"ingest: split={label} graph={args.graph} store={base} convs={conv_idx}", flush=True)
     t0 = time.time()
     stats = []
-    for idx in VAL_CONV_IDX:
+    for idx in conv_idx:
         conv = data[idx]
         sid = conv["sample_id"]
         conversation = conv["conversation"]
@@ -284,7 +304,8 @@ def do_ingest(args):
         stats.append(dict(conv_idx=idx, sample_id=sid, turns=n_turns, memories=n_mem,
                           seconds=round(dt, 1)))
         print(f"  conv-{idx}: {n_turns} turns -> {n_mem} mem in {dt/60:.1f}m", flush=True)
-    meta = dict(git_sha=git_sha(), graph=args.graph, store_dir=base,
+    meta = dict(git_sha=git_sha(), split=label, conv_idx=conv_idx,
+                graph=args.graph, store_dir=base,
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 elapsed_min=round((time.time() - t0) / 60, 1), cost_usd=round(total_cost(), 3),
                 stats=stats)
@@ -339,14 +360,19 @@ def do_eval(args):
     if not os.environ.get("OPENAI_API_KEY"):
         sys.exit("ERROR: OPENAI_API_KEY not set")
     data = json.load(open(DATA_FILE))
-    questions = load_val_questions(data)
+    label, conv_idx = load_split(args)
+    if label == "held_out" and "_held_out" not in os.path.basename(args.out):
+        root, ext = os.path.splitext(args.out)
+        args.out = f"{root}_held_out{ext}"
+        print(f"note: held-out run, output self-labeled as {args.out}", flush=True)
+    questions = load_val_questions(data, conv_idx)
     mix = defaultdict(int)
     for q in questions:
         mix[CATEGORY_NAMES[q["category"]]] += 1
-    print(f"eval: graph={args.graph} store={args.store_dir} n={len(questions)} mix={dict(mix)} judges={JUDGE_RUNS}", flush=True)
+    print(f"eval: split={label} graph={args.graph} store={args.store_dir} n={len(questions)} mix={dict(mix)} judges={JUDGE_RUNS}", flush=True)
 
     mems = {}
-    for idx in VAL_CONV_IDX:
+    for idx in conv_idx:
         sdir = os.path.join(args.store_dir, f"conv_{idx}")
         if not os.path.exists(sdir):
             sys.exit(f"ERROR: store missing {sdir} — run `ingest` first")
@@ -373,7 +399,8 @@ def do_eval(args):
         print(f"  {c+' J:':<16}{summary['by_category'][c]:>6.2f}  (n={summary['counts'][c]})")
     print(f"  avg tokens:  {summary['avg_memory_tokens']}")
 
-    out = dict(metadata=dict(git_sha=git_sha(), graph=args.graph, store_dir=args.store_dir,
+    out = dict(metadata=dict(git_sha=git_sha(), split=label, conv_idx=conv_idx,
+                             graph=args.graph, store_dir=args.store_dir,
                              timestamp=datetime.now(timezone.utc).isoformat(),
                              judge_runs=JUDGE_RUNS, top_k=TOP_K, eval_llm=EVAL_LLM,
                              elapsed_min=round(elapsed / 60, 1), cost_usd=round(total_cost(), 3)),
@@ -382,10 +409,14 @@ def do_eval(args):
     print(f"  saved: {args.out}")
 
     if args.baseline and os.path.exists(args.baseline):
-        b = json.load(open(args.baseline))["summary"]
+        bdoc = json.load(open(args.baseline))
+        b = bdoc["summary"]
+        bsplit = bdoc.get("metadata", {}).get("split")
         print("\n" + "=" * 64)
         print(f"VS BASELINE ({args.baseline})")
         print("=" * 64)
+        if bsplit is not None and bsplit != label:
+            print(f"  WARNING: baseline split={bsplit}, this run={label}; deltas below are not comparable")
         od = summary["overall_j"] - b["overall_j"]
         md = summary["by_category"]["multi-hop"] - b["by_category"]["multi-hop"]
         print(f"  overall:   {b['overall_j']:>6.2f} -> {summary['overall_j']:>6.2f}  ({od:+.2f})")
@@ -410,6 +441,13 @@ def main():
     pe.add_argument("--hybrid", action="store_true")
     pe.add_argument("--out", required=True)
     pe.add_argument("--baseline", default=None)
+    for p in (pi, pe):
+        p.add_argument("--split-file", default=SPLIT_FILE)
+        g = p.add_mutually_exclusive_group()
+        g.add_argument("--dev-only", action="store_true",
+                       help="dev subset for tuning (default when no flag is given)")
+        g.add_argument("--held-out", action="store_true",
+                       help="held-out subset; publishable confirmation runs only")
     args = ap.parse_args()
     if args.cmd == "ingest":
         do_ingest(args)
