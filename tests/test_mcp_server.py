@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import json
 
-import widemem.mcp_server as mcp_server
+import pytest
+
+# widemem.mcp_server imports the `mcp` package at module level. Skip cleanly
+# when the [mcp] extra is not installed. CI does not install [mcp], so these
+# handler tests skip there rather than erroring at collection.
+pytest.importorskip("mcp")
+
+import widemem.mcp_server as mcp_server  # noqa: E402
 
 
 class _CaptureMemory:
