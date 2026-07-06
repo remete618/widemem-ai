@@ -90,6 +90,6 @@ def test_aggregate_reports_per_category_and_overall():
     ]
     out = hc.aggregate(preds)
     assert out["n"] == 3
-    assert out["by_category"]["single-hop"] == 50.0
+    assert out["by_category"]["multi-hop"] == 50.0
     assert out["by_category"]["adversarial"] == 100.0
     assert out["overall_j"] == round(2 / 3 * 100, 2)

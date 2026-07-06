@@ -35,8 +35,8 @@ Gate-pass criteria
 ------------------
 A PR fails the gate if EITHER:
 - Overall J drops by more than 3.0 points vs baseline
-- Multi-hop J drops by more than 5.0 points vs baseline
-  (multi-hop is widemem's strongest category; tighter tolerance)
+- Single-hop J drops by more than 5.0 points vs baseline
+  (single-hop is widemem's strongest and largest category; tighter tolerance)
 
 Other categories are allowed to fluctuate freely. The gate is a regression
 detector, not a quality bar.
@@ -101,10 +101,10 @@ DEFAULT_BASELINE = "benchmark/results/mini_locomo_baseline.json"
 
 SAMPLE_SEED = 42
 SAMPLE_PER_CATEGORY = {
-    1: 12,  # single-hop
+    1: 12,  # multi-hop
     2: 13,  # temporal
     3: 12,  # open-domain
-    4: 13,  # multi-hop
+    4: 13,  # single-hop
 }
 TOTAL_SAMPLE = sum(SAMPLE_PER_CATEGORY.values())  # 50
 
@@ -120,9 +120,12 @@ MAX_RETRIES = 3
 # Calibrated empirically: with JUDGE_RUNS=5 and n=50 stratified, observed
 # run-to-run variance on identical code stays within these tolerances.
 GATE_OVERALL_MAX_DROP = 3.0
-GATE_MULTIHOP_MAX_DROP = 5.0
+GATE_SINGLEHOP_MAX_DROP = 5.0
 
-CATEGORY_NAMES = {1: "single-hop", 2: "temporal", 3: "open-domain", 4: "multi-hop"}
+# Per the official LoCoMo eval (locomo-data/task_eval/evaluation.py): category 1
+# is multi-hop, category 4 is single-hop. Earlier runs had these names swapped;
+# the baseline JSON was migrated when the fix landed.
+CATEGORY_NAMES = {1: "multi-hop", 2: "temporal", 3: "open-domain", 4: "single-hop"}
 
 ANSWER_PROMPT = """You are an intelligent memory assistant tasked with retrieving accurate information from conversation memories.
 
@@ -424,22 +427,22 @@ def summarize(predictions):
 def gate_check(current, baseline):
     """Return (passed, lines) describing pass/fail vs the baseline."""
     overall_delta = current["overall_j"] - baseline["overall_j"]
-    multihop_delta = current["by_category"]["multi-hop"] - baseline["by_category"][
-        "multi-hop"
+    singlehop_delta = current["by_category"]["single-hop"] - baseline["by_category"][
+        "single-hop"
     ]
 
     overall_ok = overall_delta >= -GATE_OVERALL_MAX_DROP
-    multihop_ok = multihop_delta >= -GATE_MULTIHOP_MAX_DROP
+    singlehop_ok = singlehop_delta >= -GATE_SINGLEHOP_MAX_DROP
 
     lines = [
         f"  overall:   {baseline['overall_j']:>6.2f} -> {current['overall_j']:>6.2f}  "
         f"({overall_delta:+.2f}) "
         f"[{'PASS' if overall_ok else 'FAIL'}, max drop {GATE_OVERALL_MAX_DROP}]",
-        f"  multi-hop: {baseline['by_category']['multi-hop']:>6.2f} -> "
-        f"{current['by_category']['multi-hop']:>6.2f}  ({multihop_delta:+.2f}) "
-        f"[{'PASS' if multihop_ok else 'FAIL'}, max drop {GATE_MULTIHOP_MAX_DROP}]",
+        f"  single-hop: {baseline['by_category']['single-hop']:>6.2f} -> "
+        f"{current['by_category']['single-hop']:>6.2f}  ({singlehop_delta:+.2f}) "
+        f"[{'PASS' if singlehop_ok else 'FAIL'}, max drop {GATE_SINGLEHOP_MAX_DROP}]",
     ]
-    for cat in ["single-hop", "open-domain", "temporal"]:
+    for cat in ["multi-hop", "open-domain", "temporal"]:
         delta = current["by_category"][cat] - baseline["by_category"][cat]
         lines.append(
             f"  {cat + ':':<11}{baseline['by_category'][cat]:>6.2f} -> "
@@ -447,7 +450,7 @@ def gate_check(current, baseline):
             "[informational, no gate]"
         )
 
-    return overall_ok and multihop_ok, lines
+    return overall_ok and singlehop_ok, lines
 
 
 # ---------------------------------------------------------------------------

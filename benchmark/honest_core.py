@@ -22,11 +22,14 @@ import random
 from collections import defaultdict
 from typing import Any
 
+# Mapping per the official LoCoMo eval (locomo-data/task_eval/evaluation.py):
+# category 1 is multi-hop (scored there by splitting into sub-answers),
+# category 4 is single-hop. Earlier widemem reports had these two swapped.
 CATEGORY_NAMES = {
-    1: "single-hop",
+    1: "multi-hop",
     2: "temporal",
     3: "open-domain",
-    4: "multi-hop",
+    4: "single-hop",
     5: "adversarial",
 }
 

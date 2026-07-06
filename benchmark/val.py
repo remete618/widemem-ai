@@ -79,7 +79,10 @@ TOP_K = 20               # per speaker, matches run_locomo.py full run
 API_TIMEOUT = 30
 MAX_RETRIES = 5
 
-CATEGORY_NAMES = {1: "single-hop", 2: "temporal", 3: "open-domain", 4: "multi-hop"}
+# Per the official LoCoMo eval (locomo-data/task_eval/evaluation.py): category 1
+# is multi-hop, category 4 is single-hop. Result files written before this fix
+# carry the swapped names; the baseline comparison renames from category IDs.
+CATEGORY_NAMES = {1: "multi-hop", 2: "temporal", 3: "open-domain", 4: "single-hop"}
 
 # gpt-4o-mini pricing (USD per 1M tokens), for spend tracking
 IN_PER_1M, OUT_PER_1M = 0.15, 0.60
@@ -410,7 +413,12 @@ def do_eval(args):
 
     if args.baseline and os.path.exists(args.baseline):
         bdoc = json.load(open(args.baseline))
-        b = bdoc["summary"]
+        # Rebuild the baseline summary from its predictions' category IDs:
+        # result files written before the category-name fix carry swapped
+        # single-hop/multi-hop labels, so stored summaries can't be compared
+        # by name.
+        b = summarize([dict(p, category_name=CATEGORY_NAMES[p["category"]])
+                       for p in bdoc["predictions"] if p["category"] in CATEGORY_NAMES])
         bsplit = bdoc.get("metadata", {}).get("split")
         print("\n" + "=" * 64)
         print(f"VS BASELINE ({args.baseline})")
@@ -418,14 +426,17 @@ def do_eval(args):
         if bsplit is not None and bsplit != label:
             print(f"  WARNING: baseline split={bsplit}, this run={label}; deltas below are not comparable")
         od = summary["overall_j"] - b["overall_j"]
-        md = summary["by_category"]["multi-hop"] - b["by_category"]["multi-hop"]
+        # Floor on single-hop (category 4, n=250 on dev): the largest and
+        # strongest category; a change that trades it away loses more than
+        # it gains.
+        sd = summary["by_category"]["single-hop"] - b["by_category"]["single-hop"]
         print(f"  overall:   {b['overall_j']:>6.2f} -> {summary['overall_j']:>6.2f}  ({od:+.2f})")
         for c in ["single-hop", "multi-hop", "open-domain", "temporal"]:
             d = summary["by_category"][c] - b["by_category"][c]
             print(f"  {c+':':<13}{b['by_category'][c]:>6.2f} -> {summary['by_category'][c]:>6.2f}  ({d:+.2f})")
-        keep = od > 0 and md >= -3.0
+        keep = od > 0 and sd >= -3.0
         print(f"\n  VERDICT: {'KEEP' if keep else 'REVERT'}  "
-              f"(overall {'+' if od > 0 else ''}{od:.2f}, multi-hop floor {'held' if md >= -3.0 else 'BREACHED'})")
+              f"(overall {'+' if od > 0 else ''}{od:.2f}, single-hop floor {'held' if sd >= -3.0 else 'BREACHED'})")
 
 
 def main():
