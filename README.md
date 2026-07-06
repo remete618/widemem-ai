@@ -23,6 +23,7 @@ __  _  _|__| __| _/____   _____   ____   _____      _____  |__|
 - [Why Context Windows Aren't Memory](https://widemem.ai/blog/context-windows). The problem widemem solves.
 - [Your AI Memory Can't Tell a River Bank from a Savings Account](https://widemem.ai/blog/semantic-ymyl). How YMYL classification actually works.
 - [Your AI Should Know When It Doesn't Know](https://widemem.ai/blog/uncertainty). Uncertainty-aware retrieval.
+- [Corrections log](docs/HISTORY.md). Published claims that turned out wrong, and their fixes.
 
 ### Because your AI deserves better than amnesia. ¬_¬
 

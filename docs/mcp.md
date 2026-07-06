@@ -44,6 +44,8 @@ Add to `claude_desktop_config.json`:
 | `widemem_search` | Semantic search over memories |
 | `widemem_delete` | Delete a memory by ID |
 | `widemem_count` | Count stored memories |
+| `widemem_pin` | Pin a critical fact at elevated importance (9.0) |
+| `widemem_export` | Export stored memories as JSON, optionally per user |
 | `widemem_health` | Health check |
 
 ## Environment variables
