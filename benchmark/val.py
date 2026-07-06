@@ -101,7 +101,8 @@ You have access to memories from two speakers in a conversation. These memories 
 5. If there is a question about time references (like "last year", "two months ago", etc.), calculate the actual date based on the memory timestamp
 6. Always convert relative time references to specific dates, months, or years
 7. Focus only on the content of the memories from both speakers
-8. The answer should be less than 5-6 words.
+8. If the question asks "how many" or asks for kinds/types/lists of things, first find EVERY matching memory, then answer with the complete count or the complete list of items. Do not stop at the first match.
+9. Otherwise, the answer should be less than 5-6 words.
 
 Memories for speaker {speaker_a}:
 {memories_a}
@@ -118,9 +119,10 @@ TEMPORAL_ANSWER_PROMPT = """You are an intelligent memory assistant. Answer the 
 CRITICAL RULES FOR TEMPORAL QUESTIONS:
 1. Look for explicit dates, months, and years mentioned in the memories
 2. If a memory mentions a relative time (e.g., "yesterday", "last week"), and includes a date context, calculate the actual date
-3. Your answer MUST include a specific date, month, or year, NOT vague references like "yesterday" or "recently"
-4. If you cannot determine a specific date from the memories, give your best estimate based on available context
-5. The answer should be less than 5-6 words
+3. Answer with the date the EVENT happened, never the date it was talked about. A memory dated January 2024 saying "had a blast in Italy in December 2023" means the trip was December 2023. If a memory says something has been going on for four months as of 6 December, the start date is August, not 6 December.
+4. Your answer MUST include a specific date, month, or year, NOT vague references like "yesterday" or "recently"
+5. If you cannot determine a specific date from the memories, give your best estimate based on available context
+6. The answer should be less than 5-6 words
 
 Memories for speaker {speaker_a}:
 {memories_a}
@@ -131,6 +133,24 @@ Memories for speaker {speaker_b}:
 Question: {question}
 
 Answer (include specific date/month/year):"""
+
+OPEN_DOMAIN_ANSWER_PROMPT = """You are an intelligent memory assistant. Answer the question below using the provided conversation memories combined with your general world knowledge.
+
+# INSTRUCTIONS:
+1. Use the memories to identify what the question refers to (the person's interests, activities, plans)
+2. You MAY use general world knowledge to name specific real-world entities, places, or works the memories point to (e.g. if a memory says they loved a Harry Potter studio shop, you may name it)
+3. If the memories contain contradictory information, prioritize the most recent memory
+4. The answer should be less than 5-6 words.
+
+Memories for speaker {speaker_a}:
+{memories_a}
+
+Memories for speaker {speaker_b}:
+{memories_b}
+
+Question: {question}
+
+Answer:"""
 
 JUDGE_PROMPT = """Your task is to label an answer to a question as "CORRECT" or "WRONG". You will be given the following data: (1) a question (posed by one user to another user), (2) a 'gold' (ground truth) answer, (3) a generated answer which you will score as CORRECT/WRONG.
 
@@ -327,11 +347,12 @@ def answer_and_judge(q, mem, client):
     ma = "\n".join(f"[importance={r.memory.importance:.1f}] {r.memory.content}" for r in ra)
     mb = "\n".join(f"[importance={r.memory.importance:.1f}] {r.memory.content}" for r in rb)
     tok = sum(len(r.memory.content.split()) for r in list(ra) + list(rb))
-    tmpl = TEMPORAL_ANSWER_PROMPT if q["category"] == 2 else ANSWER_PROMPT
+    tmpl = {2: TEMPORAL_ANSWER_PROMPT, 3: OPEN_DOMAIN_ANSWER_PROMPT}.get(q["category"], ANSWER_PROMPT)
     prompt = tmpl.format(speaker_a=sa, speaker_b=sb,
                          memories_a=ma or "(no memories)", memories_b=mb or "(no memories)",
                          question=q["question"])
-    answer = api_call(client, [{"role": "user", "content": prompt}]) or "ERROR"
+    # 150 tokens: enumeration answers (rule 8) can list up to ~10 items
+    answer = api_call(client, [{"role": "user", "content": prompt}], max_tokens=150) or "ERROR"
     correct = valid = 0
     for _ in range(JUDGE_RUNS):
         r = judge_one(q["question"], q["answer"], answer, client)
