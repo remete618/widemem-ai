@@ -741,6 +741,24 @@ class WideMemory:
         if any(s in q for s in multi_hop_signals):
             return 0.0
 
+        # Aggregation queries count or enumerate occurrences across many
+        # memories ("how many times...", "what kinds of...", "which deals
+        # has..."). Their answers are hypersensitive to the retrieved set,
+        # and BM25 keyword churn swaps set members (9 val-run J=1 -> J=0
+        # flips, all What/Which/How-many aggregation shapes). Disable BM25;
+        # "how many X does she have" stays factual because it asks for one
+        # present-state fact, not a count of past occurrences.
+        aggregation_signals = ("how many times", "what kinds of", "what kind of",
+                              "what things", "what activities", "which activities",
+                              " events")
+        if any(s in q for s in aggregation_signals):
+            return 0.0
+        if "how many" in q and " does " not in q and any(
+                a in q for a in (" did ", " has ", " have ")):
+            return 0.0
+        if q.startswith("which ") and (" has " in q or " have " in q):
+            return 0.0
+
         temporal_signals = ("when ", "what time", "what date", "how long ago",
                            "last time", "recently", "before the", "after the",
                            "how recent", "what year", "what month")

@@ -6,10 +6,11 @@ behavior scales bm25_weight by detected query type: disabled for
 multi-hop, full for factual, reduced for temporal and broad.
 
 Locks in the contract:
-  multi-hop  -> 0.0  (BM25 disabled)
-  factual    -> configured_weight  (full)
-  temporal   -> configured_weight * 0.4  (reduced)
-  broad      -> configured_weight * 0.6  (moderate)
+  multi-hop    -> 0.0  (BM25 disabled)
+  aggregation  -> 0.0  (BM25 disabled; counting/enumeration over many memories)
+  factual      -> configured_weight  (full)
+  temporal     -> configured_weight * 0.4  (reduced)
+  broad        -> configured_weight * 0.6  (moderate)
 """
 
 from __future__ import annotations
@@ -37,6 +38,46 @@ DEFAULT_W = 0.5  # the typical configured weight
 )
 def test_multi_hop_queries_return_zero(query):
     assert WideMemory._adapt_bm25_weight(query, DEFAULT_W) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Aggregation: BM25 disabled (0.0). These questions count or enumerate
+# occurrences across many memories; the answer is hypersensitive to the
+# retrieved set, and BM25 keyword churn swaps set members (the val bm25
+# run flipped 9 such questions from J=1 to J=0).
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "query",
+    [
+        "How many times has Melanie gone to the beach in 2023?",
+        "How many roadtrips did Evan take in May 2023?",
+        "How many Prius has Evan owned?",
+        "What kinds of things did Evan have broken?",
+        "What kind of art does Caroline make?",
+        "What activities has Melanie done with her family?",
+        "Which endorsement deals has John been offered?",
+        "Which two significant life events happened in December 2023?",
+        "What events did they attend together?",
+    ],
+)
+def test_aggregation_queries_return_zero(query):
+    assert WideMemory._adapt_bm25_weight(query, DEFAULT_W) == 0.0
+
+
+def test_present_state_how_many_stays_factual():
+    """'How many X does she have?' asks for a present-state fact stored in
+    one memory, not a count of occurrences. Stays factual (full weight)."""
+    assert WideMemory._adapt_bm25_weight(
+        "How many siblings does she have?", DEFAULT_W
+    ) == DEFAULT_W
+
+
+def test_which_single_fact_with_did_stays_factual():
+    """'Which school did she attend?' names one entity; only 'which' plus
+    has/have (enumeration of achievements/possessions) is aggregation."""
+    assert WideMemory._adapt_bm25_weight(
+        "Which school did she attend?", DEFAULT_W
+    ) == DEFAULT_W
 
 
 # ---------------------------------------------------------------------------
