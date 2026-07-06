@@ -48,9 +48,8 @@ Determinism
 - LLM judges are non-deterministic, so we run each question 3 times and
   average. This is the J score Mem0 / Zep / others use.
 
-Usage
------
-    cd /Users/radu/widemem-ai
+Usage (from the repo root)
+--------------------------
     set -a; source .env.local; set +a    # load OPENAI_API_KEY
     .venv/bin/python3 benchmark/mini_locomo.py
 

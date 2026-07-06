@@ -20,9 +20,8 @@ Two subcommands so the loop iterates fast:
 Config matches run_locomo.py (the full-1540 confirmation run) so the
 validation number is directly comparable to the eventual full benchmark.
 
-Usage:
+Usage (from the repo root):
     set -a; source .env.local; set +a
-    cd /Users/radu/widemem-ai
     .venv/bin/python3 benchmark/val.py ingest --store-dir benchmark/results/val_stores_base
     .venv/bin/python3 benchmark/val.py eval   --store-dir benchmark/results/val_stores_base \
         --out benchmark/results/val_base.json
