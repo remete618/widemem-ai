@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
+from openai.types.shared_params.response_format_json_object import ResponseFormatJSONObject
 
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import LLMConfig
@@ -18,7 +20,7 @@ class OpenAILLM(BaseLLM):
         )
 
     def _generate(self, prompt: str, system: str | None = None) -> str:
-        messages = []
+        messages: list[ChatCompletionMessageParam] = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
@@ -35,17 +37,18 @@ class OpenAILLM(BaseLLM):
         return content
 
     def _generate_json(self, prompt: str, system: str | None = None) -> dict:
-        messages = []
+        messages: list[ChatCompletionMessageParam] = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
+        response_format: ResponseFormatJSONObject = {"type": "json_object"}
 
         response = self.client.chat.completions.create(
             model=self.config.model,
             messages=messages,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
-            response_format={"type": "json_object"},
+            response_format=response_format,
         )
         content = response.choices[0].message.content
         if content is None:

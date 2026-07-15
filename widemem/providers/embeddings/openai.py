@@ -19,11 +19,20 @@ class OpenAIEmbedder(BaseEmbedder):
         if not texts:
             return []
         try:
-            response = self.client.embeddings.create(
-                model=self.config.model,
-                input=texts,
-                dimensions=self.config.dimensions,
-            )
+            if self._supports_dimensions_param():
+                response = self.client.embeddings.create(
+                    model=self.config.model,
+                    input=texts,
+                    dimensions=self.config.dimensions,
+                )
+            else:
+                response = self.client.embeddings.create(
+                    model=self.config.model,
+                    input=texts,
+                )
             return [item.embedding for item in response.data]
         except Exception as e:
             raise ProviderError(f"Embedding failed: {e}") from e
+
+    def _supports_dimensions_param(self) -> bool:
+        return self.config.model.startswith("text-embedding-3")

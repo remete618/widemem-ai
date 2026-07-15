@@ -36,6 +36,7 @@ from widemem.extraction.base import BaseExtractor
 from widemem.providers.embeddings.base import BaseEmbedder
 from widemem.providers.llm.base import BaseLLM
 from widemem.retrieval.hybrid import _min_max_normalize, blend_hybrid_scores
+from widemem.retrieval.uncertainty import assess_confidence
 from widemem.storage.vector.faiss_store import FAISSVectorStore
 
 
@@ -98,6 +99,17 @@ def test_blend_mutates_similarity_score(candidate_pool):
     assert before != after
     # All blended scores in [0, 1] after min-max normalization.
     assert all(0.0 <= s <= 1.0 for s in after)
+    assert [r.raw_similarity_score for r in candidate_pool] == before
+
+
+def test_confidence_uses_raw_similarity_after_hybrid_blend(candidate_pool):
+    blend_hybrid_scores(candidate_pool, "penicillin", bm25_weight=1.0)
+    top = max(candidate_pool, key=lambda r: r.similarity_score)
+    # The exact-match result is top after BM25, but its raw vector score is
+    # still only 0.40, so confidence must not be promoted by normalized BM25.
+    assert top.memory.id == "m2"
+    assert top.raw_similarity_score == 0.40
+    assert assess_confidence([top]).value == "low"
 
 
 def test_blend_bm25_zero_weight_recovers_vector_normalization(candidate_pool):
@@ -187,15 +199,15 @@ class _MockLLM(BaseLLM):
 class _MockEmbedder(BaseEmbedder):
     def __init__(self) -> None:
         super().__init__(EmbeddingConfig(dimensions=64), max_retries=1, retry_delay=0)
-        self._cache: dict[str, list[float]] = {}
+        self._vectors: dict[str, list[float]] = {}
 
     def _embed(self, text: str) -> list[float]:
-        if text not in self._cache:
+        if text not in self._vectors:
             rng = np.random.RandomState(abs(hash(text)) % 2**31)
             v = rng.randn(self.config.dimensions).astype(np.float32)
             v = v / np.linalg.norm(v)
-            self._cache[text] = v.tolist()
-        return self._cache[text]
+            self._vectors[text] = v.tolist()
+        return self._vectors[text]
 
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [self._embed(t) for t in texts]

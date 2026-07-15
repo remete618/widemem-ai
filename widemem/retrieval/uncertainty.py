@@ -44,7 +44,12 @@ def assess_confidence(results: list[MemorySearchResult]) -> RetrievalConfidence:
     if not results:
         return RetrievalConfidence.NONE
 
-    top_sim = results[0].similarity_score
+    top_result = results[0]
+    top_sim = (
+        top_result.raw_similarity_score
+        if top_result.raw_similarity_score is not None
+        else top_result.similarity_score
+    )
     thresholds = get_confidence_thresholds()
 
     if top_sim >= thresholds["high"]:

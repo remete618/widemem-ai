@@ -1,3 +1,5 @@
+from typing import Optional
+
 FACT_EXTRACTION_SYSTEM = """You are a fact extraction engine. Extract concrete, memorable facts from conversations.
 
 Rules:
@@ -60,7 +62,7 @@ Pay special attention to facts about these topics: {topics}. Extract these with 
 
 def build_extraction_system(
     ymyl_enabled: bool = False,
-    custom_topics: list = None,
+    custom_topics: Optional[list[str]] = None,
 ) -> str:
     ymyl_inst = YMYL_INSTRUCTION if ymyl_enabled else ""
     topics_inst = ""

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional
 
 from widemem.conflict.batch_resolver import BatchConflictResolver
 from widemem.core._time import as_utc
@@ -261,7 +261,7 @@ class MemoryPipeline:
         return results
 
     def _memory_to_metadata(self, memory: Memory) -> dict:
-        meta = {
+        meta: dict[str, Any] = {
             "content": memory.content,
             "user_id": memory.user_id,
             "agent_id": memory.agent_id,

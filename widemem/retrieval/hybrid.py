@@ -7,11 +7,10 @@ replaces each candidate's similarity_score before the existing scoring
 pipeline (importance + recency + YMYL boosts) runs.
 
 Why this shape:
-- Adds no new fields to MemorySearchResult or Memory.
 - Does not change the candidate set: every memory the vector store returned
   still passes through. BM25 only reshapes the relative ranking.
-- Downstream (score_and_rank, hierarchy routing, confidence assessment)
-  operates on the new similarity_score without any other change.
+- Preserves the original vector score in raw_similarity_score so confidence
+  assessment can remain calibrated against vector similarity thresholds.
 
 Why not RRF directly:
 - score_and_rank operates on numeric scores, not ranks. Replacing similarity_score
@@ -85,7 +84,11 @@ def blend_hybrid_scores(
     bm25_score_by_id = {doc_id: score for doc_id, score in bm25_ranked}
 
     raw_bm25_per_result = [bm25_score_by_id.get(r.memory.id, 0.0) for r in results]
-    raw_vec_per_result = [r.similarity_score for r in results]
+    raw_vec_per_result: list[float] = []
+    for r in results:
+        if r.raw_similarity_score is None:
+            r.raw_similarity_score = r.similarity_score
+        raw_vec_per_result.append(r.raw_similarity_score)
 
     norm_bm25 = _min_max_normalize(raw_bm25_per_result)
     norm_vec = _min_max_normalize(raw_vec_per_result)

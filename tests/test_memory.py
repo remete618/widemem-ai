@@ -1023,6 +1023,42 @@ class TestEmbeddingRetry:
             embedder.embed("test")
 
 
+class TestEmbeddingValidation:
+    def test_embed_rejects_dimension_mismatch(self):
+        from widemem.core.exceptions import ProviderError
+
+        class WrongDimEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), max_retries=1, retry_delay=0)
+
+            def _embed(self, text):
+                return [0.1, 0.2, 0.3]
+
+            def _embed_batch(self, texts):
+                return [self._embed(t) for t in texts]
+
+        embedder = WrongDimEmbedder()
+        with pytest.raises(ProviderError, match="dimension mismatch"):
+            embedder.embed("test")
+
+    def test_embed_batch_rejects_wrong_result_count(self):
+        from widemem.core.exceptions import ProviderError
+
+        class MissingVectorEmbedder(BaseEmbedder):
+            def __init__(self):
+                super().__init__(EmbeddingConfig(dimensions=4), max_retries=1, retry_delay=0)
+
+            def _embed(self, text):
+                return [0.1, 0.2, 0.3, 0.4]
+
+            def _embed_batch(self, texts):
+                return [[0.1, 0.2, 0.3, 0.4]]
+
+        embedder = MissingVectorEmbedder()
+        with pytest.raises(ProviderError, match="returned 1 vectors for 2 inputs"):
+            embedder.embed_batch(["a", "b"])
+
+
 class TestContentHash:
     def test_same_content_same_hash(self):
         from widemem.utils.hashing import content_hash

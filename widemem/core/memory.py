@@ -452,6 +452,7 @@ class WideMemory:
                     entities=metadata.get("entities") or [],
                 ),
                 similarity_score=score,
+                raw_similarity_score=score,
             ))
 
         # Hybrid retrieval: blend BM25 keyword scores into similarity_score

@@ -86,7 +86,7 @@ def test_last_week():
     after, before = parse_temporal_hints("What happened last week?", now=NOW)
     assert after is not None and before is not None
     assert before == NOW
-    assert (NOW - after).days == 14  # last X is 2-X window
+    assert (NOW - after).days == 7
 
 
 def test_last_month():

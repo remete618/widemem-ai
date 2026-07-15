@@ -81,6 +81,7 @@ class Memory(BaseModel):
 class MemorySearchResult(BaseModel):
     memory: Memory
     similarity_score: float = 0.0
+    raw_similarity_score: Optional[float] = None
     temporal_score: float = 1.0
     importance_score: float = 1.0
     final_score: float = 0.0

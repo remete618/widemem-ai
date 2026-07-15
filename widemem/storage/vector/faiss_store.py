@@ -8,14 +8,16 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-try:
-    import faiss
-except ImportError:
-    faiss = None  # type: ignore[assignment]
 import numpy as np
 
 from widemem.core.types import VectorStoreConfig
 from widemem.storage.vector.base import BaseVectorStore
+
+faiss: Any
+try:
+    import faiss
+except ImportError:
+    faiss = None
 
 
 class FAISSVectorStore(BaseVectorStore):
@@ -40,6 +42,7 @@ class FAISSVectorStore(BaseVectorStore):
         self._next_idx = 0
         self._lock = threading.Lock()
         self._defer_save = False
+        self._storage_path: Path | None = None
 
         flat_index = faiss.IndexFlatIP(dimensions)
         self._index = faiss.IndexIDMap2(flat_index)
@@ -47,8 +50,6 @@ class FAISSVectorStore(BaseVectorStore):
         if config.path:
             self._storage_path = Path(config.path).expanduser()
             self._load()
-        else:
-            self._storage_path = None
 
     def _validate_vector(self, vector: List[float]) -> None:
         if len(vector) != self.dimensions:

@@ -42,6 +42,7 @@ class ExtractionCollector:
         self._init_db()
 
     def _init_db(self) -> None:
+        assert self.conn is not None
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS extractions (
                 id TEXT PRIMARY KEY,

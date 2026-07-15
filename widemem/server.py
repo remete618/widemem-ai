@@ -24,6 +24,12 @@ logger = logging.getLogger("widemem.server")
 _memory: Optional[WideMemory] = None
 
 
+def _get_memory() -> WideMemory:
+    if _memory is None:
+        raise HTTPException(status_code=503, detail="Memory service is not initialized")
+    return _memory
+
+
 def _build_config() -> MemoryConfig:
     data_path = os.environ.get("WIDEMEM_DATA_PATH", "~/.widemem/data")
     data_path = str(Path(data_path).expanduser())
@@ -138,7 +144,8 @@ class AddResponse(BaseModel):
 
 @app.post("/search", response_model=SearchResponse)
 def search(req: SearchRequest, _: None = Depends(_require_auth)):
-    results = _memory.search(query=req.query, user_id=req.user_id, top_k=req.top_k)
+    memory = _get_memory()
+    results = memory.search(query=req.query, user_id=req.user_id, top_k=req.top_k)
     return SearchResponse(
         memories=[
             MemoryItem(
@@ -153,7 +160,8 @@ def search(req: SearchRequest, _: None = Depends(_require_auth)):
 
 @app.post("/add", response_model=AddResponse)
 def add(req: AddRequest, _: None = Depends(_require_auth)):
-    result = _memory.add(text=req.text, user_id=req.user_id)
+    memory = _get_memory()
+    result = memory.add(text=req.text, user_id=req.user_id)
     return AddResponse(added=len(result.memories))
 
 

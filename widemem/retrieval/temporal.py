@@ -137,7 +137,7 @@ def score_and_rank(
     scored.sort(key=lambda r: r.final_score, reverse=True)
 
     # Two-pass: ensure top similarity results aren't buried by importance scoring
-    if similarity_first and len(scored) > 5:
+    if similarity_first and len(scored) >= 5:
         by_sim = sorted(scored, key=lambda r: r.similarity_score, reverse=True)
         top_sim_ids = {id(r) for r in by_sim[:5]}
         top_final = scored[0].final_score if scored else 1.0

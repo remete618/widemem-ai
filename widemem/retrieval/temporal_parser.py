@@ -204,7 +204,7 @@ def parse_temporal_hints(
         days = UNIT_DAYS[unit]
         # "last week" = the 7 days before now; same shape for month / year.
         end = now
-        start = now - timedelta(days=days * 2)  # window through "last whatever"
+        start = now - timedelta(days=days)
         return start, end
 
     # 5. "<N> <units> ago"

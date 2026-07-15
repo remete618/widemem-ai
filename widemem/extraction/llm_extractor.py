@@ -46,10 +46,14 @@ class LLMExtractor(BaseExtractor):
                 # a string, or an out-of-range number. Any of these previously
                 # raised and dropped the ENTIRE turn's facts. Coerce safely and
                 # clamp to the Fact-valid [0, 10] range.
-                try:
-                    importance = float(item.get("importance"))
-                except (TypeError, ValueError):
+                raw_importance = item.get("importance")
+                if raw_importance is None:
                     importance = 5.0
+                else:
+                    try:
+                        importance = float(raw_importance)
+                    except (TypeError, ValueError):
+                        importance = 5.0
                 importance = max(0.0, min(10.0, importance))
                 content = item["content"]
                 ymyl_category = None
