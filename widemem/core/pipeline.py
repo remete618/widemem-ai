@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any, Callable, List, Optional
 
@@ -21,6 +22,8 @@ from widemem.scoring.ymyl import is_ymyl_strong
 from widemem.storage.history import HistoryStore
 from widemem.storage.vector.base import BaseVectorStore
 from widemem.utils.hashing import content_hash
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_stored_created_at(metadata: dict) -> Optional[datetime]:
@@ -73,6 +76,7 @@ class MemoryPipeline:
         self.active_retrieval = active_retrieval
         self.ymyl_active_retrieval = ymyl_active_retrieval
         self.ymyl_config = ymyl_config or YMYLConfig()
+        self.stats = {"added": 0, "updated": 0, "deleted": 0, "skipped": 0, "deduped": 0}
 
     def process(
         self,
@@ -181,9 +185,19 @@ class MemoryPipeline:
         results = []
 
         for action in actions:
-            if action.action == MemoryAction.ADD:
+            act = action.action
+            if act == MemoryAction.NONE and not action.target_id:
+                # A skip must name the memory that covers the fact; otherwise
+                # the fact would silently vanish. Store it instead.
+                logger.warning(
+                    "Resolver returned NONE without a covering memory; storing fact as ADD"
+                )
+                act = MemoryAction.ADD
+
+            if act == MemoryAction.ADD:
                 new_hash = content_hash(action.fact)
                 if self._hash_exists(new_hash, existing_hashes):
+                    self.stats["deduped"] += 1
                     continue
 
                 memory = Memory(
@@ -205,9 +219,10 @@ class MemoryPipeline:
                 )
                 existing_hashes.add(new_hash)
                 self.history.log(memory.id, MemoryAction.ADD, new_content=action.fact)
+                self.stats["added"] += 1
                 results.append(memory)
 
-            elif action.action == MemoryAction.UPDATE and action.target_id:
+            elif act == MemoryAction.UPDATE and action.target_id:
                 existing = self.vector_store.get(action.target_id)
                 old_content = None
                 preserved_created_at = None
@@ -217,6 +232,7 @@ class MemoryPipeline:
 
                 new_hash = content_hash(action.fact)
                 if existing and existing[1].get("content_hash") == new_hash:
+                    self.stats["deduped"] += 1
                     continue
 
                 memory = Memory(
@@ -247,9 +263,10 @@ class MemoryPipeline:
                     action.target_id, MemoryAction.UPDATE,
                     old_content=old_content, new_content=action.fact,
                 )
+                self.stats["updated"] += 1
                 results.append(memory)
 
-            elif action.action == MemoryAction.DELETE and action.target_id:
+            elif act == MemoryAction.DELETE and action.target_id:
                 existing = self.vector_store.get(action.target_id)
                 old_content = existing[1].get("content") if existing else None
                 self.vector_store.delete(action.target_id)
@@ -257,6 +274,19 @@ class MemoryPipeline:
                     action.target_id, MemoryAction.DELETE,
                     old_content=old_content,
                 )
+                self.stats["deleted"] += 1
+
+            elif act == MemoryAction.NONE and action.target_id:
+                # Explicit, justified skip: the resolver named the memory that
+                # already covers this fact. Audit it so the skipped fact is
+                # traceable instead of silently dropped.
+                existing = self.vector_store.get(action.target_id)
+                covering_content = existing[1].get("content") if existing else None
+                self.history.log(
+                    action.target_id, MemoryAction.NONE,
+                    old_content=covering_content, new_content=action.fact,
+                )
+                self.stats["skipped"] += 1
 
         return results
 

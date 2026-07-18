@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Sequence
 
 from widemem.conflict.prompts import (
@@ -15,6 +16,49 @@ from widemem.utils.hashing import content_hash
 from widemem.utils.id_mapping import IDMapper
 
 logger = logging.getLogger(__name__)
+
+_STOPWORDS = frozenset(
+    "a an and are as at be but by for had has have he her his in is it its of on "
+    "or she that the their they this to was were with".split()
+)
+
+
+def _informative_tokens(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in _STOPWORDS}
+
+
+def _supersedes(new_content: str, old_content: str) -> bool:
+    """True if new_content restates every informative token of old_content,
+    i.e. replacing old with new loses no distinct detail."""
+    old_tokens = _informative_tokens(old_content)
+    if not old_tokens:
+        return True
+    return old_tokens <= _informative_tokens(new_content)
+
+
+_ATOMIC_FACT_MAX_TOKENS = 6
+"""Max informative tokens for an old memory to count as one atomic claim
+that a verified contradiction may replace in place. Above this, the memory
+bundles multiple details, a new fact can contradict at most part of it, and
+destructive replacement is never allowed."""
+
+
+def _quote_invalidates(quote: object, old_content: str, min_coverage: float = 0.8) -> bool:
+    """A contradiction may overwrite in place only when the resolver quotes
+    the contradicted text verbatim from the old memory AND that quote covers
+    (nearly) the whole old memory. A fragment quote means only part of the
+    old memory is stale, so the old memory must survive."""
+    if not isinstance(quote, str) or not quote.strip():
+        return False
+    quote_norm = " ".join(quote.lower().split())
+    old_norm = " ".join(old_content.lower().split())
+    if quote_norm not in old_norm:
+        return False
+    old_tokens = _informative_tokens(old_content)
+    if not old_tokens:
+        return True
+    coverage = len(old_tokens & _informative_tokens(quote)) / len(old_tokens)
+    return coverage >= min_coverage
 
 
 class BatchConflictResolver:
@@ -53,12 +97,18 @@ class BatchConflictResolver:
         except (OSError, ConnectionError, TimeoutError, RuntimeError, ProviderError) as exc:
             return self._fallback_add_with_dedup(new_facts, existing_memories, exc)
 
+        contents_by_id = {m.memory.id: m.memory.content for m in existing_memories}
+        for group in linked_groups:
+            for mem in group:
+                contents_by_id.setdefault(mem.memory.id, mem.memory.content)
+
         return self._parse_actions(
             new_facts=new_facts,
             result=result,
             mapper=mapper,
             linked_groups=linked_groups,
             use_linked_validation=True,
+            contents_by_id=contents_by_id,
         )
 
     def _resolve_flat(
@@ -95,6 +145,7 @@ class BatchConflictResolver:
             mapper=mapper,
             linked_groups=None,
             use_linked_validation=False,
+            contents_by_id={m.memory.id: m.memory.content for m in existing_memories},
         )
 
     def _build_mapper(
@@ -180,6 +231,7 @@ class BatchConflictResolver:
         mapper: IDMapper,
         linked_groups: list[list[MemorySearchResult]] | None,
         use_linked_validation: bool,
+        contents_by_id: dict[str, str],
     ) -> list[ActionItem]:
         actions = []
         seen_indices: set[int] = set()
@@ -216,8 +268,31 @@ class BatchConflictResolver:
                         else []
                     ),
                 )
-            elif action in (MemoryAction.UPDATE, MemoryAction.DELETE) and target_id is None:
+            elif action is not MemoryAction.ADD and target_id is None:
+                # UPDATE/DELETE need a real target; a NONE without a covering
+                # memory is an unjustified skip. Either way, keep the fact.
                 action = MemoryAction.ADD
+
+            if action == MemoryAction.UPDATE and target_id is not None:
+                update_kind = str(item.get("update_kind") or "").lower()
+                old_content = contents_by_id.get(target_id)
+                if old_content is not None and not self._may_overwrite(
+                    new_content=new_facts[fact_idx].content,
+                    old_content=old_content,
+                    update_kind=update_kind,
+                    contradicts=item.get("contradicts"),
+                ):
+                    # Overwriting would destroy details the new fact does not
+                    # carry, and no verified whole-memory contradiction
+                    # justifies it. Keep both facts.
+                    logger.info(
+                        "Resolver UPDATE on %s neither supersedes stored content "
+                        "nor proves a whole-memory contradiction; "
+                        "keeping both facts (ADD)", target_id,
+                    )
+                    action = MemoryAction.ADD
+                    target_id = None
+
             actions.append(ActionItem(
                 action=action,
                 fact=new_facts[fact_idx].content,
@@ -245,31 +320,73 @@ class BatchConflictResolver:
         linked_group: list[MemorySearchResult],
     ) -> tuple[MemoryAction, str | None]:
         valid_ids = {mem.memory.id for mem in linked_group}
-        if action not in (MemoryAction.UPDATE, MemoryAction.DELETE):
+        if action == MemoryAction.ADD:
             return action, None
+
+        if action == MemoryAction.NONE:
+            # A skip is only valid when it names the memory that covers the
+            # fact. Unjustified NONE keeps the fact (ADD): a resolver may
+            # never silently discard a new fact.
+            if target_id in valid_ids:
+                return MemoryAction.NONE, target_id
+            duplicate_id = self._find_hash_match(fact, linked_group)
+            if duplicate_id is not None:
+                return MemoryAction.NONE, duplicate_id
+            return MemoryAction.ADD, None
 
         if target_id in valid_ids:
             if action == MemoryAction.UPDATE:
                 target = next((mem for mem in linked_group if mem.memory.id == target_id), None)
                 if target and content_hash(target.memory.content) == content_hash(fact.content):
-                    return MemoryAction.NONE, None
+                    return MemoryAction.NONE, target_id
             return action, target_id
 
         if linked_group:
-            fallback = linked_group[0]
-            fallback_id = fallback.memory.id
-            if (
-                action == MemoryAction.UPDATE
-                and content_hash(fallback.memory.content) == content_hash(fact.content)
-            ):
-                return MemoryAction.NONE, None
             if action == MemoryAction.UPDATE:
-                return action, fallback_id
-            return MemoryAction.NONE, None
-
-        if action == MemoryAction.UPDATE:
+                fallback = linked_group[0]
+                if content_hash(fallback.memory.content) == content_hash(fact.content):
+                    return MemoryAction.NONE, fallback.memory.id
+                return action, fallback.memory.id
+            # DELETE with a hallucinated target: delete nothing, keep the fact
+            # unless an exact duplicate already covers it.
+            duplicate_id = self._find_hash_match(fact, linked_group)
+            if duplicate_id is not None:
+                return MemoryAction.NONE, duplicate_id
             return MemoryAction.ADD, None
-        return MemoryAction.NONE, None
+
+        return MemoryAction.ADD, None
+
+    def _may_overwrite(
+        self,
+        new_content: str,
+        old_content: str,
+        update_kind: str,
+        contradicts: object,
+    ) -> bool:
+        """An in-place UPDATE destroys the old content, so it is allowed only
+        when nothing distinct is lost (full supersession) or when a verified
+        contradiction invalidates an ATOMIC old memory. A composite memory
+        bundles several details and can be contradicted at most in part, so
+        replacing it would destroy unrelated details; those facts are kept
+        side by side instead and ranking decides which wins."""
+        if _supersedes(new_content, old_content):
+            return True
+        if update_kind != "contradiction":
+            return False
+        if len(_informative_tokens(old_content)) > _ATOMIC_FACT_MAX_TOKENS:
+            return False
+        return _quote_invalidates(contradicts, old_content)
+
+    def _find_hash_match(
+        self,
+        fact: Fact,
+        linked_group: list[MemorySearchResult],
+    ) -> str | None:
+        fact_hash = content_hash(fact.content)
+        for mem in linked_group:
+            if content_hash(mem.memory.content) == fact_hash:
+                return mem.memory.id
+        return None
 
     def _fallback_add_with_dedup(
         self,

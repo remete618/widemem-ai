@@ -99,9 +99,10 @@ def test_resolver_uses_linked_candidates_and_prompt_contract() -> None:
             {
                 "actions": [
                     {"fact_index": 0, "action": "add", "target_id": None, "importance": 7},
-                    {"fact_index": 1, "action": "update", "target_id": 999, "importance": 8},
+                    {"fact_index": 1, "action": "update", "target_id": 999,
+                     "update_kind": "refinement", "importance": 8},
                     {"fact_index": 2, "action": "delete", "target_id": 3, "importance": 5},
-                    {"fact_index": 3, "action": "none", "target_id": None, "importance": 5},
+                    {"fact_index": 3, "action": "none", "target_id": 1, "importance": 5},
                 ]
             }
         ]
@@ -139,7 +140,7 @@ def test_resolver_uses_linked_candidates_and_prompt_contract() -> None:
     ]
     assert actions[1].target_id == "mem-b"
     assert actions[2].target_id == "mem-c"
-    assert actions[3].target_id is None
+    assert actions[3].target_id == "mem-a"
 
 
 def test_resolver_invalid_update_degrades_to_none_when_unchanged() -> None:
@@ -162,7 +163,7 @@ def test_resolver_invalid_update_degrades_to_none_when_unchanged() -> None:
     assert llm.calls == 1
     assert len(actions) == 1
     assert actions[0].action == MemoryAction.NONE
-    assert actions[0].target_id is None
+    assert actions[0].target_id == "mem-a"
 
 
 def test_resolver_invalid_delete_degrades_to_none() -> None:
@@ -185,7 +186,7 @@ def test_resolver_invalid_delete_degrades_to_none() -> None:
     assert llm.calls == 1
     assert len(actions) == 1
     assert actions[0].action == MemoryAction.NONE
-    assert actions[0].target_id is None
+    assert actions[0].target_id == "mem-a"
 
 
 def test_resolver_valid_update_noops_when_content_matches() -> None:
@@ -208,7 +209,7 @@ def test_resolver_valid_update_noops_when_content_matches() -> None:
     assert llm.calls == 1
     assert len(actions) == 1
     assert actions[0].action == MemoryAction.NONE
-    assert actions[0].target_id is None
+    assert actions[0].target_id == "mem-a"
 
 
 def test_pipeline_is_idempotent_for_same_input() -> None:
