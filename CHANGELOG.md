@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-17
+
+### Changed
+
+- **Benchmark harness integrity** - LoCoMo category mapping corrected to the official evaluation (labels published before 2026-07-06 were transposed; see docs/HISTORY.md). Answer prompts now allow complete counts/lists past the 5-6 word cap. `WM_JUDGE_MODEL` separates the judge model from the answerer; result files record `judge_llm` and `self_graded`.
+- **Tracked full-run harness** - `benchmark/run_ws1.py` (the runner behind the published numbers) is now in the repo with env-overridable output paths.
+- **Published numbers** - v1.5 LoCoMo: 54.81 -> 55.15 overall under an independent GPT-4o judge (56.32 self-graded); temporal 60.02, ahead of every reference system in our comparison set; ~213 tokens per query. Full breakdown at https://widemem.ai/benchmarks.
+
 ## [1.4.1] - 2026-05-13
 
 ### Added
