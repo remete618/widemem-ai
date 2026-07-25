@@ -313,7 +313,9 @@ class TestBatchConflictResolver:
         )]
 
         mock_llm.set_responses({
-            "actions": [{"fact_index": 0, "action": "update", "target_id": 1, "importance": 8}]
+            "actions": [{"fact_index": 0, "action": "update", "target_id": 1,
+                         "update_kind": "contradiction",
+                         "contradicts": "Lives in Paris", "importance": 8}]
         })
 
         actions = resolver.resolve(facts, existing)
