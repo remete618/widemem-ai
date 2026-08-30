@@ -435,7 +435,10 @@ class WideMemory:
             if stop_event is not None and stop_event.is_set():
                 break
             created_at = _parse_ts(metadata.get("created_at"), now)
-            if ttl_cutoff and created_at < ttl_cutoff:
+            # YMYL rows are exempt from decay by design, and a TTL cut here
+            # would evict them before scoring ever sees them, which is the
+            # same outcome decay immunity exists to prevent.
+            if ttl_cutoff and created_at < ttl_cutoff and not metadata.get("ymyl_category"):
                 continue
             search_results.append(MemorySearchResult(
                 memory=Memory(
@@ -837,19 +840,19 @@ class WideMemory:
             from widemem.storage.vector.faiss_store import FAISSVectorStore
             return FAISSVectorStore(
                 self.config.vector_store,
-                dimensions=self.config.embedding.dimensions,
+                dimensions=self.embedder.dimensions,
             )
         if provider == "qdrant":
             from widemem.storage.vector.qdrant_store import QdrantVectorStore
             return QdrantVectorStore(
                 self.config.vector_store,
-                dimensions=self.config.embedding.dimensions,
+                dimensions=self.embedder.dimensions,
             )
         if provider == "pgvector":
             from widemem.storage.vector.pgvector_store import PgVectorStore
             return PgVectorStore(
                 self.config.vector_store,
-                dimensions=self.config.embedding.dimensions,
+                dimensions=self.embedder.dimensions,
             )
         raise ValueError(
             f"Unknown vector store provider: {provider}. "
