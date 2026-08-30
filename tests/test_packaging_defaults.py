@@ -6,9 +6,8 @@ installed. Both defects are static and cheap to pin here.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
-
-import tomllib
 
 
 class TestPackagingDefaults:
@@ -18,12 +17,21 @@ class TestPackagingDefaults:
     def _root():
         return Path(__file__).resolve().parent.parent
 
+    @classmethod
+    def _extra(cls, name):
+        """Read one optional-dependencies list without tomllib (3.11+ only)."""
+        text = (cls._root() / "pyproject.toml").read_text()
+        match = re.search(rf"^{name} = \[(.*?)^\]", text, re.S | re.M)
+        assert match, f"no {name!r} extra found in pyproject.toml"
+        return {
+            re.split(r"[><=\[]", line.strip().strip('",'))[0].strip()
+            for line in match.group(1).splitlines()
+            if line.strip().startswith('"')
+        }
+
     def test_all_extra_can_run_the_server(self):
-        with open(self._root() / "pyproject.toml", "rb") as fh:
-            data = tomllib.load(fh)
-        extras = data["project"]["optional-dependencies"]
-        all_names = {dep.split(">")[0].split("[")[0].split("=")[0].strip() for dep in extras["all"]}
-        server_names = {dep.split(">")[0].split("[")[0].split("=")[0].strip() for dep in extras["server"]}
+        all_names = self._extra("all")
+        server_names = self._extra("server")
 
         missing = server_names - all_names
         assert not missing, (
