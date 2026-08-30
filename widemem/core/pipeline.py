@@ -12,6 +12,7 @@ from widemem.core.types import (
     Memory,
     MemoryAction,
     MemorySearchResult,
+    MemoryTier,
     YMYLConfig,
 )
 from widemem.extraction.base import BaseExtractor
@@ -26,14 +27,18 @@ from widemem.utils.hashing import content_hash
 logger = logging.getLogger(__name__)
 
 
-def _parse_stored_created_at(metadata: dict) -> Optional[datetime]:
-    raw = metadata.get("created_at")
+def _parse_stored_dt(metadata: dict, key: str) -> Optional[datetime]:
+    raw = metadata.get(key)
     if not raw:
         return None
     try:
         return as_utc(datetime.fromisoformat(raw))
     except (ValueError, TypeError):
         return None
+
+
+def _parse_stored_created_at(metadata: dict) -> Optional[datetime]:
+    return _parse_stored_dt(metadata, "created_at")
 
 
 class AddResult:
@@ -134,6 +139,12 @@ class MemoryPipeline:
 
         embeddings = self.embedder.embed_batch([f.content for f in facts])
 
+        # Only a concrete value goes to the store: a None filter means
+        # "IS NULL", which pgvector renders as `= NULL` (never true) and
+        # qdrant cannot express as a MatchValue. Scope for the unscoped
+        # case is enforced below instead, which behaves the same on every
+        # backend. Candidates here become UPDATE and DELETE targets, so
+        # this filtering is a trust boundary, not an optimisation.
         filters: dict[str, str] = {}
         if user_id:
             filters["user_id"] = user_id
@@ -150,6 +161,10 @@ class MemoryPipeline:
             seen_ids: set[str] = set()
             for id, score, metadata in results:
                 if id in seen_ids:
+                    continue
+                if metadata.get("user_id") != user_id:
+                    continue
+                if agent_id and metadata.get("agent_id") != agent_id:
                     continue
                 seen_ids.add(id)
                 result = MemorySearchResult(
@@ -224,27 +239,33 @@ class MemoryPipeline:
 
             elif act == MemoryAction.UPDATE and action.target_id:
                 existing = self.vector_store.get(action.target_id)
-                old_content = None
-                preserved_created_at = None
-                if existing:
-                    old_content = existing[1].get("content")
-                    preserved_created_at = _parse_stored_created_at(existing[1])
+                if not existing or not self._in_scope(existing[1], user_id, action.target_id, agent_id):
+                    self.stats["skipped"] += 1
+                    continue
+
+                stored = existing[1]
+                old_content = stored.get("content")
+                preserved_created_at = _parse_stored_created_at(stored)
 
                 new_hash = content_hash(action.fact)
-                if existing and existing[1].get("content_hash") == new_hash:
+                if stored.get("content_hash") == new_hash:
                     self.stats["deduped"] += 1
                     continue
 
+                # Rebuilding the Memory from the action alone dropped every
+                # field the action does not carry. Ownership and tier come
+                # from the stored row; the rest fall back to it.
                 memory = Memory(
                     id=action.target_id,
                     content=action.fact,
-                    user_id=user_id,
-                    agent_id=agent_id,
-                    run_id=run_id,
+                    user_id=stored.get("user_id"),
+                    agent_id=stored.get("agent_id"),
+                    run_id=run_id or stored.get("run_id"),
+                    tier=MemoryTier(stored.get("tier", MemoryTier.FACT.value)),
                     importance=action.importance,
                     content_hash=new_hash,
-                    ymyl_category=action.ymyl_category,
-                    event_time=event_time,
+                    ymyl_category=action.ymyl_category or stored.get("ymyl_category"),
+                    event_time=event_time or _parse_stored_dt(stored, "event_time"),
                     entities=extract_entities(action.fact) if self.enable_entity_index else [],
                 )
                 # An update changes content, not when the memory was first
@@ -268,7 +289,11 @@ class MemoryPipeline:
 
             elif act == MemoryAction.DELETE and action.target_id:
                 existing = self.vector_store.get(action.target_id)
-                old_content = existing[1].get("content") if existing else None
+                if not existing or not self._in_scope(existing[1], user_id, action.target_id, agent_id):
+                    self.stats["skipped"] += 1
+                    continue
+
+                old_content = existing[1].get("content")
                 self.vector_store.delete(action.target_id)
                 self.history.log(
                     action.target_id, MemoryAction.DELETE,
@@ -289,6 +314,36 @@ class MemoryPipeline:
                 self.stats["skipped"] += 1
 
         return results
+
+    @staticmethod
+    def _in_scope(
+        metadata: dict,
+        user_id: Optional[str],
+        target_id: str,
+        agent_id: Optional[str] = None,
+    ) -> bool:
+        """A write may only touch a row owned by the caller's scope.
+
+        The resolver picks targets from an LLM response, so this is the
+        last barrier before a destructive write. It refuses rather than
+        re-scoping: silently rewriting the owner would hide the memory
+        from its owner's own filtered search.
+
+        user_id must always match. agent_id is only enforced when the
+        caller supplies one, mirroring how _find_existing filters, so an
+        unscoped agent still sees the user's whole history.
+        """
+        if metadata.get("user_id") != user_id:
+            logger.warning(
+                "Refusing cross-scope write to memory %s: owned by another user", target_id
+            )
+            return False
+        if agent_id and metadata.get("agent_id") != agent_id:
+            logger.warning(
+                "Refusing cross-scope write to memory %s: owned by another agent", target_id
+            )
+            return False
+        return True
 
     def _memory_to_metadata(self, memory: Memory) -> dict:
         meta: dict[str, Any] = {

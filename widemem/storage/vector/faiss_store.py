@@ -86,22 +86,33 @@ class FAISSVectorStore(BaseVectorStore):
             if self._index.ntotal == 0:
                 return []
 
-            k = min(top_k * 3 if filters else top_k, self._index.ntotal)
-            scores, indices = self._index.search(vec, k)
+            ntotal = self._index.ntotal
+            k = min(top_k * 3 if filters else top_k, ntotal)
 
-            results = []
-            for score, idx in zip(scores[0], indices[0]):
-                if idx == -1:
-                    continue
-                id = self._idx_to_id.get(int(idx))
-                if id is None:
-                    continue
-                meta = self._metadata.get(id, {})
-                if filters and not self._matches_filters(meta, filters):
-                    continue
-                results.append((id, float(score), meta))
-                if len(results) >= top_k:
+            # A fixed over-fetch silently starved minority tenants: with
+            # top_k*3 nearest neighbours all owned by a larger tenant, a
+            # filtered search returned fewer rows than count() reports.
+            # Widen until top_k survivors are found or the index is spent.
+            while True:
+                scores, indices = self._index.search(vec, k)
+
+                results = []
+                for score, idx in zip(scores[0], indices[0]):
+                    if idx == -1:
+                        continue
+                    id = self._idx_to_id.get(int(idx))
+                    if id is None:
+                        continue
+                    meta = self._metadata.get(id, {})
+                    if filters and not self._matches_filters(meta, filters):
+                        continue
+                    results.append((id, float(score), meta))
+                    if len(results) >= top_k:
+                        break
+
+                if len(results) >= top_k or k >= ntotal:
                     break
+                k = min(k * 4, ntotal)
 
         return results
 
