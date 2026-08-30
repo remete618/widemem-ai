@@ -51,7 +51,7 @@ anthropic = ["anthropic>=0.30,<1"]
 ollama = ["ollama>=0.2,<1"]
 qdrant = ["qdrant-client>=1.9,<2"]
 sentence-transformers = [
-    "sentence-transformers>=2.0,<6",
+    "sentence-transformers>=2.0,<7",
     # Transitive via huggingface-hub/requests; floor patches PYSEC-2026-141/142.
     "urllib3>=2.7.0,<3",
 ]
@@ -76,7 +76,7 @@ all = [
     "psycopg[binary]>=3.1,<4",
     "qdrant-client>=1.9,<2",
     "rank-bm25>=0.2.2,<1",
-    "sentence-transformers>=2.0,<6",
+    "sentence-transformers>=2.0,<7",
     "uvicorn>=0.29,<1",
     # Transitive via fastapi; floor patches PYSEC-2026-161/248/249 + CVE-2026-48817/48818.
     "starlette>=1.3.1",
