@@ -638,14 +638,16 @@ pytest
 
 ## Benchmarks
 
-Measured on the full 1,540-question [LoCoMo](https://github.com/snap-research/locomo) benchmark, v1.4.1:
+Measured on the full 1,540-question [LoCoMo](https://github.com/snap-research/locomo) benchmark, v1.5.0:
 
 | Metric | Result |
 |---|---|
-| Overall accuracy | **54.81%** |
-| Context per query | **~214 tokens** (vs ~26k for full-context stuffing) |
+| Overall accuracy | **55.15%** (independent GPT-4o judge; 56.32% self-graded) |
+| Context per query | **~213 tokens** (vs ~26k for full-context stuffing) |
 
-Mid-pack accuracy at a fraction of the token cost: reference systems spend 1,700 to 26,000 tokens per query. Per-category labels published before 2026-07-06 had single-hop and multi-hop transposed; the multi-hop leadership claim is retracted and the correction is logged in [docs/HISTORY.md](docs/HISTORY.md). Full methodology, per-category breakdowns, and reference-system comparisons: [widemem.ai/benchmarks](https://widemem.ai/benchmarks). Reproduce it yourself from [benchmark/](benchmark/).
+Mid-pack accuracy at a fraction of the token cost: reference systems spend 1,700 to 26,000 tokens per query. Per-category labels published before 2026-07-06 had single-hop and multi-hop transposed; the multi-hop leadership claim is retracted and the correction is logged in [docs/HISTORY.md](docs/HISTORY.md). Full methodology, per-category breakdowns, and reference-system comparisons: [widemem.ai/benchmarks](https://widemem.ai/benchmarks).
+
+To re-run it: the harness (`benchmark/run_ws1.py`, `val.py`, `honest_core.py`) and the question split (`benchmark/locomo_split.json`) are in this repo. The LoCoMo dataset itself is not vendored here, so fetch it from [snap-research/locomo](https://github.com/snap-research/locomo) into `benchmark/locomo-data/` first. Published result files are not committed.
 
 ---
 
