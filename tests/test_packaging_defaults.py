@@ -65,3 +65,26 @@ class TestPackagingDefaults:
             "memory state under /tmp is wiped on restart on most container runtimes"
         )
 
+
+
+class TestBuildMetadata:
+    """The v1.5.1 release cut, then failed to upload: hatchling 1.32 emits
+    Metadata-Version 2.5, which the publish action's bundled twine rejects.
+    CI passed because it installs the latest twine, which accepts 2.5.
+    """
+
+    @staticmethod
+    def _root():
+        return Path(__file__).resolve().parent.parent
+
+    def test_hatchling_has_an_upper_bound(self):
+        text = (self._root() / "pyproject.toml").read_text()
+        match = re.search(r'requires = \[([^\]]*)\]', text)
+        assert match, "no build-system requires found"
+        req = match.group(1)
+        assert "hatchling" in req, "hatchling is not the build backend requirement"
+        assert re.search(r"<\s*1\.32", req), (
+            "hatchling needs an upper bound below 1.32: 1.32 emits "
+            "Metadata-Version 2.5, which the publish action rejects, so the "
+            "upload fails only after the GitHub release is already cut"
+        )

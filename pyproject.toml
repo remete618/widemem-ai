@@ -1,5 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+# Pinned below 1.32, which emits Metadata-Version 2.5. CI installs the
+# latest twine and accepts 2.5, but the publish action bundles its own
+# older twine that rejects it, so the upload fails after the release is
+# already cut. 2.4 is accepted by both, which keeps CI honest about
+# whether a release can actually publish.
+requires = ["hatchling>=1.27,<1.32"]
 build-backend = "hatchling.build"
 
 [project]
