@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-08-31
+
+### Fixed
+
+- **Cross-scope writes** - `add()` without a `user_id` searched every tenant's memories and handed them to the conflict resolver as UPDATE and DELETE targets. An UPDATE rewrote the victim's row with the caller's scope, making it invisible to its owner's filtered search; a DELETE erased it. Candidates are now scoped before the resolver sees them, and any UPDATE or DELETE whose target is owned by another scope is refused and counted in `stats["skipped"]`. Scope is enforced in the pipeline rather than pushed into a store filter, because a `None` user_id cannot be expressed on two of the three backends.
+- **UPDATE dropped metadata** - rebuilding a memory from the resolver action alone discarded `ymyl_category`, `event_time`, `run_id`, `tier` and ownership. An export/import round trip therefore stripped YMYL decay immunity. These now carry from the stored row.
+- **Local no-key mode was unusable** - the Ollama fallback built a 768-dimension embedder against a 1536-dimension store, so every add and search raised. Stores are now sized from the embedder in use.
+- **YMYL rows evicted by TTL** - `ttl_days` filtered YMYL memories out before scoring, defeating the decay immunity they are promised. They are now exempt from the cut.
+- **Filtered search under-returned** - the FAISS store over-fetched a fixed `top_k * 3` then post-filtered, so a tenant holding 5 of 205 memories got 1 result while `count()` reported 5. `k` now grows until `top_k` matches are found or the index is exhausted.
+- **Container could not serve a request** - the image selected the `ollama` and `sentence-transformers` providers and installed neither. It now installs what its defaults select, defaults embeddings to `ollama` (no torch), fails the build rather than the first request on a missing provider, keeps state on a declared volume instead of `/tmp`, and runs as a non-root user.
+- **`pip install widemem-ai[all]` could not start the server** - the `[all]` extra carried no `fastapi` or `uvicorn`, and none of the security floors the `server` extra pins. All four are now included.
+
+### Changed
+
+- **README benchmark table** - showed v1.4.1 numbers (54.81%, ~214 tokens) while shipping v1.5.0. Updated to the v1.5 figures (55.15% under an independent judge, ~213 tokens) and made the reproduction note precise: the harness and question split are committed, the LoCoMo dataset is not vendored, and result files are not committed.
+
 ## [1.5.0] - 2026-07-17
 
 ### Changed
