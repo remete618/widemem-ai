@@ -507,7 +507,7 @@ Each mode also adjusts the internal candidate pool size and similarity boost str
 
 ## History & Audit Trail
 
-Every add, update, and delete is logged to SQLite. Full audit trail. Because "who changed this and when" is a question you'll eventually ask.
+Every write to a stored memory is logged to SQLite: adds, updates, deletes, imports, and the importance change behind `pin()`. Each entry carries the action, a UTC timestamp, and the content on both sides, so a record can be reconstructed from the log after the memory itself is gone.
 
 ```python
 history = memory.get_history(memory_id)
@@ -518,6 +518,8 @@ for entry in history:
     if entry.new_content:
         print(f"  To: {entry.new_content}")
 ```
+
+What the log covers today is *what* changed and *when*. Entries are not attributed to a caller, so it answers "what happened to this memory" and not "who did it". Reads and searches are not recorded, only writes.
 
 ---
 
