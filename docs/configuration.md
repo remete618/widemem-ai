@@ -42,7 +42,7 @@ from widemem.core.types import (
 | `collect_extractions` | `bool` | `False` | Stores extraction input/output pairs for later self-supervised training. |
 | `extractions_db_path` | `str` | `"~/.widemem/extractions.db"` | SQLite path for collected extraction training examples. |
 | `enable_fact_consolidation` | `bool` | `False` | Passes linked candidate memories into conflict resolution so each fact can add, update, delete, or noop deterministically. |
-| `ttl_days` | `Optional[int]` | `None` | Filters memories older than this many days at search time when set. |
+| `ttl_days` | `Optional[int]` | `None` | Hides memories older than this many days from `search()`. A filter, not a deletion: hidden rows stay on disk and `get()`, `count()` and `export_json()` still return them. Use `purge_expired()` to remove them. |
 | `parse_temporal_hints` | `bool` | `False` | Auto-parses time ranges from temporal search queries when explicit time filters are not provided. |
 | `enable_hybrid_search` | `bool` | `False` | Blends BM25 keyword scores into vector similarity before ranking. |
 | `hybrid_bm25_weight` | `float` | `0.5` | Fraction of hybrid similarity taken from BM25 when hybrid search is enabled. |

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **`purge_expired(older_than_days, ...)`** - permanently removes memories past a cutoff, the deletion counterpart to the `ttl_days` search filter. YMYL rows are skipped unless `include_ymyl=True`, since a retention sweep that quietly dropped an allergy would defeat decay immunity. `dry_run=True` returns the count without removing anything, and every removal writes a `delete` history entry carrying the content it removed. Deliberately an explicit call rather than a config value: retention driven by a setting would delete data on upgrade.
+
 ### Changed
 
 - **Audit-trail documentation states its scope** - the README's "History & Audit Trail" section said every add, update and delete was logged and implied attribution the schema does not carry. It now names the write paths covered, says entries are not attributed to a caller, and points retention at `purge_expired()`. `tests/test_readme_claims.py` gates the attribution wording on a `HistoryEntry` actor field existing, checks the documented `HistoryEntry` fields against the model, and checks `SECURITY.md` covers the shipped minor. Recorded in `docs/HISTORY.md`.
@@ -13,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - **Four write paths bypassed the history log** - `delete()`, `pin()`, `import_json()` and `backfill_entities()` wrote to the vector store without recording anything. A memory removed through `delete()` (the path behind the MCP `widemem_delete` tool) left its ADD entry standing and nothing marking the removal, so the log read as though the memory still existed. All four now write an entry, and `delete()` captures the removed content so the record can be reconstructed. `tests/test_audit_log_coverage.py` adds a structural guard that fails when a method mutates the store without logging, so a new write path cannot land unlogged.
+- **`import_json` dropped `ymyl_category` and `run_id`** - both were absent from the metadata literal the importer builds, so an export/import round trip stripped YMYL decay immunity from every restored row. Found by a `purge_expired` test whose YMYL fixture would not stay protected.
 
 ## [1.5.1] - 2026-08-31
 

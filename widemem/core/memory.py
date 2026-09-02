@@ -567,6 +567,65 @@ class WideMemory:
         self.vector_store.delete(memory_id)
         self._history_store.log(memory_id, MemoryAction.DELETE, old_content=old_content)
 
+    def purge_expired(
+        self,
+        older_than_days: int,
+        user_id: Optional[str] = None,
+        include_ymyl: bool = False,
+        dry_run: bool = False,
+    ) -> int:
+        """Permanently remove memories created more than `older_than_days` ago.
+
+        `ttl_days` is a search-time filter: it hides old memories from
+        `search()` and leaves them on disk, where `get()`, `count()` and
+        `export_json()` still return them. This is the deletion counterpart,
+        and it is explicit on purpose. A retention policy that runs itself on
+        a config value would delete data on upgrade.
+
+        YMYL rows are skipped unless `include_ymyl` is set. Decay immunity
+        exists so a medication or allergy does not age out of memory; a
+        retention sweep that quietly removed them would defeat it. Passing
+        `include_ymyl=True` is the caller stating that legal retention beats
+        clinical recall for their deployment.
+
+        Every removal goes through `delete()`, so each one leaves a history
+        entry carrying the content it removed. Returns the number of memories
+        removed, or with `dry_run` the number that would be.
+        """
+        if older_than_days < 0:
+            raise ValueError("older_than_days must not be negative")
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=older_than_days)
+        # `is not None` rather than a truth test: an empty string is a scope
+        # the caller supplied, and falling through to "no filter" on it would
+        # turn a scoped purge into a whole-store one.
+        filters: Dict[str, str] = {} if user_id is None else {"user_id": user_id}
+        items = self.vector_store.list_all(filters=filters or None, max_results=1_000_000)
+
+        doomed = []
+        for memory_id, metadata in items:
+            if metadata.get("ymyl_category") and not include_ymyl:
+                continue
+            # An unreadable created_at falls back to now, which is never past
+            # the cutoff, so a row whose age cannot be established is kept.
+            created_at = _parse_ts(metadata.get("created_at"), now)
+            if created_at < cutoff:
+                doomed.append(memory_id)
+
+        if dry_run:
+            return len(doomed)
+
+        # Without this each delete triggers a full index rewrite, which is
+        # O(n) per row and quadratic over the sweep: 2,000 rows measured at
+        # 11s before batching. History entries still commit one at a time.
+        # A purge destroys data, so each removal is durable before the next
+        # begins; the index flush is deferred, not the record of it.
+        with self.vector_store.batch_writes():
+            for memory_id in doomed:
+                self.delete(memory_id)
+        return len(doomed)
+
     def get_history(self, memory_id: str) -> List[HistoryEntry]:
         return self._history_store.get_history(memory_id)
 
@@ -635,9 +694,11 @@ class WideMemory:
                 content=content,
                 user_id=item.get("user_id"),
                 agent_id=item.get("agent_id"),
+                run_id=item.get("run_id"),
                 importance=importance,
                 tier=tier,
                 content_hash=item.get("content_hash", ""),
+                ymyl_category=item.get("ymyl_category"),
             )
             metadata = {
                 "content": memory.content,
@@ -650,6 +711,11 @@ class WideMemory:
                 "created_at": item.get("created_at", memory.created_at.isoformat()),
                 "updated_at": item.get("updated_at", memory.updated_at.isoformat()),
             }
+            # Written conditionally: an unconditional None here would stamp a
+            # null category onto rows the store has no category for, and the
+            # YMYL checks downstream read this key's presence.
+            if memory.ymyl_category:
+                metadata["ymyl_category"] = memory.ymyl_category
             if item.get("event_time"):
                 metadata["event_time"] = item["event_time"]
             if item.get("entities"):

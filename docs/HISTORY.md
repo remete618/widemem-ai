@@ -18,12 +18,19 @@ The same sections implied attribution the schema does not carry.
 `HistoryEntry` has no field naming a caller, so the log answers what changed
 and when, never who.
 
+Separately, widemem.ai described `ttl_days` as auto-expiring memories after
+N days. It is a search-time filter: rows past the cutoff stay on disk and
+`get()`, `count()` and `export_json()` still return them. `docs/configuration.md`
+described this correctly; the site did not.
+
 - Corrected: "full audit trail" now states its scope, which is writes, not
-  reads, and content changes, not callers.
+  reads, and content changes, not callers. The `ttl_days` description says
+  filter rather than expiry everywhere.
 - Unaffected: entries written by the extraction pipeline and the hierarchy
   manager, which were complete throughout, and the content on both sides of
   an update, which was always recorded.
-- Fix: the four paths log as of this date, and
+- Fix: the four paths log as of this date, `purge_expired()` provides the
+  deletion the retention wording promised, and
   `tests/test_audit_log_coverage.py::test_no_unlogged_mutation_site` fails
   when a method mutates the store without logging. Attribution claims stay
   gated in `tests/test_readme_claims.py` until `HistoryEntry` carries an
