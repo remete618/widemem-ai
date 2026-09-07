@@ -232,6 +232,12 @@ class MemoryConfig(BaseModel):
     DELETE, or NONE against those linked candidates. Off by default so the
     write-side change can be measured cleanly and opt-in per config."""
     ttl_days: Optional[int] = None
+    """Hide memories older than this many days from search results.
+
+    A search-time filter, not a retention policy. Rows past the cutoff stay
+    on disk and are still returned by get(), count() and export_json();
+    only search() skips them. YMYL rows are exempt, matching decay immunity.
+    WideMemory.purge_expired() is the deletion counterpart."""
     parse_temporal_hints: bool = False
     """Auto-parse temporal hints from queries into a soft recency boost.
 

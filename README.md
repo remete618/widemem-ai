@@ -519,7 +519,7 @@ for entry in history:
         print(f"  To: {entry.new_content}")
 ```
 
-What the log covers today is *what* changed and *when*. Entries are not attributed to a caller, so it answers "what happened to this memory" and not "who did it". Reads and searches are not recorded, only writes.
+What the log covers today is *what* changed and *when*. Entries are not attributed to a caller, so it answers "what happened to this memory" and not "who did it". Reads and searches are not recorded, only writes. Retention is `purge_expired()`; `ttl_days` hides old memories from search and leaves them on disk.
 
 ---
 

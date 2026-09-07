@@ -12,6 +12,7 @@
 | `get(memory_id)` | Get a single memory by ID. Returns `Memory` or `None`. |
 | `delete(memory_id)` | Delete a memory by ID. |
 | `get_history(memory_id)` | Get audit trail for a memory. Returns `List[HistoryEntry]`. |
+| `purge_expired(older_than_days, user_id=None, include_ymyl=False, dry_run=False)` | Permanently remove memories older than the cutoff. Skips YMYL rows unless `include_ymyl`. Each removal writes a `delete` history entry carrying the removed content. Returns the count. |
 | `summarize(user_id, agent_id, force)` | Trigger hierarchical summarization. Returns `List[Memory]`. |
 | `count(user_id, agent_id, tier)` | Count memories with optional filters. Returns `int`. |
 | `export_json(user_id, agent_id)` | Export memories as JSON string. |
