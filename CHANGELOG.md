@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **Audit-trail documentation states its scope** - the README's "History & Audit Trail" section said every add, update and delete was logged and implied attribution the schema does not carry. It now names the write paths covered, says entries are not attributed to a caller, and points retention at `purge_expired()`. `tests/test_readme_claims.py` gates the attribution wording on a `HistoryEntry` actor field existing, checks the documented `HistoryEntry` fields against the model, and checks `SECURITY.md` covers the shipped minor. Recorded in `docs/HISTORY.md`.
+
+### Fixed
+
+- **Four write paths bypassed the history log** - `delete()`, `pin()`, `import_json()` and `backfill_entities()` wrote to the vector store without recording anything. A memory removed through `delete()` (the path behind the MCP `widemem_delete` tool) left its ADD entry standing and nothing marking the removal, so the log read as though the memory still existed. All four now write an entry, and `delete()` captures the removed content so the record can be reconstructed. `tests/test_audit_log_coverage.py` adds a structural guard that fails when a method mutates the store without logging, so a new write path cannot land unlogged.
+
 ## [1.5.1] - 2026-08-31
 
 ### Fixed

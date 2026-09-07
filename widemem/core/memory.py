@@ -15,6 +15,7 @@ from widemem.core.types import (
     HistoryEntry,
     LLMConfig,
     Memory,
+    MemoryAction,
     MemoryConfig,
     MemorySearchResult,
     MemoryTier,
@@ -519,6 +520,16 @@ class WideMemory:
                     vector=embedding,
                     metadata=self.pipeline._memory_to_metadata(memory),
                 )
+                # The pipeline logged the ADD; raising importance is a second
+                # write to the same row. Content is unchanged, so both sides
+                # carry it: the entry records that the row was modified, not
+                # that the fact changed.
+                self._history_store.log(
+                    memory.id,
+                    MemoryAction.UPDATE,
+                    old_content=memory.content,
+                    new_content=memory.content,
+                )
 
         return result
 
@@ -549,7 +560,12 @@ class WideMemory:
         return Memory(**kwargs)
 
     def delete(self, memory_id: str) -> None:
+        existing = self.vector_store.get(memory_id)
+        if existing is None:
+            return
+        old_content = existing[1].get("content")
         self.vector_store.delete(memory_id)
+        self._history_store.log(memory_id, MemoryAction.DELETE, old_content=old_content)
 
     def get_history(self, memory_id: str) -> List[HistoryEntry]:
         return self._history_store.get_history(memory_id)
@@ -646,6 +662,14 @@ class WideMemory:
             return 0
 
         embeddings = self.embedder.embed_batch(contents)
+        # Logged before the inserts, in one transaction. `pending` is already
+        # validated and every row in it is inserted, so the entries are
+        # accurate. Writing them first means a crash mid-import leaves audit
+        # rows for memories that did not land, which is the recoverable
+        # direction; the reverse leaves stored memories no entry accounts for.
+        self._history_store.log_many(
+            [(mem_id, MemoryAction.ADD, None, metadata["content"]) for mem_id, metadata in pending]
+        )
         with self.vector_store.batch_writes():
             for (mem_id, metadata), embedding in zip(pending, embeddings):
                 self.vector_store.insert(id=mem_id, vector=embedding, metadata=metadata)
@@ -660,6 +684,7 @@ class WideMemory:
         updated."""
         items = self.vector_store.list_all(max_results=max_memories)
         updated = 0
+        logged: List[Tuple[str, MemoryAction, str, str]] = []
         for mem_id, metadata in items:
             if metadata.get("entities"):
                 continue
@@ -673,7 +698,14 @@ class WideMemory:
             meta = dict(meta)
             meta["entities"] = ents
             self.vector_store.update(id=mem_id, vector=vector, metadata=meta)
+            # Metadata-only edit: content is identical on both sides, so the
+            # entry marks that the row was rewritten without implying the
+            # stored fact changed. Collected rather than logged per row, so a
+            # million-row backfill does not pay a million fsyncs.
+            content = meta.get("content", "")
+            logged.append((mem_id, MemoryAction.UPDATE, content, content))
             updated += 1
+        self._history_store.log_many(logged)
         return updated
 
     @staticmethod

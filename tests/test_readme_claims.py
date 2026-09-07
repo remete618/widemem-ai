@@ -109,6 +109,108 @@ def test_readme_formula_names_real_fields():
 
 
 # ---------------------------------------------------------------------------
+# Audit-trail claims
+# ---------------------------------------------------------------------------
+_AUDIT_SECTION = r"## History & Audit Trail\n(.*?)\n---"
+
+
+def _audit_section() -> str:
+    """The audit section as one whitespace-normalised line.
+
+    Collapsing newlines keeps these guards from passing or failing on where
+    a sentence happens to wrap.
+    """
+    match = re.search(_AUDIT_SECTION, read("README.md"), re.S)
+    assert match, "README 'History & Audit Trail' section not found"
+    return re.sub(r"\s+", " ", match.group(1))
+
+
+def _logged_actions() -> set[str]:
+    """MemoryAction members passed to a history log call in core/memory.py.
+
+    Scoped to that module on purpose. `pipeline.py` names all four actions
+    permanently, so a union across the package would pass no matter what the
+    public methods do, which is the tautology this guard exists to avoid.
+    The audit section describes the public API, and every write path it
+    describes lives here.
+    """
+    calls = re.findall(
+        r"_history_store\.log(?:_many)?\((?:[^()]|\([^()]*\))*\)",
+        read("widemem/core/memory.py"),
+        re.S,
+    )
+    return {m for call in calls for m in re.findall(r"MemoryAction\.([A-Z]+)", call)}
+
+
+def test_readme_names_only_actions_the_public_api_logs():
+    """Every write the audit section advertises must reach the history store.
+
+    `delete()`, `pin()`, `import_json()` and `backfill_entities()` all wrote
+    to the vector store with no entry while the README claimed otherwise.
+    """
+    section = _audit_section().lower()
+    claimed = {
+        word.upper()
+        for word in ("add", "update", "delete")
+        if re.search(rf"\b{word}s?\b", section)
+    }
+    assert claimed, "audit section no longer names any logged action"
+    missing = claimed - _logged_actions()
+    assert not missing, (
+        f"README's audit section claims {sorted(missing)} is logged, but no "
+        "history log call passes it. Log the write or drop the claim."
+    )
+
+
+def test_readme_discloses_that_entries_carry_no_actor():
+    """While HistoryEntry has no actor field, the README must say so.
+
+    The section read 'who changed this and when' against a schema with no
+    column naming a caller. Banning the phrasing would only move it around,
+    so the guard requires the limitation to be stated instead. When an actor
+    field lands, the requirement lifts on its own and the stronger claim is
+    allowed.
+    """
+    actor_fields = {"actor_id", "actor_type", "user_id", "agent_id", "run_id", "source_ref"}
+    entry_block = re.search(
+        r"class HistoryEntry\(BaseModel\):(.*?)\n\n", read("widemem/core/types.py"), re.S
+    )
+    assert entry_block, "HistoryEntry model not found in types.py"
+    if any(f"{field}:" in entry_block.group(1) for field in actor_fields):
+        return
+
+    section = _audit_section().lower()
+    assert "not attributed" in section, (
+        "HistoryEntry carries no actor field, so the README audit section "
+        "must state that entries are not attributed to a caller"
+    )
+
+
+def test_history_entry_fields_match_the_api_doc():
+    entry_block = re.search(r"class HistoryEntry\(BaseModel\):(.*?)\n\n", read("widemem/core/types.py"), re.S)
+    assert entry_block, "HistoryEntry model not found in types.py"
+    code_fields = set(re.findall(r"^\s+([a-z_]+):", entry_block.group(1), re.M))
+
+    doc = re.search(r"## HistoryEntry\n(.*?)\n## ", read("docs/api.md"), re.S)
+    assert doc, "HistoryEntry table missing from docs/api.md"
+    doc_fields = set(re.findall(r"\|\s*`([a-z_]+)`\s*\|", doc.group(1)))
+
+    assert code_fields == doc_fields, (
+        f"HistoryEntry fields drifted: only in code {sorted(code_fields - doc_fields)}, "
+        f"only in docs/api.md {sorted(doc_fields - code_fields)}"
+    )
+
+
+def test_security_policy_covers_the_shipped_minor():
+    version = re.search(r'^version = "(\d+)\.(\d+)\.', read("pyproject.toml"), re.M)
+    assert version, "version string missing from pyproject.toml"
+    shipped = f"{version.group(1)}.{version.group(2)}.x"
+    assert re.search(rf"\|\s*{re.escape(shipped)}\s*\|\s*Yes\s*\|", read("SECURITY.md")), (
+        f"SECURITY.md does not list {shipped} as supported"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Benchmark claim hygiene
 # ---------------------------------------------------------------------------
 def test_no_retired_superlatives():

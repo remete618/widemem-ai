@@ -5,6 +5,30 @@ truth: `tests/test_readme_claims.py` enforces doc-vs-code consistency in CI,
 and anything that slipped through before that gate existed is recorded here
 permanently.
 
+## 2026-09-02: the audit trail did not cover every write path
+
+The README and widemem.ai stated that every add, update and delete was
+logged. Four public methods wrote to the vector store without a history
+entry: `delete()`, `pin()`, `import_json()` and `backfill_entities()`.
+`delete()` is the one that mattered. It left the ADD entry standing with
+nothing recording the removal, so the log read as though the memory still
+existed, which is worse than an absent entry.
+
+The same sections implied attribution the schema does not carry.
+`HistoryEntry` has no field naming a caller, so the log answers what changed
+and when, never who.
+
+- Corrected: "full audit trail" now states its scope, which is writes, not
+  reads, and content changes, not callers.
+- Unaffected: entries written by the extraction pipeline and the hierarchy
+  manager, which were complete throughout, and the content on both sides of
+  an update, which was always recorded.
+- Fix: the four paths log as of this date, and
+  `tests/test_audit_log_coverage.py::test_no_unlogged_mutation_site` fails
+  when a method mutates the store without logging. Attribution claims stay
+  gated in `tests/test_readme_claims.py` until `HistoryEntry` carries an
+  actor field.
+
 ## 2026-07-06: LoCoMo category labels were transposed; multi-hop claims retracted
 
 widemem's LoCoMo harnesses labeled category 1 "single-hop" and category 4
