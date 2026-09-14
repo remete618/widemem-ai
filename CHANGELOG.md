@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-14
+
 ### Added
 
 - **Provider tests run against a real SDK** - `tests/test_llm_providers.py` mocks the HTTP transport instead of the client, so the installed SDK validates every call. A `MagicMock` client accepts any keyword, which is how a parameter the SDK had removed passed CI. CI now installs the `anthropic`, `mcp`, `ollama` and `qdrant` extras too; those suites were being skipped, 14 tests in total. `sentence-transformers` stays out because it pulls torch into every matrix job.
