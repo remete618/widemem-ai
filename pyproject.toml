@@ -64,12 +64,14 @@ server = [
     "python-multipart>=0.0.30",
 ]
 mcp = ["mcp>=2,<3"]
+langchain = ["langchain-core>=1.0,<2"]
 bm25 = ["rank-bm25>=0.2.2,<1"]
 pgvector = ["psycopg[binary]>=3.1,<4", "pgvector>=0.3.0,<1"]
 all = [
     "anthropic>=0.30,<2",
     "faiss-cpu>=1.7,<2",
     "fastapi>=0.110,<1",
+    "langchain-core>=1.0,<2",
     "mcp>=2,<3",
     "ollama>=0.2,<1",
     "pgvector>=0.3.0,<1",

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **LangChain retriever adapter** - `widemem.integrations.langchain.WidememRetriever` is a real `BaseRetriever`, so widemem drops into any chain that takes one. Documents carry the memory id, owner, importance, YMYL category, timestamp and both scores. `min_confidence` is all-or-nothing rather than a per-document filter, because widemem reports confidence for the result set: a chain can branch on an empty list, where a thinned list of weak matches would quietly degrade the answer. The async path runs the synchronous search in a worker thread so it does not stall the event loop. Install with the `langchain` extra. Example in `examples/langchain_retriever.py`.
+
 ### Changed
 
 - **BREAKING for the `mcp` extra: the MCP server now requires mcp 2.x.** The pin moves from `mcp>=1.0,<2` to `mcp>=2,<3`. mcp 2.0 removed the low-level `@server.list_tools()` and `@server.call_tool()` decorators the server was built on, so `widemem/mcp_server.py` did not import at all under 2.x. The handlers are now passed to `Server(...)` as `on_list_tools` and `on_call_tool`, which is how mcp 2.x registers them. Supporting both generations was considered and rejected: it needs two handler signatures and doubles the test matrix for an opt-in extra. Pin `widemem-ai<1.7` if you need mcp 1.x.
