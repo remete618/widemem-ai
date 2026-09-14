@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **`purge_expired()` stopped at a fixed row cap and still reported success.** The sweep listed with `max_results=1_000_000`, and every backend honours that limit: FAISS stops appending, qdrant scrolls with it, pgvector adds a `LIMIT`. A larger store had its tail examined by nothing while the returned count read as a completed purge. The request is now sized from the store's own count for the same scope, so the caller's view cannot be truncated by the sweep's own request. Bounded-memory paging would need an offset on the vector-store interface and is deliberately not part of this fix.
+
 ### Added
 
 - **LangChain retriever adapter** - `widemem.integrations.langchain.WidememRetriever` is a real `BaseRetriever`, so widemem drops into any chain that takes one. Documents carry the memory id, owner, importance, YMYL category, timestamp and both scores. `min_confidence` is all-or-nothing rather than a per-document filter, because widemem reports confidence for the result set: a chain can branch on an empty list, where a thinned list of weak matches would quietly degrade the answer. The async path runs the synchronous search in a worker thread so it does not stall the event loop. Install with the `langchain` extra. Example in `examples/langchain_retriever.py`.
