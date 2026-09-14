@@ -47,7 +47,6 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-import httpx
 from openai import OpenAI
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -732,8 +731,7 @@ def main():
         return
 
     # Create client
-    http_client = httpx.Client(timeout=httpx.Timeout(API_TIMEOUT, connect=10))
-    client = OpenAI(http_client=http_client)
+    client = OpenAI(timeout=API_TIMEOUT)
 
     # Test API
     test = api_call_with_retry(client, EVAL_LLM, [{"role": "user", "content": "Say OK"}], max_tokens=5)

@@ -77,7 +77,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from subprocess import check_output
 
-import httpx
 from openai import OpenAI
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -532,8 +531,7 @@ def main():
         by_cat_count[CATEGORY_NAMES[q["category"]]] += 1
     print(f"  question mix:    {dict(by_cat_count)}")
 
-    http_client = httpx.Client(timeout=httpx.Timeout(API_TIMEOUT, connect=10))
-    client = OpenAI(http_client=http_client)
+    client = OpenAI(timeout=API_TIMEOUT)
 
     test = api_call_with_retry(
         client, EVAL_LLM, [{"role": "user", "content": "Say OK"}], max_tokens=5

@@ -47,7 +47,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from subprocess import check_output
 
-import httpx
 from openai import OpenAI
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -411,7 +410,7 @@ def do_eval(args):
             sys.exit(f"ERROR: store missing {sdir} — run `ingest` first")
         mems[idx] = WideMemory(config=make_config(sdir, args.graph, hybrid=args.hybrid))
 
-    client = OpenAI(http_client=httpx.Client(timeout=httpx.Timeout(API_TIMEOUT, connect=10)))
+    client = OpenAI(timeout=API_TIMEOUT)
     t0 = time.time()
     preds = []
     for i, q in enumerate(questions, 1):
