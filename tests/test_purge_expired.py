@@ -157,3 +157,78 @@ def test_unparseable_created_at_is_kept_not_purged(mem):
         "an unreadable timestamp must fail closed: deleting a record whose age "
         "cannot be established is unrecoverable"
     )
+
+
+# ---------------------------------------------------------------------------
+# The sweep must not be truncated by its own request size
+# ---------------------------------------------------------------------------
+def _record_sizing(mem):
+    """Wrap the store so the test can see what purge asked it for."""
+    seen = {"counts": [], "requests": []}
+    real_list, real_count = mem.vector_store.list_all, mem.vector_store.count
+
+    def count(filters=None):
+        n = real_count(filters=filters)
+        seen["counts"].append((filters, n))
+        return n
+
+    def list_all(filters=None, max_results=1000):
+        seen["requests"].append((filters, max_results))
+        return real_list(filters=filters, max_results=max_results)
+
+    mem.vector_store.count = count
+    mem.vector_store.list_all = list_all
+    return seen
+
+
+def test_the_request_size_is_derived_from_the_store_not_a_constant(mem):
+    """A fixed cap silently shortened the sweep on any larger store.
+
+    Every backend honours `max_results`, so requesting a constant meant the
+    tail was never examined while the returned count still read as a complete
+    purge. Asserting merely that the request is "large" would not catch it:
+    the old 1,000,000 is larger than any store a test can seed. What is pinned
+    here is that the number comes from the store's own count.
+    """
+    _seed(mem, [{"id": f"m{i}", "content": f"fact {i}", "created_at": _ago(400)} for i in range(8)])
+
+    seen = _record_sizing(mem)
+    removed = mem.purge_expired(older_than_days=365)
+
+    assert removed == 8
+    assert seen["counts"], "purge_expired never asked the store how many rows are in scope"
+    _, counted = seen["counts"][0]
+    _, requested = seen["requests"][0]
+    assert requested == counted + 1, (
+        f"asked for {requested} against a store reporting {counted}; the request must be "
+        "derived from the store so that our own cap cannot be what truncates the view"
+    )
+
+
+def test_a_scoped_purge_sizes_its_request_to_the_scope(mem):
+    """The count must carry the same filter, or a scoped sweep is sized off
+    the whole store and pays for rows it will never look at."""
+    _seed(mem, [
+        {"id": "a1", "content": "alice one", "user_id": "alice", "created_at": _ago(400)},
+        {"id": "a2", "content": "alice two", "user_id": "alice", "created_at": _ago(400)},
+        {"id": "b1", "content": "bob one", "user_id": "bob", "created_at": _ago(400)},
+    ])
+
+    seen = _record_sizing(mem)
+
+    assert mem.purge_expired(older_than_days=365, user_id="alice") == 2
+    assert seen["counts"][0][0] == {"user_id": "alice"}
+    assert seen["requests"][0][0] == {"user_id": "alice"}
+    assert seen["requests"][0][1] == seen["counts"][0][1] + 1 == 3
+    assert mem.get("b1") is not None
+
+
+def test_dry_run_is_sized_the_same_way(mem):
+    _seed(mem, [{"id": f"m{i}", "content": f"fact {i}", "created_at": _ago(400)} for i in range(5)])
+
+    seen = _record_sizing(mem)
+
+    assert mem.purge_expired(older_than_days=365, dry_run=True) == 5
+    _, counted = seen["counts"][0]
+    _, requested = seen["requests"][0]
+    assert requested == counted + 1

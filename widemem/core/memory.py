@@ -601,7 +601,22 @@ class WideMemory:
         # the caller supplied, and falling through to "no filter" on it would
         # turn a scoped purge into a whole-store one.
         filters: Dict[str, str] = {} if user_id is None else {"user_id": user_id}
-        items = self.vector_store.list_all(filters=filters or None, max_results=1_000_000)
+        scope = filters or None
+        # Size the request from the store instead of a constant. The old
+        # 1,000,000 cap was silently binding: every backend honours
+        # `max_results` (FAISS stops appending, qdrant scrolls with it,
+        # pgvector adds a LIMIT), so a larger store had its tail examined by
+        # nothing while the returned count still read as a completed sweep.
+        # Asking for one more than the store reports means our own cap cannot
+        # be what truncates the view; a row added between the two calls shows
+        # up as an extra rather than as a silent omission.
+        #
+        # This materialises every in-scope row, which is what the old cap did
+        # up to its limit. Bounded-memory paging needs an offset on the store
+        # interface, which is a wider change than this fix.
+        items = self.vector_store.list_all(
+            filters=scope, max_results=self.vector_store.count(filters=scope) + 1
+        )
 
         doomed = []
         for memory_id, metadata in items:
