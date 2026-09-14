@@ -13,7 +13,6 @@ source the provider reads.
 
 from __future__ import annotations
 
-import importlib
 import json
 import re
 import warnings
@@ -23,6 +22,7 @@ from unittest.mock import patch
 
 import pytest
 
+from tests._sdk_transport import mocked_client as _mocked  # noqa: E402
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import LLMConfig
 from widemem.providers.llm.anthropic import AnthropicLLM
@@ -37,30 +37,6 @@ except ImportError:  # the extra is optional; only the tests below need it
 # the benchmark guard with it. Losing tests quietly is the failure this file
 # exists to catch.
 needs_anthropic = pytest.mark.skipif(anthropic is None, reason="anthropic extra not installed")
-
-
-def _http_module(client):
-    """The http library the installed SDK is built on.
-
-    anthropic >= 1 and openai >= 2 moved from `httpx` to `httpx2`, and each
-    rejects the other package's client. Read the answer off the SDK's own
-    transport class rather than guessing.
-    """
-    for base in type(client._client).__mro__:
-        root = base.__module__.split(".")[0]
-        if root in ("httpx", "httpx2"):
-            return importlib.import_module(root)
-    raise AssertionError(f"no httpx flavour found in {type(client._client).__mro__}")
-
-
-def _mocked(factory, handler):
-    """An SDK client whose requests are served by `handler`."""
-    hx = _http_module(factory(api_key="sk-test"))
-    client = factory(
-        api_key="sk-test",
-        http_client=hx.Client(transport=hx.MockTransport(lambda req: handler(hx, req))),
-    )
-    return client
 
 
 def _config(**kw):

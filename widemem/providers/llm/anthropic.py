@@ -6,7 +6,7 @@ import warnings
 
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import LLMConfig
-from widemem.providers.llm.base import BaseLLM
+from widemem.providers.llm.base import BaseLLM, strip_json_fences
 
 
 class AnthropicLLM(BaseLLM):
@@ -78,16 +78,7 @@ class AnthropicLLM(BaseLLM):
 
     def _generate_json(self, prompt: str, system: str | None = None) -> dict:
         json_prompt = prompt + "\n\nRespond with valid JSON only."
-        text = self._generate(json_prompt, system=system)
-
-        text = text.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
+        text = strip_json_fences(self._generate(json_prompt, system=system))
 
         try:
             return json.loads(text)
