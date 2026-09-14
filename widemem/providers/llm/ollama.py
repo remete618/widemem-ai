@@ -4,7 +4,7 @@ import json
 
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import LLMConfig
-from widemem.providers.llm.base import BaseLLM
+from widemem.providers.llm.base import BaseLLM, strip_json_fences
 
 
 class OllamaLLM(BaseLLM):
@@ -34,16 +34,7 @@ class OllamaLLM(BaseLLM):
 
     def _generate_json(self, prompt: str, system: str | None = None) -> dict:
         json_system = (system or "") + "\n\nYou must respond with valid JSON only. No other text."
-        text = self._generate(prompt, system=json_system.strip())
-
-        text = text.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
+        text = strip_json_fences(self._generate(prompt, system=json_system.strip()))
 
         try:
             return json.loads(text)

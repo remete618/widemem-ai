@@ -8,7 +8,7 @@ from openai.types.shared_params.response_format_json_object import ResponseForma
 
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import LLMConfig
-from widemem.providers.llm.base import BaseLLM
+from widemem.providers.llm.base import BaseLLM, strip_json_fences
 
 
 class OpenAILLM(BaseLLM):
@@ -54,6 +54,6 @@ class OpenAILLM(BaseLLM):
         if content is None:
             raise ProviderError("LLM returned empty response")
         try:
-            return json.loads(content)
+            return json.loads(strip_json_fences(content))
         except json.JSONDecodeError as e:
             raise ProviderError(f"LLM returned invalid JSON: {e}") from e
