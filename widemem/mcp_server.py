@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from mcp import types
-from mcp.server import Server
+from mcp.server import Server, ServerRequestContext
 from mcp.server.stdio import stdio_server
 
 from widemem.core.memory import WideMemory
@@ -60,134 +60,128 @@ def _get_memory() -> WideMemory:
     return _memory
 
 
-server = Server("widemem")
+TOOLS: list[types.Tool] = [
+    types.Tool(
+        name="widemem_add",
+        description=(
+            "Add a memory. The text is processed by the LLM to extract facts, "
+            "resolve conflicts with existing memories, and store them."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "Text containing facts to remember (e.g. 'I live in San Francisco and work as an engineer')",
+                },
+                "user_id": {
+                    "type": "string",
+                    "description": "Optional user identifier to scope memories",
+                },
+            },
+            "required": ["text"],
+        },
+    ),
+    types.Tool(
+        name="widemem_search",
+        description=(
+            "Search memories by semantic similarity. Returns the most relevant "
+            "memories ranked by similarity, importance, and recency."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Natural language search query",
+                },
+                "user_id": {
+                    "type": "string",
+                    "description": "Optional user identifier to scope the search",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Number of results to return (default: 5, max: 100)",
+                    "default": 5,
+                },
+            },
+            "required": ["query"],
+        },
+    ),
+    types.Tool(
+        name="widemem_delete",
+        description="Delete a memory by its ID.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "memory_id": {
+                    "type": "string",
+                    "description": "The UUID of the memory to delete",
+                },
+            },
+            "required": ["memory_id"],
+        },
+    ),
+    types.Tool(
+        name="widemem_count",
+        description="Count stored memories, optionally filtered by user.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "Optional user identifier to filter the count",
+                },
+            },
+        },
+    ),
+    types.Tool(
+        name="widemem_pin",
+        description=(
+            "Pin a critical fact with elevated importance (9.0). Use when the user "
+            "explicitly asks to remember something, corrects a forgotten fact, or "
+            "for YMYL (health, financial, legal) information."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The fact to pin as a high-importance memory",
+                },
+                "user_id": {
+                    "type": "string",
+                    "description": "Optional user identifier to scope memories",
+                },
+            },
+            "required": ["text"],
+        },
+    ),
+    types.Tool(
+        name="widemem_export",
+        description="Export all stored memories as a JSON array, optionally filtered by user.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "Optional user identifier to filter the export",
+                },
+            },
+        },
+    ),
+    types.Tool(
+        name="widemem_health",
+        description="Health check — verify the widemem server is running and responsive.",
+        input_schema={
+            "type": "object",
+            "properties": {},
+        },
+    ),
+]
 
 
-@server.list_tools()
-async def list_tools() -> list[types.Tool]:
-    return [
-        types.Tool(
-            name="widemem_add",
-            description=(
-                "Add a memory. The text is processed by the LLM to extract facts, "
-                "resolve conflicts with existing memories, and store them."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "text": {
-                        "type": "string",
-                        "description": "Text containing facts to remember (e.g. 'I live in San Francisco and work as an engineer')",
-                    },
-                    "user_id": {
-                        "type": "string",
-                        "description": "Optional user identifier to scope memories",
-                    },
-                },
-                "required": ["text"],
-            },
-        ),
-        types.Tool(
-            name="widemem_search",
-            description=(
-                "Search memories by semantic similarity. Returns the most relevant "
-                "memories ranked by similarity, importance, and recency."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Natural language search query",
-                    },
-                    "user_id": {
-                        "type": "string",
-                        "description": "Optional user identifier to scope the search",
-                    },
-                    "top_k": {
-                        "type": "integer",
-                        "description": "Number of results to return (default: 5, max: 100)",
-                        "default": 5,
-                    },
-                },
-                "required": ["query"],
-            },
-        ),
-        types.Tool(
-            name="widemem_delete",
-            description="Delete a memory by its ID.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "memory_id": {
-                        "type": "string",
-                        "description": "The UUID of the memory to delete",
-                    },
-                },
-                "required": ["memory_id"],
-            },
-        ),
-        types.Tool(
-            name="widemem_count",
-            description="Count stored memories, optionally filtered by user.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "description": "Optional user identifier to filter the count",
-                    },
-                },
-            },
-        ),
-        types.Tool(
-            name="widemem_pin",
-            description=(
-                "Pin a critical fact with elevated importance (9.0). Use when the user "
-                "explicitly asks to remember something, corrects a forgotten fact, or "
-                "for YMYL (health, financial, legal) information."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "text": {
-                        "type": "string",
-                        "description": "The fact to pin as a high-importance memory",
-                    },
-                    "user_id": {
-                        "type": "string",
-                        "description": "Optional user identifier to scope memories",
-                    },
-                },
-                "required": ["text"],
-            },
-        ),
-        types.Tool(
-            name="widemem_export",
-            description="Export all stored memories as a JSON array, optionally filtered by user.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "description": "Optional user identifier to filter the export",
-                    },
-                },
-            },
-        ),
-        types.Tool(
-            name="widemem_health",
-            description="Health check — verify the widemem server is running and responsive.",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-            },
-        ),
-    ]
-
-
-@server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+async def _dispatch(name: str, arguments: dict) -> list[types.TextContent]:
     if name == "widemem_add":
         return await _handle_add(arguments)
     elif name == "widemem_search":
@@ -319,6 +313,24 @@ async def _handle_export(arguments: dict) -> list[types.TextContent]:
 
 async def _handle_health(arguments: dict) -> list[types.TextContent]:
     return [types.TextContent(type="text", text=json.dumps({"status": "ok"}))]
+
+
+async def _on_list_tools(
+    ctx: ServerRequestContext, params: types.PaginatedRequestParams | None
+) -> types.ListToolsResult:
+    return types.ListToolsResult(tools=TOOLS)
+
+
+async def _on_call_tool(
+    ctx: ServerRequestContext, params: types.CallToolRequestParams
+) -> types.CallToolResult:
+    return types.CallToolResult(content=await _dispatch(params.name, params.arguments or {}))
+
+
+# mcp 2.x takes the handlers here. The 1.x `@server.list_tools()` and
+# `@server.call_tool()` decorators no longer exist, which is why the server
+# would not import at all under 2.x.
+server = Server("widemem", on_list_tools=_on_list_tools, on_call_tool=_on_call_tool)
 
 
 async def main():

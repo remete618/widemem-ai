@@ -1,14 +1,14 @@
-"""Tests for the MCP server tool handlers: top_k clamping and error masking."""
+"""Tests for the MCP server: tool registration, dispatch, clamping and error masking."""
 
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
-# widemem.mcp_server imports the `mcp` package at module level. Skip cleanly
-# when the [mcp] extra is not installed. CI does not install [mcp], so these
-# handler tests skip there rather than erroring at collection.
+# widemem.mcp_server imports the `mcp` package at module level, so skip cleanly
+# when the [mcp] extra is absent. CI installs it, so these run there.
 pytest.importorskip("mcp")
 
 import widemem.mcp_server as mcp_server  # noqa: E402
@@ -60,3 +60,83 @@ async def test_search_masks_internal_error(monkeypatch):
     assert "secret" not in result[0].text
     assert "10.0.0.5" not in result[0].text
     assert "/home/app" not in result[0].text
+
+
+# ---------------------------------------------------------------------------
+# Tool registration and dispatch
+#
+# mcp 2.x removed the `@server.list_tools()` / `@server.call_tool()` decorators
+# the 1.x server was built on, so the module did not import at all under 2.x.
+# These pin the replacement wiring.
+# ---------------------------------------------------------------------------
+async def test_list_tools_returns_every_registered_tool():
+    result = await mcp_server._on_list_tools(None, None)
+    assert [t.name for t in result.tools] == [t.name for t in mcp_server.TOOLS]
+    assert result.tools, "a server advertising no tools is useless"
+
+
+def test_every_tool_declares_an_object_schema():
+    for tool in mcp_server.TOOLS:
+        assert tool.input_schema.get("type") == "object", (
+            f"{tool.name} does not declare an object input schema"
+        )
+        assert tool.description, f"{tool.name} has no description for the model to read"
+
+
+async def test_every_advertised_tool_dispatches_somewhere(monkeypatch):
+    """A tool in TOOLS with no branch in _dispatch would advertise a dead name.
+
+    The dispatcher's fallback is the only thing that reports an unknown tool,
+    so reaching it from a name we advertise is the failure being caught here.
+    """
+    monkeypatch.setattr(mcp_server, "_get_memory", lambda: _CaptureMemory())
+    orphans = []
+    for tool in mcp_server.TOOLS:
+        content = await mcp_server._dispatch(tool.name, {})
+        if content and content[0].text.startswith("Unknown tool:"):
+            orphans.append(tool.name)
+    assert not orphans, f"advertised but not dispatched: {orphans}"
+
+
+async def test_unknown_tool_names_the_tool():
+    content = await mcp_server._dispatch("widemem_nope", {})
+    assert content[0].text == "Unknown tool: widemem_nope"
+
+
+async def test_call_tool_passes_dispatch_output_through_untouched(monkeypatch):
+    """The 2.x handler wraps in CallToolResult; it must not reshape the payload.
+
+    Compared against `_dispatch` rather than a hardcoded body, so this stays
+    honest if a handler's response shape changes.
+    """
+    monkeypatch.setattr(mcp_server, "_get_memory", lambda: _CaptureMemory())
+    args = {"query": "hi"}
+    direct = await mcp_server._dispatch("widemem_search", args)
+
+    result = await mcp_server._on_call_tool(None, SimpleNamespace(name="widemem_search", arguments=args))
+
+    assert [c.text for c in result.content] == [c.text for c in direct]
+    assert json.loads(result.content[0].text)["memories"] == []
+
+
+async def test_call_tool_tolerates_absent_arguments():
+    """`arguments` is optional in the protocol; None must not become a crash."""
+    params = SimpleNamespace(name="widemem_health", arguments=None)
+
+    result = await mcp_server._on_call_tool(None, params)
+
+    assert json.loads(result.content[0].text) == {"status": "ok"}
+
+
+def test_the_server_actually_has_the_handlers_registered():
+    """Defining the handlers is not the same as wiring them to the server.
+
+    Every other test in this file calls `_on_list_tools` / `_on_call_tool`
+    directly, so dropping them from the `Server(...)` construction leaves the
+    suite green and the server answering nothing. Checked against the server
+    object rather than the source.
+    """
+    for method in ("tools/list", "tools/call"):
+        assert mcp_server.server.get_request_handler(method) is not None, (
+            f"{method} has no handler; the server would reject the request"
+        )
