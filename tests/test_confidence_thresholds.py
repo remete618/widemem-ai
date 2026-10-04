@@ -1,4 +1,6 @@
+import hashlib
 import json
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -152,7 +154,68 @@ def test_unrelated_queries_never_reach_high(split):
         assert assess_confidence([_res(c["top_similarity"])], "all-MiniLM-L6-v2") != RetrievalConfidence.HIGH
 
 
+# sha256 of the fixture's facts, labels and stored similarities. A hand edit
+# fails here; after a deliberate live re-run (test below passing locally with
+# sentence-transformers installed), update this hash in the same commit.
+FIXTURE_SHA256 = "90840849cd87af1e25312ad0662a9e5df334f78680ebbc5190a282a142e3f6cb"
+
+
+def _fixture_digest(data) -> str:
+    payload = {
+        "facts": {u: v["facts"] for u, v in sorted(data["users"].items())},
+        "cases": [
+            [c["user"], c["query"], c["kind"], c["split"], c["answer_facts"], c["top_similarity"],
+             c["answer_fact_similarity"], c["subjectless_answer_similarity"]]
+            for c in data["cases"]
+        ],
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def test_fixture_integrity_hash():
+    assert _fixture_digest(_load()) == FIXTURE_SHA256
+
+
+def _answer_recall(cases, field, model):
+    hits = [
+        assess_confidence([_res(c[field])], model)
+        in (RetrievalConfidence.HIGH, RetrievalConfidence.MODERATE)
+        for c in cases
+    ]
+    return sum(hits) / len(hits)
+
+
+@pytest.mark.parametrize("split,floor", [("train", 0.75), ("holdout", 0.55)])
+def test_subjectless_answers_reach_moderate(split, floor):
+    cases = _split(split, ("answerable",))
+    assert _answer_recall(cases, "subjectless_answer_similarity", "all-MiniLM-L6-v2") >= floor
+    assert _answer_recall(cases, "subjectless_answer_similarity", None) <= 0.20
+
+
+@pytest.mark.parametrize("split", ["train", "holdout"])
+def test_a_higher_moderate_would_lose_subjectless_answers(split, monkeypatch):
+    cases = _split(split, ("answerable",))
+    at_030 = _answer_recall(cases, "subjectless_answer_similarity", "all-MiniLM-L6-v2")
+    monkeypatch.setenv("WIDEMEM_CONFIDENCE_MODERATE", "0.38")
+    assert _answer_recall(cases, "subjectless_answer_similarity", "all-MiniLM-L6-v2") < at_030
+
+
+def test_answer_fields_are_null_exactly_when_unanswerable():
+    for c in _load()["cases"]:
+        for field in ("answer_fact_similarity", "subjectless_answer_similarity"):
+            assert (c[field] is None) == (not c["answer_facts"])
+        if c["answer_facts"]:
+            assert c["answer_fact_similarity"] <= c["top_similarity"] + 1e-4
+
+
 def test_fixture_scores_match_the_live_model():
+    """Recomputes every stored similarity with the real model.
+
+    Accepted gap: CI does not install sentence-transformers (no torch), so this
+    skips there; test_fixture_integrity_hash is the CI-side guard.
+    """
+    import re
+
     st = pytest.importorskip("sentence_transformers")
     try:
         model = st.SentenceTransformer("all-MiniLM-L6-v2")
@@ -164,6 +227,16 @@ def test_fixture_scores_match_the_live_model():
         f = model.encode(facts, normalize_embeddings=True)
         q = model.encode([c["query"]], normalize_embeddings=True)[0]
         assert abs(float((f @ q).max()) - c["top_similarity"]) < 0.01, c["query"]
+        if c["answer_facts"]:
+            answers = [facts[i] for i in c["answer_facts"]]
+            a = model.encode(answers, normalize_embeddings=True)
+            assert abs(float((a @ q).max()) - c["answer_fact_similarity"]) < 0.01, c["query"]
+            stripped = [
+                re.sub(r"\s+", " ", re.sub(rf"\b{c['user']}('s)?\b", "", f, flags=re.I)).strip()
+                for f in answers
+            ]
+            sl = model.encode(stripped, normalize_embeddings=True)
+            assert abs(float((sl @ q).max()) - c["subjectless_answer_similarity"]) < 0.01, c["query"]
 
 
 @pytest.mark.parametrize("split", ["train", "holdout"])
@@ -173,3 +246,57 @@ def test_minilm_precision_floor_with_hard_negatives(split):
     # rate. This floor records that limit; thresholds cannot fix it.
     precision, _ = _precision_recall(_split(split), "all-MiniLM-L6-v2")
     assert precision >= 0.70
+
+
+@pytest.mark.parametrize("env,warns", [
+    ({}, False),
+    ({"WIDEMEM_CONFIDENCE_MODERATE": "0.60"}, False),
+    ({"WIDEMEM_CONFIDENCE_MODERATE": "0.70"}, True),
+    ({"WIDEMEM_CONFIDENCE_LOW": "0.35"}, True),
+])
+def test_non_monotonic_thresholds_warn(env, warns, monkeypatch, caplog):
+    import widemem.retrieval.uncertainty as unc
+
+    monkeypatch.setattr(unc, "_warned_non_monotonic", set())
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    with caplog.at_level(logging.WARNING, logger="widemem.retrieval.uncertainty"):
+        get_confidence_thresholds("all-MiniLM-L6-v2")
+        get_confidence_thresholds("all-MiniLM-L6-v2")
+    msgs = [r for r in caplog.records if "not ordered" in r.getMessage()]
+    assert len(msgs) == (1 if warns else 0)
+
+
+@pytest.mark.parametrize("configured,resolved", [
+    ("", "all-MiniLM-L6-v2"),
+    ("all-MiniLM-L6-v2", "all-MiniLM-L6-v2"),
+    ("paraphrase-MiniLM-L3-v2", "paraphrase-MiniLM-L3-v2"),
+])
+def test_sentence_transformers_embedder_records_the_model_it_loads(configured, resolved, monkeypatch):
+    import sys
+
+    from widemem.core.types import EmbeddingConfig
+    from widemem.providers.embeddings.sentence_transformers import SentenceTransformerEmbedder
+
+    loaded = []
+
+    class FakeST:
+        def __init__(self, name):
+            loaded.append(name)
+
+        def get_sentence_embedding_dimension(self):
+            return 384
+
+    monkeypatch.setitem(sys.modules, "sentence_transformers", SimpleNamespace(SentenceTransformer=FakeST))
+    emb = SentenceTransformerEmbedder(EmbeddingConfig(provider="sentence-transformers", model=configured))
+    assert loaded == [resolved]
+    assert emb.config.model == resolved
+    assert emb.dimensions == 384
+
+
+def test_empty_model_string_reaches_the_embedder_unresolved():
+    from widemem.core.memory import WideMemory
+    from widemem.core.types import EmbeddingConfig
+
+    cfg = WideMemory._embedding_config(EmbeddingConfig(provider="sentence-transformers", model=""))
+    assert cfg.model == ""

@@ -16,16 +16,15 @@ class SentenceTransformerEmbedder(BaseEmbedder):
             raise ProviderError(
                 "Install sentence-transformers: pip install \"widemem-ai[sentence-transformers]\""
             )
-        self._model = SentenceTransformer(
-            config.model or "all-MiniLM-L6-v2",
-        )
+        model_name = config.model or "all-MiniLM-L6-v2"
+        self._model = SentenceTransformer(model_name)
         actual_dim = self._model.get_sentence_embedding_dimension()
-        if config.dimensions and config.dimensions != actual_dim:
+        if model_name != config.model or (config.dimensions and config.dimensions != actual_dim):
             self.config = EmbeddingConfig(
                 provider=config.provider,
-                model=config.model,
+                model=model_name,
                 api_key=config.api_key,
-                dimensions=actual_dim,
+                dimensions=actual_dim if config.dimensions else config.dimensions,
             )
 
     def _embed(self, text: str) -> List[float]:

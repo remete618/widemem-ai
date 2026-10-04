@@ -1,6 +1,6 @@
 {
  "meta": {
-  "about": "Labeled retrieval-confidence cases. Facts are what WideMemory.add() stored with llama3.1:8b (Ollama, temperature 0) from each user's inputs, kept verbatim. top_similarity is the top-1 cosine of the query against that user's facts under all-MiniLM-L6-v2 (normalized embeddings).",
+  "about": "Labeled retrieval-confidence cases. Facts are what WideMemory.add() stored with llama3.1:8b (Ollama, temperature 0) from each user's inputs, kept verbatim. All similarities are cosine under all-MiniLM-L6-v2 with normalized embeddings, computed live and rounded to 4 places. top_similarity: top-1 over all of the user's facts. answer_fact_similarity: max over the answer facts only (null when not answerable). subjectless_answer_similarity: the same, with the person's name stripped from the answer facts, the shape an extractor produces when it drops the subject ('moved to Boston'). Caveats: for 21 of 38 answerable cases the top-1 fact is not an answer fact but a fact naming the person, so top_similarity overstates retrieval of the answer. WideMemory.search() scores results[0] after final_score ranking, which can differ from max cosine under mixed importance or recency, so recall measured here is an upper bound.",
   "embedding_model": "all-MiniLM-L6-v2",
   "split": "train = alice, bob, carmen, dev; holdout = emma, frank (split by person)"
  },
@@ -124,7 +124,9 @@
     2
    ],
    "split": "train",
-   "top_similarity": 0.7265
+   "top_similarity": 0.7265,
+   "answer_fact_similarity": 0.7265,
+   "subjectless_answer_similarity": 0.3205
   },
   {
    "user": "alice",
@@ -135,7 +137,9 @@
     2
    ],
    "split": "train",
-   "top_similarity": 0.4202
+   "top_similarity": 0.4202,
+   "answer_fact_similarity": 0.4202,
+   "subjectless_answer_similarity": 0.3281
   },
   {
    "user": "alice",
@@ -145,7 +149,9 @@
     3
    ],
    "split": "train",
-   "top_similarity": 0.6084
+   "top_similarity": 0.6084,
+   "answer_fact_similarity": 0.1852,
+   "subjectless_answer_similarity": 0.1852
   },
   {
    "user": "alice",
@@ -155,7 +161,9 @@
     3
    ],
    "split": "train",
-   "top_similarity": 0.4621
+   "top_similarity": 0.4621,
+   "answer_fact_similarity": 0.4621,
+   "subjectless_answer_similarity": 0.4621
   },
   {
    "user": "alice",
@@ -165,7 +173,9 @@
     5
    ],
    "split": "train",
-   "top_similarity": 0.4978
+   "top_similarity": 0.4978,
+   "answer_fact_similarity": 0.425,
+   "subjectless_answer_similarity": 0.425
   },
   {
    "user": "alice",
@@ -175,7 +185,9 @@
     7
    ],
    "split": "train",
-   "top_similarity": 0.5707
+   "top_similarity": 0.5707,
+   "answer_fact_similarity": 0.5707,
+   "subjectless_answer_similarity": 0.5707
   },
   {
    "user": "alice",
@@ -185,7 +197,9 @@
     4
    ],
    "split": "train",
-   "top_similarity": 0.506
+   "top_similarity": 0.506,
+   "answer_fact_similarity": 0.506,
+   "subjectless_answer_similarity": 0.506
   },
   {
    "user": "alice",
@@ -193,7 +207,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.5861
+   "top_similarity": 0.5861,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "alice",
@@ -201,7 +217,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.4996
+   "top_similarity": 0.4996,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "alice",
@@ -209,7 +227,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.1451
+   "top_similarity": 0.1451,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "alice",
@@ -217,7 +237,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.3511
+   "top_similarity": 0.3511,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "bob",
@@ -227,7 +249,9 @@
     0
    ],
    "split": "train",
-   "top_similarity": 0.7252
+   "top_similarity": 0.7252,
+   "answer_fact_similarity": 0.7252,
+   "subjectless_answer_similarity": 0.1893
   },
   {
    "user": "bob",
@@ -237,7 +261,9 @@
     2
    ],
    "split": "train",
-   "top_similarity": 0.5781
+   "top_similarity": 0.5781,
+   "answer_fact_similarity": 0.5401,
+   "subjectless_answer_similarity": 0.2388
   },
   {
    "user": "bob",
@@ -248,7 +274,9 @@
     5
    ],
    "split": "train",
-   "top_similarity": 0.5073
+   "top_similarity": 0.5073,
+   "answer_fact_similarity": 0.2576,
+   "subjectless_answer_similarity": 0.2576
   },
   {
    "user": "bob",
@@ -258,7 +286,9 @@
     7
    ],
    "split": "train",
-   "top_similarity": 0.5341
+   "top_similarity": 0.5341,
+   "answer_fact_similarity": 0.5341,
+   "subjectless_answer_similarity": 0.5341
   },
   {
    "user": "bob",
@@ -268,7 +298,9 @@
     9
    ],
    "split": "train",
-   "top_similarity": 0.4824
+   "top_similarity": 0.4824,
+   "answer_fact_similarity": 0.3478,
+   "subjectless_answer_similarity": 0.3478
   },
   {
    "user": "bob",
@@ -278,7 +310,9 @@
     1
    ],
    "split": "train",
-   "top_similarity": 0.7262
+   "top_similarity": 0.7262,
+   "answer_fact_similarity": 0.6993,
+   "subjectless_answer_similarity": 0.3491
   },
   {
    "user": "bob",
@@ -286,7 +320,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.5678
+   "top_similarity": 0.5678,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "bob",
@@ -294,7 +330,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.5159
+   "top_similarity": 0.5159,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "bob",
@@ -302,7 +340,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.0877
+   "top_similarity": 0.0877,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "bob",
@@ -310,7 +350,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.1127
+   "top_similarity": 0.1127,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "carmen",
@@ -320,7 +362,9 @@
     0
    ],
    "split": "train",
-   "top_similarity": 0.7934
+   "top_similarity": 0.7934,
+   "answer_fact_similarity": 0.7777,
+   "subjectless_answer_similarity": 0.3933
   },
   {
    "user": "carmen",
@@ -330,7 +374,9 @@
     1
    ],
    "split": "train",
-   "top_similarity": 0.7112
+   "top_similarity": 0.7112,
+   "answer_fact_similarity": 0.7112,
+   "subjectless_answer_similarity": 0.3103
   },
   {
    "user": "carmen",
@@ -341,7 +387,9 @@
     2
    ],
    "split": "train",
-   "top_similarity": 0.5366
+   "top_similarity": 0.5366,
+   "answer_fact_similarity": 0.5366,
+   "subjectless_answer_similarity": 0.5366
   },
   {
    "user": "carmen",
@@ -351,7 +399,9 @@
     2
    ],
    "split": "train",
-   "top_similarity": 0.4675
+   "top_similarity": 0.4675,
+   "answer_fact_similarity": 0.4675,
+   "subjectless_answer_similarity": 0.4675
   },
   {
    "user": "carmen",
@@ -361,7 +411,9 @@
     4
    ],
    "split": "train",
-   "top_similarity": 0.5487
+   "top_similarity": 0.5487,
+   "answer_fact_similarity": 0.2763,
+   "subjectless_answer_similarity": 0.2763
   },
   {
    "user": "carmen",
@@ -371,7 +423,9 @@
     5
    ],
    "split": "train",
-   "top_similarity": 0.5761
+   "top_similarity": 0.5761,
+   "answer_fact_similarity": 0.3067,
+   "subjectless_answer_similarity": 0.3067
   },
   {
    "user": "carmen",
@@ -379,7 +433,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.6132
+   "top_similarity": 0.6132,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "carmen",
@@ -387,7 +443,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.477
+   "top_similarity": 0.477,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "carmen",
@@ -395,7 +453,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.1225
+   "top_similarity": 0.1225,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "carmen",
@@ -403,7 +463,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.1445
+   "top_similarity": 0.1445,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "dev",
@@ -414,7 +476,9 @@
     1
    ],
    "split": "train",
-   "top_similarity": 0.7718
+   "top_similarity": 0.7718,
+   "answer_fact_similarity": 0.7718,
+   "subjectless_answer_similarity": 0.525
   },
   {
    "user": "dev",
@@ -425,7 +489,9 @@
     1
    ],
    "split": "train",
-   "top_similarity": 0.6661
+   "top_similarity": 0.6661,
+   "answer_fact_similarity": 0.6661,
+   "subjectless_answer_similarity": 0.3008
   },
   {
    "user": "dev",
@@ -435,7 +501,9 @@
     2
    ],
    "split": "train",
-   "top_similarity": 0.468
+   "top_similarity": 0.468,
+   "answer_fact_similarity": 0.3359,
+   "subjectless_answer_similarity": 0.3359
   },
   {
    "user": "dev",
@@ -445,7 +513,9 @@
     3
    ],
    "split": "train",
-   "top_similarity": 0.4527
+   "top_similarity": 0.4527,
+   "answer_fact_similarity": 0.4527,
+   "subjectless_answer_similarity": 0.4527
   },
   {
    "user": "dev",
@@ -455,7 +525,9 @@
     4
    ],
    "split": "train",
-   "top_similarity": 0.4304
+   "top_similarity": 0.4304,
+   "answer_fact_similarity": 0.2526,
+   "subjectless_answer_similarity": 0.2526
   },
   {
    "user": "dev",
@@ -465,7 +537,9 @@
     6
    ],
    "split": "train",
-   "top_similarity": 0.4411
+   "top_similarity": 0.4411,
+   "answer_fact_similarity": 0.3487,
+   "subjectless_answer_similarity": 0.3487
   },
   {
    "user": "dev",
@@ -475,7 +549,9 @@
     7
    ],
    "split": "train",
-   "top_similarity": 0.4494
+   "top_similarity": 0.4494,
+   "answer_fact_similarity": 0.3743,
+   "subjectless_answer_similarity": 0.3743
   },
   {
    "user": "dev",
@@ -483,7 +559,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.4769
+   "top_similarity": 0.4769,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "dev",
@@ -491,7 +569,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.481
+   "top_similarity": 0.481,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "dev",
@@ -499,7 +579,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.1552
+   "top_similarity": 0.1552,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "dev",
@@ -507,7 +589,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "train",
-   "top_similarity": 0.0887
+   "top_similarity": 0.0887,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "emma",
@@ -517,7 +601,9 @@
     0
    ],
    "split": "holdout",
-   "top_similarity": 0.7853
+   "top_similarity": 0.7853,
+   "answer_fact_similarity": 0.7853,
+   "subjectless_answer_similarity": 0.1985
   },
   {
    "user": "emma",
@@ -527,7 +613,9 @@
     1
    ],
    "split": "holdout",
-   "top_similarity": 0.7246
+   "top_similarity": 0.7246,
+   "answer_fact_similarity": 0.6996,
+   "subjectless_answer_similarity": 0.1983
   },
   {
    "user": "emma",
@@ -537,7 +625,9 @@
     2
    ],
    "split": "holdout",
-   "top_similarity": 0.6265
+   "top_similarity": 0.6265,
+   "answer_fact_similarity": 0.2056,
+   "subjectless_answer_similarity": 0.2056
   },
   {
    "user": "emma",
@@ -547,7 +637,9 @@
     3
    ],
    "split": "holdout",
-   "top_similarity": 0.5302
+   "top_similarity": 0.5302,
+   "answer_fact_similarity": 0.5302,
+   "subjectless_answer_similarity": 0.5302
   },
   {
    "user": "emma",
@@ -558,7 +650,9 @@
     6
    ],
    "split": "holdout",
-   "top_similarity": 0.5311
+   "top_similarity": 0.5311,
+   "answer_fact_similarity": 0.4042,
+   "subjectless_answer_similarity": 0.4042
   },
   {
    "user": "emma",
@@ -568,7 +662,9 @@
     7
    ],
    "split": "holdout",
-   "top_similarity": 0.6139
+   "top_similarity": 0.6139,
+   "answer_fact_similarity": 0.3543,
+   "subjectless_answer_similarity": 0.3543
   },
   {
    "user": "emma",
@@ -578,7 +674,9 @@
     8
    ],
    "split": "holdout",
-   "top_similarity": 0.4703
+   "top_similarity": 0.4703,
+   "answer_fact_similarity": 0.4386,
+   "subjectless_answer_similarity": 0.4386
   },
   {
    "user": "emma",
@@ -586,7 +684,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.5954
+   "top_similarity": 0.5954,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "emma",
@@ -594,7 +694,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.5729
+   "top_similarity": 0.5729,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "emma",
@@ -602,7 +704,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.0896
+   "top_similarity": 0.0896,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "emma",
@@ -610,7 +714,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.2252
+   "top_similarity": 0.2252,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "frank",
@@ -620,7 +726,9 @@
     0
    ],
    "split": "holdout",
-   "top_similarity": 0.8825
+   "top_similarity": 0.8825,
+   "answer_fact_similarity": 0.8825,
+   "subjectless_answer_similarity": 0.4103
   },
   {
    "user": "frank",
@@ -630,7 +738,9 @@
     1
    ],
    "split": "holdout",
-   "top_similarity": 0.7091
+   "top_similarity": 0.7091,
+   "answer_fact_similarity": 0.6932,
+   "subjectless_answer_similarity": 0.1158
   },
   {
    "user": "frank",
@@ -640,7 +750,9 @@
     2
    ],
    "split": "holdout",
-   "top_similarity": 0.5029
+   "top_similarity": 0.5029,
+   "answer_fact_similarity": 0.4284,
+   "subjectless_answer_similarity": 0.4284
   },
   {
    "user": "frank",
@@ -650,7 +762,9 @@
     3
    ],
    "split": "holdout",
-   "top_similarity": 0.5291
+   "top_similarity": 0.5291,
+   "answer_fact_similarity": 0.5291,
+   "subjectless_answer_similarity": 0.5291
   },
   {
    "user": "frank",
@@ -660,7 +774,9 @@
     5
    ],
    "split": "holdout",
-   "top_similarity": 0.6905
+   "top_similarity": 0.6905,
+   "answer_fact_similarity": 0.1921,
+   "subjectless_answer_similarity": 0.1921
   },
   {
    "user": "frank",
@@ -668,7 +784,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.6826
+   "top_similarity": 0.6826,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "frank",
@@ -676,7 +794,9 @@
    "kind": "hard_negative",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.7006
+   "top_similarity": 0.7006,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "frank",
@@ -684,7 +804,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.0724
+   "top_similarity": 0.0724,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   },
   {
    "user": "frank",
@@ -692,7 +814,9 @@
    "kind": "unrelated",
    "answer_facts": [],
    "split": "holdout",
-   "top_similarity": 0.1179
+   "top_similarity": 0.1179,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
   }
  ]
 }
