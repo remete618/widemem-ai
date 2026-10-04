@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from widemem.core.exceptions import StorageError
 from widemem.core.types import VectorStoreConfig
 from widemem.storage.vector.base import BaseVectorStore
 
@@ -258,7 +259,15 @@ class FAISSVectorStore(BaseVectorStore):
         state_path = self._storage_path / "state.json"
         if not index_path.exists() or not state_path.exists():
             return
-        self._index = faiss.read_index(str(index_path))
+        index = faiss.read_index(str(index_path))
+        if index.d != self.dimensions:
+            raise StorageError(
+                f"FAISS index at {self._storage_path} holds {index.d}-dimensional vectors, "
+                f"but the embedder produces {self.dimensions}. widemem 1.7 changed the default "
+                "embedder to sentence-transformers (384); set the EmbeddingConfig you stored "
+                "with, or re-embed into a new path."
+            )
+        self._index = index
         with open(state_path) as f:
             state = json.load(f)
         self._metadata = state["metadata"]

@@ -46,6 +46,13 @@ dev = [
     "mypy>=1.8",
 ]
 faiss = ["faiss-cpu>=1.7,<2"]
+local = [
+    "faiss-cpu>=1.7,<2",
+    "ollama>=0.2,<1",
+    "sentence-transformers>=2.0,<7",
+    # Transitive via huggingface-hub/requests; floor patches PYSEC-2026-141/142.
+    "urllib3>=2.7.0,<3",
+]
 openai = ["openai>=1.0,<4"]
 anthropic = ["anthropic>=0.30,<2"]
 ollama = ["ollama>=0.2,<1"]

@@ -148,8 +148,8 @@ class HistoryEntry(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    provider: str = "openai"
-    model: str = "gpt-4o-mini"
+    provider: str = "ollama"
+    model: str = "llama3.2"
     api_key: Optional[SecretStr] = None
     base_url: Optional[str] = None
     temperature: float = 0.0
@@ -157,11 +157,11 @@ class LLMConfig(BaseModel):
 
 
 class EmbeddingConfig(BaseModel):
-    provider: str = "openai"
-    model: str = "text-embedding-3-small"
+    provider: str = "sentence-transformers"
+    model: str = "all-MiniLM-L6-v2"
     api_key: Optional[SecretStr] = None
     base_url: Optional[str] = None
-    dimensions: int = 1536
+    dimensions: int = 384
 
 
 class VectorStoreConfig(BaseModel):
