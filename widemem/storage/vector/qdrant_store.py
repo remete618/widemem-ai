@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -26,7 +27,7 @@ class QdrantVectorStore(BaseVectorStore):
             raise StorageError("Install qdrant: pip install \"widemem-ai[qdrant]\"")
 
         if config.path:
-            self.client = QdrantClient(path=config.path)
+            self.client = QdrantClient(path=os.path.expanduser(config.path))
         else:
             self.client = QdrantClient(host="localhost", port=6333)
 

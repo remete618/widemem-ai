@@ -20,7 +20,7 @@ ollama pull llama3.1:8b           # the default local model, 4.9 GB
 
 You need [Ollama](https://ollama.com) installed and running. The first run also downloads the `all-MiniLM-L6-v2` embedding model (about 90 MB) from Hugging Face; after that, set `HF_HUB_OFFLINE=1` and widemem runs fully offline. Python 3.10+.
 
-What local costs: `[local]` pulls PyTorch through sentence-transformers (about 550 MB on macOS; more on Linux with CUDA wheels), and each `add()` makes two LLM calls, extract then resolve. On an Apple M4 with 32 GB, an `add()` took 5 to 17 seconds and a search 0.04 seconds. The default is `llama3.1:8b` because `llama3.2` (3B) kept the stale fact and split "I'm allergic to penicillin" into one fact per word in every one of our test runs.
+What local costs: `[local]` pulls PyTorch through sentence-transformers (about 550 MB on macOS; more on Linux with CUDA wheels), and with the defaults each `add()` makes up to two LLM calls, extract then resolve. On an Apple M4 with 32 GB, an `add()` took 5 to 17 seconds and a search 0.04 seconds. The default is `llama3.1:8b` because `llama3.2` (3B) kept the stale fact and split "I'm allergic to penicillin" into one fact per word in every one of our test runs.
 
 **Upgrading from 1.6 or earlier:** the defaults moved from OpenAI to local, and a 1536-dimension FAISS index will not load under the 384-dimension default embedder. Set `provider="openai"` on both `LLMConfig` and `EmbeddingConfig` to keep the old behavior. Details in the [changelog](https://github.com/remete618/widemem-ai/blob/main/CHANGELOG.md).
 
