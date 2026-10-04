@@ -146,7 +146,9 @@ Open issues; vote with reactions:
 - [#22 LangChain `BaseChatMessageHistory` adapter](https://github.com/remete618/widemem-ai/issues/22)
 - [#24 LangGraph `BaseStore` adapter](https://github.com/remete618/widemem-ai/issues/24)
 
-Not planned: more vector backends beyond FAISS, Qdrant and pgvector; a hosted multi-tenant service; a web UI; a GraphQL API; a memory-management CLI.
+Managed hosting is available on request: [hello@widemem.ai](mailto:hello@widemem.ai).
+
+Not planned: more vector backends beyond FAISS, Qdrant and pgvector; a self-serve multi-tenant service; a web UI; a GraphQL API; a memory-management CLI.
 
 ## Development
 

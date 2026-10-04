@@ -92,7 +92,7 @@ def build_uncertainty_guidance(
             return {"action": "refuse", "message": "I don't have specific information about this stored."}
         return {
             "action": "offer_guess",
-            "message": "I don't have this in my memory — I can take a guess based on what I do know, if you'd like.",
+            "message": "I don't have this in my memory. I can take a guess based on what I do know, if you'd like.",
         }
 
     related = [r.memory.content[:80] for r in results[:3]] if results else []
@@ -108,7 +108,7 @@ def build_uncertainty_guidance(
             }
         return {
             "action": "offer_guess",
-            "message": "I'm not sure about this, but I have some related memories — want me to piece something together?",
+            "message": "I'm not sure about this, but I have some related memories. Want me to piece something together?",
             "related": related,
         }
 
@@ -168,7 +168,7 @@ def build_frustration_response(
     if confidence in (RetrievalConfidence.HIGH, RetrievalConfidence.MODERATE):
         return {
             "action": "reassure",
-            "message": "I do have some information about this — let me check.",
+            "message": "I do have some information about this. Let me check.",
             "pin_fact": None,
         }
 

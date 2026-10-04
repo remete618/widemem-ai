@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **User-facing messages used em dashes.** The uncertainty and frustration response messages and the MCP health tool description now use plain punctuation. Extraction prompts are unchanged.
+
 - **Qdrant did not expand `~` in `VectorStoreConfig.path`.** `path="~/qdrant"` created a literal `./~/qdrant` directory in the working directory. The path is now expanded, as FAISS and the history store already did.
 
 ## [2.0.0] - 2026-10-04
