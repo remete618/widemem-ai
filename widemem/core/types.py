@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 
 class MemoryTier(str, Enum):
@@ -147,7 +147,13 @@ class HistoryEntry(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class LLMConfig(BaseModel):
+class _StrictConfig(BaseModel):
+    """Config models reject unknown fields, so a typo fails loudly."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class LLMConfig(_StrictConfig):
     provider: str = "ollama"
     model: str = "llama3.1:8b"
     api_key: Optional[SecretStr] = None
@@ -156,7 +162,7 @@ class LLMConfig(BaseModel):
     max_tokens: int = 2000
 
 
-class EmbeddingConfig(BaseModel):
+class EmbeddingConfig(_StrictConfig):
     provider: str = "sentence-transformers"
     model: str = "all-MiniLM-L6-v2"
     api_key: Optional[SecretStr] = None
@@ -164,7 +170,7 @@ class EmbeddingConfig(BaseModel):
     dimensions: int = 384
 
 
-class VectorStoreConfig(BaseModel):
+class VectorStoreConfig(_StrictConfig):
     provider: str = "faiss"
     path: Optional[str] = None
     url: Optional[str] = None
@@ -175,7 +181,7 @@ class VectorStoreConfig(BaseModel):
     """Table name for pgvector. Ignored by other backends."""
 
 
-class ScoringConfig(BaseModel):
+class ScoringConfig(_StrictConfig):
     decay_function: DecayFunction = DecayFunction.EXPONENTIAL
     decay_rate: float = 0.01
     similarity_weight: float = 0.5
@@ -189,7 +195,7 @@ YMYL_CATEGORIES = [
 ]
 
 
-class YMYLConfig(BaseModel):
+class YMYLConfig(_StrictConfig):
     enabled: bool = False
     categories: list = Field(default_factory=lambda: list(YMYL_CATEGORIES))
     min_importance: float = 8.0
@@ -197,7 +203,7 @@ class YMYLConfig(BaseModel):
     force_active_retrieval: bool = True
 
 
-class TopicConfig(BaseModel):
+class TopicConfig(_StrictConfig):
     weights: Dict[str, float] = Field(default_factory=dict)
     custom_topics: list = Field(default_factory=list)
 
@@ -209,7 +215,7 @@ RETRIEVAL_MODE_PRESETS = {
 }
 
 
-class MemoryConfig(BaseModel):
+class MemoryConfig(_StrictConfig):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     vector_store: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
