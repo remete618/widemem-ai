@@ -1,4 +1,4 @@
-"""widemem MCP server — exposes memory operations as MCP tools over stdio."""
+"""widemem MCP server: exposes memory operations as MCP tools over stdio."""
 
 from __future__ import annotations
 
