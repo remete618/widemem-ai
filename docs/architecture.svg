@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" width="880" height="420" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" role="img" aria-label="widemem architecture: everything runs on your machine by default, cloud providers are optional">
+<title>widemem architecture: everything runs on your machine by default, cloud providers are optional</title>
+<defs>
+<marker id="ar-gold" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1,1 L7,4 L1,7" fill="none" stroke="#f5a623" stroke-width="1.5"/></marker>
+<marker id="ar-blue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1,1 L7,4 L1,7" fill="none" stroke="#5bc0de" stroke-width="1.5"/></marker>
+<marker id="ar-mut" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1,1 L7,4 L1,7" fill="none" stroke="#6b6775" stroke-width="1.5"/></marker>
+</defs>
+<rect x="0" y="0" width="880" height="420" fill="#0b0b10"/>
+<text x="18" y="30" text-anchor="start" fill="#f5a623" font-size="16" font-weight="700">widemem</text>
+<text x="112" y="30" text-anchor="start" fill="#8a8490" font-size="12" font-weight="400">local-first by default</text>
+<rect x="18" y="52" width="652" height="348" fill="none" stroke="#c4841a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="34" y="76" text-anchor="start" fill="#f5a623" font-size="11" font-weight="700" letter-spacing="1.5">YOUR MACHINE</text>
+<text x="654" y="76" text-anchor="end" fill="#8a8490" font-size="11" font-weight="400">default stack, no API key</text>
+<rect x="36" y="148" width="112" height="124" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="92" y="215.0" text-anchor="middle" fill="#e8e0d4" font-size="13" font-weight="700">Your app</text>
+<text x="92" y="175.0" text-anchor="middle" fill="#f5a623" font-size="11" font-weight="400">add()</text>
+<text x="92" y="253.0" text-anchor="middle" fill="#5bc0de" font-size="11" font-weight="400">search()</text>
+<rect x="176" y="100" width="306" height="188" fill="none" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="188" y="122" text-anchor="start" fill="#e8e0d4" font-size="12" font-weight="700">widemem core</text>
+<text x="188" y="144" text-anchor="start" fill="#f5a623" font-size="11" font-weight="400">write</text>
+<text x="188" y="222" text-anchor="start" fill="#5bc0de" font-size="11" font-weight="400">read</text>
+<rect x="188" y="154" width="88" height="34" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="232.0" y="175.32" text-anchor="middle" fill="#e8e0d4" font-size="12" font-weight="700">Extract</text>
+<rect x="288" y="154" width="88" height="34" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="332.0" y="175.32" text-anchor="middle" fill="#e8e0d4" font-size="12" font-weight="700">YMYL floor</text>
+<polyline points="277,171.0 286,171.0" fill="none" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar-gold)"/>
+<rect x="388" y="154" width="88" height="34" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="432.0" y="175.32" text-anchor="middle" fill="#e8e0d4" font-size="12" font-weight="700">Resolve</text>
+<polyline points="377,171.0 386,171.0" fill="none" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar-gold)"/>
+<rect x="188" y="232" width="88" height="34" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="232.0" y="253.32" text-anchor="middle" fill="#e8e0d4" font-size="12" font-weight="700">Confidence</text>
+<rect x="288" y="232" width="88" height="34" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="332.0" y="253.32" text-anchor="middle" fill="#e8e0d4" font-size="12" font-weight="700">Tier route</text>
+<polyline points="287,249.0 278,249.0" fill="none" stroke="#5bc0de" stroke-width="1.5" marker-end="url(#ar-blue)"/>
+<rect x="388" y="232" width="88" height="34" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="432.0" y="253.32" text-anchor="middle" fill="#e8e0d4" font-size="12" font-weight="700">Score</text>
+<polyline points="387,249.0 378,249.0" fill="none" stroke="#5bc0de" stroke-width="1.5" marker-end="url(#ar-blue)"/>
+<polyline points="150,171.0 185,171.0" fill="none" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar-gold)"/>
+<polyline points="187,249.0 152,249.0" fill="none" stroke="#5bc0de" stroke-width="1.5" marker-end="url(#ar-blue)"/>
+<rect x="510" y="100" width="140" height="48" fill="#12121a" stroke="#c4841a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="580.0" y="121.0" text-anchor="middle" fill="#e8e0d4" font-size="13" font-weight="700">History</text>
+<text x="580.0" y="137.0" text-anchor="middle" fill="#8a8490" font-size="11">SQLite</text>
+<rect x="510" y="160" width="140" height="128" fill="#12121a" stroke="#c4841a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="580.0" y="221.0" text-anchor="middle" fill="#e8e0d4" font-size="13" font-weight="700">Vectors</text>
+<text x="580.0" y="237.0" text-anchor="middle" fill="#8a8490" font-size="11">FAISS</text>
+<polyline points="477,171.0 507,171.0" fill="none" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar-gold)"/>
+<polyline points="509,249.0 478,249.0" fill="none" stroke="#5bc0de" stroke-width="1.5" marker-end="url(#ar-blue)"/>
+<polyline points="496,171.0 496,124 507,124" fill="none" stroke="#f5a623" stroke-width="1.5" marker-end="url(#ar-gold)"/>
+<rect x="176" y="320" width="145" height="56" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="248.5" y="345.0" text-anchor="middle" fill="#e8e0d4" font-size="13" font-weight="700">LLM</text>
+<text x="248.5" y="361.0" text-anchor="middle" fill="#8a8490" font-size="11">Ollama</text>
+<rect x="337" y="320" width="145" height="56" fill="#12121a" stroke="#2a2a3a" stroke-width="2" shape-rendering="crispEdges"/>
+<text x="409.5" y="345.0" text-anchor="middle" fill="#e8e0d4" font-size="13" font-weight="700">Embeddings</text>
+<text x="409.5" y="361.0" text-anchor="middle" fill="#8a8490" font-size="11">MiniLM</text>
+<polyline points="248,318 248,291" fill="none" stroke="#6b6775" stroke-width="1.5" marker-end="url(#ar-mut)"/>
+<polyline points="409,318 409,291" fill="none" stroke="#6b6775" stroke-width="1.5" marker-end="url(#ar-mut)"/>
+<text x="700" y="76" text-anchor="start" fill="#8a8490" font-size="11" font-weight="700" letter-spacing="1.5">OPTIONAL</text>
+<rect x="700" y="196" width="162" height="56" fill="#12121a" stroke="#6b6775" stroke-width="2" stroke-dasharray="5 4" shape-rendering="crispEdges"/>
+<text x="781.0" y="221.0" text-anchor="middle" fill="#8a8490" font-size="13" font-weight="700">Qdrant</text>
+<text x="781.0" y="237.0" text-anchor="middle" fill="#8a8490" font-size="11">or pgvector</text>
+<rect x="700" y="280" width="162" height="52" fill="#12121a" stroke="#6b6775" stroke-width="2" stroke-dasharray="5 4" shape-rendering="crispEdges"/>
+<text x="781.0" y="303.0" text-anchor="middle" fill="#8a8490" font-size="13" font-weight="700">OpenAI</text>
+<text x="781.0" y="319.0" text-anchor="middle" fill="#8a8490" font-size="11">LLM + embeddings</text>
+<rect x="700" y="344" width="162" height="52" fill="#12121a" stroke="#6b6775" stroke-width="2" stroke-dasharray="5 4" shape-rendering="crispEdges"/>
+<text x="781.0" y="367.0" text-anchor="middle" fill="#8a8490" font-size="13" font-weight="700">Anthropic</text>
+<text x="781.0" y="383.0" text-anchor="middle" fill="#8a8490" font-size="11">LLM</text>
+<polyline points="652,224 697,224" fill="none" stroke="#6b6775" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ar-mut)"/>
+<polyline points="484,348.0 640,348.0" fill="none" stroke="#6b6775" stroke-width="1.5" stroke-dasharray="4 4"/>
+<polyline points="640,306 640,370" fill="none" stroke="#6b6775" stroke-width="1.5" stroke-dasharray="4 4"/>
+<polyline points="640,306 697,306" fill="none" stroke="#6b6775" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ar-mut)"/>
+<polyline points="640,370 697,370" fill="none" stroke="#6b6775" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ar-mut)"/>
+<text x="560" y="340.0" text-anchor="middle" fill="#8a8490" font-size="11" font-weight="400">swap in</text>
+</svg>
