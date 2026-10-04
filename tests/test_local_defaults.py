@@ -99,12 +99,15 @@ def test_unknown_model_without_dimensions_keeps_the_field_default():
     assert emb.dimensions == EmbeddingConfig().dimensions
 
 
-@patch("sentence_transformers.SentenceTransformer")
-def test_an_openai_key_in_the_env_does_not_switch_the_default_embedder(_st, monkeypatch):
-    pytest.importorskip("sentence_transformers")
-    from widemem.providers.embeddings.sentence_transformers import SentenceTransformerEmbedder
+def test_an_openai_key_in_the_env_does_not_switch_the_default_embedder(monkeypatch):
+    import widemem.providers.embeddings.sentence_transformers as st_mod
 
-    _st.return_value.get_sentence_embedding_dimension.return_value = 384
-    _st.return_value.get_embedding_dimension.return_value = 384
+    class LocalEmbedder:
+        def __init__(self, config):
+            self.config = config
+
+    monkeypatch.setattr(st_mod, "SentenceTransformerEmbedder", LocalEmbedder)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-    assert isinstance(_memory(MemoryConfig())._create_embedder(), SentenceTransformerEmbedder)
+    embedder = _memory(MemoryConfig())._create_embedder()
+    assert isinstance(embedder, LocalEmbedder)
+    assert embedder.config.provider == "sentence-transformers"

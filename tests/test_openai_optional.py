@@ -89,7 +89,7 @@ def test_local_stack_runs_without_openai():
 
 
 def test_openai_is_an_extra_not_a_core_dependency():
-    import tomllib
+    tomllib = pytest.importorskip("tomllib")
 
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     assert not any(d.startswith("openai") for d in project["dependencies"])
