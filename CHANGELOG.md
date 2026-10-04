@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-04
+
 ### Changed
 
 - **Frustration recovery reassures only on HIGH confidence.** `build_frustration_response()` returned `reassure` ("I do have some information about this", nothing pinned) on HIGH or MODERATE. MODERATE means a memory about the same person or topic exists, not that the restated fact was stored, and with the lower `all-MiniLM-L6-v2` thresholds below the gap became visible: "I told you I moved to Boston!" scores 0.42 (MODERATE) when only "live in San Francisco" is stored, so the new fact was reassured and dropped instead of pinned. MODERATE now follows LOW: `recover_and_pin` when a fact can be extracted, otherwise `apologize_and_ask`. Once Boston is stored the query scores 0.80 (HIGH) and still reassures.
