@@ -281,7 +281,7 @@ memory.pin("My blood type is O negative", user_id="alice")
 
 ### Frustration recovery
 
-When users say "I told you this!", widemem detects the frustration, extracts the fact, and offers to pin it:
+When users say "I told you this!", widemem detects the frustration, extracts the fact, and offers to pin it. It answers `reassure` only when retrieval confidence is HIGH; at MODERATE, LOW or NONE it returns `recover_and_pin` with the extracted fact, or `apologize_and_ask` when no fact can be extracted. MODERATE often means only a related memory about the same person exists, so the restated fact may never have been stored:
 
 ```python
 from widemem import RetrievalConfidence, UncertaintyMode

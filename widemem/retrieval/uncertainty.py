@@ -197,13 +197,19 @@ def build_frustration_response(
     Returns None if no frustration detected.
     Otherwise returns guidance for how to respond, including
     the extracted fact to pin.
+
+    Only HIGH confidence reassures. MODERATE means a memory about the same
+    person or topic exists, not that this fact was stored: under
+    all-MiniLM-L6-v2, "I told you I moved to Boston!" scores 0.42 (MODERATE)
+    against "live in San Francisco" alone, and 0.80 (HIGH) once Boston is
+    stored. Reassuring on MODERATE would drop a fact the user is restating.
     """
     if not detect_frustration(query):
         return None
 
     fact = extract_forgotten_fact(query)
 
-    if confidence in (RetrievalConfidence.HIGH, RetrievalConfidence.MODERATE):
+    if confidence == RetrievalConfidence.HIGH:
         return {
             "action": "reassure",
             "message": "I do have some information about this. Let me check.",
