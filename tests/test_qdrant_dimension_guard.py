@@ -24,3 +24,11 @@ def test_reopening_with_another_embedding_size_names_the_mismatch(tmp_path):
 def test_reopening_with_the_same_size_still_opens(tmp_path):
     _open(tmp_path, 8).client.close()
     assert _open(tmp_path, 8).dimensions == 8
+
+
+def test_tilde_in_path_is_expanded(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    _open("~/qdrant-data", 8).client.close()
+    assert (tmp_path / "qdrant-data").is_dir()
+    assert not (tmp_path / "~").exists()

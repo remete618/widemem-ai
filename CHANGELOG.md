@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **Qdrant did not expand `~` in `VectorStoreConfig.path`.** `path="~/qdrant"` created a literal `./~/qdrant` directory in the working directory. The path is now expanded, as FAISS and the history store already did.
+
 ## [2.0.0] - 2026-10-04
 
 widemem is local-first: the defaults run on your machine, and cloud providers are opt-in. Three breaking changes, each with a migration step below.
