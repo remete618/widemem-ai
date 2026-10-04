@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking: config models reject unknown fields.** `MemoryConfig`, `LLMConfig`, `EmbeddingConfig`, `VectorStoreConfig`, `ScoringConfig`, `YMYLConfig` and `TopicConfig` now raise `ValidationError` on a field they do not define. A typo such as `MemoryConfig(embeddings=...)` (the field is `embedding`) used to be accepted and ignored, so widemem ran on defaults without saying so. If you pass extra keys on purpose, remove them.
+
 ## [2.0.1] - 2026-10-04
 
 ### Changed
