@@ -253,6 +253,7 @@ def test_minilm_precision_floor_with_hard_negatives(split):
     ({"WIDEMEM_CONFIDENCE_MODERATE": "0.60"}, False),
     ({"WIDEMEM_CONFIDENCE_MODERATE": "0.70"}, True),
     ({"WIDEMEM_CONFIDENCE_LOW": "0.35"}, True),
+    ({"WIDEMEM_CONFIDENCE_MODERATE": "nan"}, True),
 ])
 def test_non_monotonic_thresholds_warn(env, warns, monkeypatch, caplog):
     import widemem.retrieval.uncertainty as unc

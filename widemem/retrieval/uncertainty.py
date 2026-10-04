@@ -34,7 +34,7 @@ _MODEL_THRESHOLDS = {
     # fact with the subject stripped ("moved to Boston", the shape llama3.1:8b
     # often stores) scores 0.12-0.57; recall at MODERATE+ on those goes from 19%
     # to 77% (train) and 17% to 58% (holdout) at moderate=0.30; 0.38 would lose
-    # half of that. Cost: hard negatives at MODERATE+ go from 8/12 to 12/12, one
+    # half of that on train. Cost: hard negatives at MODERATE+ go from 8/12 to 12/12, one
     # unrelated query (0.351) moves LOW -> MODERATE, and precision on the whole
     # fixture drops from 0.771 to 0.745. MiniLM confidence cannot separate
     # "answer stored" from "something about this person stored": the name in the
@@ -42,7 +42,7 @@ _MODEL_THRESHOLDS = {
     "all-minilm-l6-v2": {"high": 0.60, "moderate": 0.30, "low": 0.20},
 }
 
-_warned_non_monotonic: set[tuple[float, float, float]] = set()
+_warned_non_monotonic: set[str] = set()  # repr keys, so NaN overrides warn once too
 
 
 def _model_key(embedding_model: object) -> str:
@@ -60,8 +60,8 @@ def get_confidence_thresholds(embedding_model: Optional[str] = None) -> dict[str
         "low": float(os.environ.get("WIDEMEM_CONFIDENCE_LOW", defaults["low"])),
     }
     key = (thresholds["high"], thresholds["moderate"], thresholds["low"])
-    if not key[0] >= key[1] >= key[2] and key not in _warned_non_monotonic:
-        _warned_non_monotonic.add(key)
+    if not key[0] >= key[1] >= key[2] and repr(key) not in _warned_non_monotonic:
+        _warned_non_monotonic.add(repr(key))
         logger.warning(
             "Confidence thresholds are not ordered high >= moderate >= low "
             "(high=%s, moderate=%s, low=%s); check WIDEMEM_CONFIDENCE_* overrides.",
