@@ -168,7 +168,7 @@ class VectorStoreConfig(BaseModel):
     provider: str = "faiss"
     path: Optional[str] = None
     url: Optional[str] = None
-    """Connection URL for network-backed stores (pgvector, Qdrant Cloud).
+    """Connection URL for pgvector. Qdrant does not read it.
     For pgvector: postgresql://user:pass@host:port/dbname?sslmode=require.
     Honored only by backends that accept a URL; ignored otherwise."""
     table_name: str = "widemem_vectors"

@@ -30,16 +30,18 @@ Strong YMYL facts receive the full treatment:
 ### Weak Confidence
 
 A fact is classified as **weak YMYL** when:
-- It matches only a **single keyword** that could be ambiguous (e.g., "doctor" alone, "bank" alone, "fire" alone)
+- It matches only a **single keyword** that could be ambiguous (e.g., "doctor" alone, "bank" alone)
 
-Weak YMYL facts receive a moderate boost:
-- Importance nudged to 6.0 (if below) — a gentle push, not a full override
+A weak match changes nothing on its own:
+- No importance floor
 - Still subject to normal time decay
 - No forced active retrieval
 
+The extraction LLM still gets a vote. If YMYL is enabled and the LLM tags the fact with a YMYL category, the fact gets the full strong treatment (importance floor, decay immunity, forced active retrieval), whatever the regex said.
+
 ### No Match
 
-If no YMYL keywords are found, the fact is treated normally. No boost, no special handling.
+If no YMYL keywords are found, the fact is treated normally unless the extraction LLM tags it with a YMYL category.
 
 ## Examples
 
@@ -54,9 +56,9 @@ If no YMYL keywords are found, the fact is treated normally. No boost, no specia
 | "walked by the bank" | **Weak** | financial | Single weak keyword "bank" |
 | "the fire was warm" | No match | — | "fire" alone doesn't match any pattern (removed from weak to avoid camping/cooking false positives) |
 | "I like pizza" | No match | — | No YMYL keywords at all |
-| "watching Doctor Who" | **Weak** | health | Single weak keyword "doctor" — gets a minor boost (6.0), not the full floor (8.0) |
+| "watching Doctor Who" | **Weak** | health | Single weak keyword "doctor", so no floor and no decay immunity |
 
-The "Doctor Who" case is intentionally a weak match. It gets a small importance bump (6.0 instead of 5.0) but NOT the full YMYL treatment (8.0 floor, decay immunity). This is the right trade-off: occasionally bumping a TV show reference slightly is far less harmful than missing a real medical fact.
+The "Doctor Who" case is intentionally a weak match. It gets none of the YMYL treatment (8.0 floor, decay immunity) unless the extraction LLM tags it as health, which it should not.
 
 ## Categories
 
@@ -125,9 +127,9 @@ LLM extracts facts with importance 1-10
     ▼
 For each fact, run YMYL classification
     │
-    ├── Strong match? → importance = max(importance, 8.0)
-    ├── Weak match?   → importance = max(importance, 6.0)
-    └── No match?     → importance unchanged
+    ├── Strong match?            → importance = max(importance, 8.0)
+    ├── LLM tagged a category?   → importance = max(importance, 8.0)
+    └── Otherwise (weak or none) → importance unchanged
     │
     ▼
 Batch conflict resolution (ADD/UPDATE/DELETE)
@@ -138,7 +140,7 @@ Store in vector DB + history
     ▼
 On search, apply scoring:
     │
-    ├── Strong YMYL + decay_immune? → recency = 1.0 (no decay)
+    ├── (Strong match or LLM tag) + decay_immune? → recency = 1.0 (no decay)
     └── Everything else             → normal decay applied
     │
     ▼
@@ -147,22 +149,21 @@ Return ranked results
 
 ## Limitations
 
-1. **Keyword-based, not semantic.** "My grandmother's homemade medicine" would match "medicine" (weak YMYL) even though it's not a medical fact. The two-tier system mitigates this — it gets a 6.0 bump, not the full 8.0 treatment.
+1. **Keyword-based, not semantic.** "Went to the doctor" matches "doctor" (weak YMYL) even when it's a routine errand. The two-tier system mitigates this: a single weak keyword gets no special treatment unless the LLM also tags it.
 
 2. **English-centric patterns.** The keyword lists are in English. Non-English medical or financial terms won't match. If you need multilingual YMYL, you'd need to extend the pattern dictionaries.
 
-3. **No negation handling.** "I don't have diabetes" matches "diabetes" the same as "I have diabetes". The importance gets boosted either way. In practice, this is acceptable — a fact about NOT having diabetes is still medically relevant.
+3. **No negation handling.** "I don't have diabetes" and "I have diabetes" classify the same way (weak health). Neither gets a floor from the regex; whatever the LLM tags applies to both. A fact about NOT having diabetes is still medically relevant, so this is acceptable.
 
 4. **Category overlap.** Some keywords appear in multiple categories (e.g., "prescription" is in both health and pharmaceutical). The first matching category wins, based on the order in `config.categories`.
 
 5. **Not a compliance tool.** YMYL is a best-effort prioritization heuristic. It is not HIPAA, GDPR, or any regulatory compliance mechanism. Don't use it as one.
 
-## Why Not Use the LLM for YMYL Classification?
+## How the Regex and the LLM Split the Work
 
-We considered it. Three reasons we didn't:
+Classification runs in two stages inside the extraction call, so it costs no extra LLM round-trip:
 
-1. **Cost.** Every fact would need an extra LLM call just to classify it. At scale, this doubles your API bill for extraction.
-2. **Latency.** An additional round-trip per fact slows down the add() pipeline significantly.
-3. **Determinism.** Keyword matching is fast, cheap, and reproducible. The LLM might classify "walked by the bank" as financial one day and not the next. The two-tier keyword system gives you consistent, predictable behavior.
+1. **Regex first.** A strong pattern (or two weak keywords in one category) makes the fact YMYL. Fast, cheap and reproducible.
+2. **LLM tag otherwise.** With YMYL enabled, the extraction prompt asks the LLM for a `ymyl_category` per fact. If it returns a configured category, the fact is YMYL.
 
-The LLM already participates indirectly: during extraction, if YMYL is enabled, the system prompt instructs the LLM to rate health/financial/legal facts at 8-10 importance. So the LLM does contribute — it just doesn't make the binary "is this YMYL?" decision.
+The regex is the deterministic floor; the LLM catches what the keyword lists miss. The regex never promotes a single weak keyword. An LLM tag is accepted as-is, so a fact like "walked by the bank" can be YMYL on one run and not the next.

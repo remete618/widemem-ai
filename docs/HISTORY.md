@@ -5,6 +5,37 @@ truth: `tests/test_readme_claims.py` enforces doc-vs-code consistency in CI,
 and anything that slipped through before that gate existed is recorded here
 permanently.
 
+## 2026-10-04: docs described behavior the code does not have
+
+A docs review against the code found claims that crashed or were false:
+
+- The active-retrieval example in the README and `examples/ymyl_active_retrieval.py`
+  read `c.existing_memory`. The field is `existing_content`; the example raised
+  `AttributeError` on the first conflict.
+- The README showed `MemoryConfig(uncertainty_mode=...)` changing how search
+  answers. Nothing reads that field. The modes work only when passed to
+  `build_uncertainty_guidance()`.
+- YMYL.md said a weak YMYL match nudges importance to 6.0. No such floor
+  exists: a weak match alone changes nothing.
+- `docs/mcp.md` gave the MCP server's default LLM as `ollama` / `llama3.2`; the
+  code defaults to `openai` / `gpt-4o-mini`. It also listed
+  `WIDEMEM_EMBEDDING_MODEL`, which nothing reads.
+- `docs/configuration.md` listed `OLLAMA_BASE_URL` and `QDRANT_URL`, which
+  nothing reads, and said Qdrant uses `VectorStoreConfig.url`. It does not:
+  Qdrant runs embedded with `path`, otherwise on `localhost:6333`.
+- The README listed five MCP tools; the server has seven.
+
+- Corrected: each claim above now matches the code. The README also states
+  that `WideMemory()` without a FAISS `path` keeps vectors in RAM only.
+- Gated: `tests/test_readme_claims.py` now checks against the code the
+  README tool list, every env var named in the docs, the MCP env defaults,
+  the clarification fields the examples read, any `uncertainty_mode=` in docs
+  or examples, the YMYL importance floors (plus behavioural tests in
+  `tests/test_ymyl_extraction_floors.py`), and the Qdrant
+  `url` row. The FAISS-in-RAM note is not gated.
+- Also corrected in YMYL.md: an LLM-tagged fact gets the full strong
+  treatment, and the regex is not the only classifier.
+
 ## 2026-09-02: the audit trail did not cover every write path
 
 The README and widemem.ai stated that every add, update and delete was
