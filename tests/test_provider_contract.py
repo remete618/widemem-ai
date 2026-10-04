@@ -236,3 +236,19 @@ def test_every_concrete_provider_is_covered():
         f"providers with no contract case: {sorted(concrete - covered)}; "
         f"cases with no provider: {sorted(covered - concrete)}"
     )
+
+
+def test_ollama_generate_json_asks_for_constrained_json():
+    """Without format="json", local models return prose around the JSON or a
+    second object after it, and extraction fails on the second add."""
+    case = next(p.values[0] for p in CASES if p.values[0].name == "ollama")
+    sent: dict = {}
+    _llm(case, '{"a": 1}', capture=sent).generate_json("hi")
+    assert sent.get("format") == "json"
+
+
+def test_ollama_plain_generate_stays_unconstrained():
+    case = next(p.values[0] for p in CASES if p.values[0].name == "ollama")
+    sent: dict = {}
+    _llm(case, "hello", capture=sent).generate("hi")
+    assert "format" not in sent or not sent["format"]

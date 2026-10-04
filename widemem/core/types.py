@@ -149,7 +149,7 @@ class HistoryEntry(BaseModel):
 
 class LLMConfig(BaseModel):
     provider: str = "ollama"
-    model: str = "llama3.2"
+    model: str = "llama3.1:8b"
     api_key: Optional[SecretStr] = None
     base_url: Optional[str] = None
     temperature: float = 0.0

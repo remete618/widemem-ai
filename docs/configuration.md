@@ -51,8 +51,8 @@ from widemem.core.types import (
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `provider` | `str` | `"openai"` | LLM backend name. Supported by `WideMemory`: `openai`, `anthropic`, `ollama`. |
-| `model` | `str` | `"gpt-4o-mini"` | Provider-specific model name. |
+| `provider` | `str` | `"ollama"` | LLM backend name. Supported by `WideMemory`: `ollama`, `openai`, `anthropic`. |
+| `model` | `str` | `"llama3.1:8b"` | Model name. Left unset, each provider gets its own default: `ollama` `llama3.1:8b`, `openai` `gpt-4o-mini`, `anthropic` `claude-haiku-4-5-20251001`. |
 | `api_key` | `Optional[SecretStr]` | `None` | API key passed to providers that need one. |
 | `base_url` | `Optional[str]` | `None` | Provider base URL override, commonly used for local or compatible endpoints. |
 | `temperature` | `float` | `0.0` | Sampling temperature for LLM generation. |
@@ -62,11 +62,11 @@ from widemem.core.types import (
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `provider` | `str` | `"openai"` | Embedding backend name. Supported by `WideMemory`: `openai`, `sentence-transformers`, `ollama`. |
-| `model` | `str` | `"text-embedding-3-small"` | Provider-specific embedding model name. |
+| `provider` | `str` | `"sentence-transformers"` | Embedding backend name. Supported by `WideMemory`: `sentence-transformers`, `ollama`, `openai`. |
+| `model` | `str` | `"all-MiniLM-L6-v2"` | Embedding model name. Left unset, each provider gets its own default model and size: `sentence-transformers` `all-MiniLM-L6-v2` (384), `ollama` `nomic-embed-text` (768), `openai` `text-embedding-3-small` (1536). |
 | `api_key` | `Optional[SecretStr]` | `None` | API key passed to embedding providers that need one. |
 | `base_url` | `Optional[str]` | `None` | Provider base URL override, commonly used for Ollama or compatible endpoints. |
-| `dimensions` | `int` | `1536` | Expected embedding vector size; must match the selected embedding model. |
+| `dimensions` | `int` | `384` | Embedding vector size; must match the model. A stored FAISS index refuses to load under a different size. |
 
 ## VectorStoreConfig
 
@@ -116,91 +116,57 @@ from widemem.core.types import (
 
 ## Common configurations
 
-### Local-only
+### Local (default)
 
-Use Ollama for the LLM, sentence-transformers for embeddings, and FAISS for local vector storage. This setup avoids hosted LLM and embedding API keys.
+`MemoryConfig()` runs on Ollama for the LLM, sentence-transformers for embeddings and FAISS for vectors. Nothing leaves the machine. Install with `pip install "widemem-ai[local]"`, run `ollama pull llama3.1:8b` (4.9 GB), and set a FAISS `path` to keep vectors across restarts.
 
 ```python
 from widemem import MemoryConfig, WideMemory
-from widemem.core.types import EmbeddingConfig, LLMConfig, VectorStoreConfig
+from widemem.core.types import VectorStoreConfig
 
-config = MemoryConfig(
-    llm=LLMConfig(provider="ollama", model="llama3", base_url="http://localhost:11434"),
-    embedding=EmbeddingConfig(
-        provider="sentence-transformers",
-        model="all-MiniLM-L6-v2",
-        dimensions=384,
-    ),
+memory = WideMemory(MemoryConfig(
     vector_store=VectorStoreConfig(provider="faiss", path="./widemem_faiss"),
-)
-
-memory = WideMemory(config)
+))
 ```
 
-### OpenAI default
+sentence-transformers downloads `all-MiniLM-L6-v2` (about 90 MB) on first use; after that it runs offline.
 
-The config defaults point to OpenAI for the LLM and embeddings, and FAISS for vector storage. At runtime, `WideMemory` falls back to Ollama for OpenAI-configured providers if no OpenAI API key is available.
+### OpenAI
 
-```python
-from widemem import MemoryConfig, WideMemory
-
-config = MemoryConfig()
-memory = WideMemory(config)
-```
-
-You can also set the fields explicitly:
-
-```python
-from widemem import MemoryConfig, WideMemory
-from widemem.core.types import EmbeddingConfig, LLMConfig, VectorStoreConfig
-
-config = MemoryConfig(
-    llm=LLMConfig(provider="openai", model="gpt-4o-mini"),
-    embedding=EmbeddingConfig(
-        provider="openai",
-        model="text-embedding-3-small",
-        dimensions=1536,
-    ),
-    vector_store=VectorStoreConfig(provider="faiss"),
-)
-
-memory = WideMemory(config)
-```
-
-### Anthropic
-
-Use Anthropic for the LLM while keeping the default OpenAI embeddings and FAISS vector storage.
-
-```python
-from widemem import MemoryConfig, WideMemory
-from widemem.core.types import LLMConfig
-
-config = MemoryConfig(
-    llm=LLMConfig(provider="anthropic", model="claude-sonnet-4-20250514"),
-)
-
-memory = WideMemory(config)
-```
-
-### Ollama
-
-Use Ollama for the LLM and embeddings. The default OpenAI model names are remapped internally when the provider is `ollama`, but setting local model names explicitly makes the configuration easier to read.
+Install `pip install "widemem-ai[openai,faiss]"` and set `OPENAI_API_KEY`. Each provider picks its own default model.
 
 ```python
 from widemem import MemoryConfig, WideMemory
 from widemem.core.types import EmbeddingConfig, LLMConfig
 
-config = MemoryConfig(
-    llm=LLMConfig(provider="ollama", model="llama3.2", base_url="http://localhost:11434"),
-    embedding=EmbeddingConfig(
-        provider="ollama",
-        model="nomic-embed-text",
-        base_url="http://localhost:11434",
-        dimensions=768,
-    ),
-)
+memory = WideMemory(MemoryConfig(
+    llm=LLMConfig(provider="openai"),              # gpt-4o-mini
+    embedding=EmbeddingConfig(provider="openai"),  # text-embedding-3-small, 1536
+))
+```
 
-memory = WideMemory(config)
+### Mixed: cloud LLM, local embeddings
+
+Facts go to the LLM for extraction; vectors stay local.
+
+```python
+from widemem import MemoryConfig, WideMemory
+from widemem.core.types import LLMConfig
+
+memory = WideMemory(MemoryConfig(
+    llm=LLMConfig(provider="anthropic"),  # claude-haiku-4-5-20251001; needs [anthropic] and ANTHROPIC_API_KEY
+))
+```
+
+### Ollama for everything
+
+```python
+from widemem import MemoryConfig, WideMemory
+from widemem.core.types import EmbeddingConfig
+
+memory = WideMemory(MemoryConfig(
+    embedding=EmbeddingConfig(provider="ollama"),  # nomic-embed-text, 768
+))
 ```
 
 ## Environment variables
@@ -209,6 +175,6 @@ memory = WideMemory(config)
 | --- | --- |
 | `OPENAI_API_KEY` | OpenAI LLM and embedding providers. |
 | `ANTHROPIC_API_KEY` | Anthropic LLM provider. |
-| `WIDEMEM_*` | Provider, model and data path for the MCP server ([mcp.md](mcp.md#environment-variables)) and the REST server. The REST server defaults to `ollama` / `llama3.2` and also reads `WIDEMEM_HOST`, `WIDEMEM_PORT` (or `PORT`) and `WIDEMEM_API_KEY`. |
+| `WIDEMEM_*` | Provider, model and data path for the MCP server ([mcp.md](mcp.md#environment-variables)) and the REST server. The REST server defaults to `ollama` / `llama3.1:8b` and also reads `WIDEMEM_HOST`, `WIDEMEM_PORT` (or `PORT`) and `WIDEMEM_API_KEY`. |
 | `WIDEMEM_CONFIDENCE_HIGH`, `WIDEMEM_CONFIDENCE_MODERATE`, `WIDEMEM_CONFIDENCE_LOW` | Override the similarity thresholds behind `RetrievalConfidence`. |
 | `WIDEMEM_COLLECT_EXTRACTIONS` | Set to `1` to log extractions for distillation. |

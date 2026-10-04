@@ -27,3 +27,29 @@ def test_reopening_with_the_same_size_still_loads(tmp_path):
     _saved_store(tmp_path, 8)
     reopened = FAISSVectorStore(VectorStoreConfig(provider="faiss", path=str(tmp_path)), dimensions=8)
     assert reopened.count() == 1
+
+
+def test_macos_pins_faiss_to_one_openmp_thread(monkeypatch, tmp_path):
+    """faiss and torch each ship libomp on macOS; a multithreaded faiss search
+    after torch loads segfaults the process (the default local stack)."""
+    import faiss
+
+    import widemem.storage.vector.faiss_store as store_mod
+
+    calls = []
+    monkeypatch.setattr(store_mod.sys, "platform", "darwin")
+    monkeypatch.setattr(faiss, "omp_set_num_threads", calls.append)
+    FAISSVectorStore(VectorStoreConfig(provider="faiss"), dimensions=4)
+    assert calls == [1]
+
+
+def test_other_platforms_keep_faiss_threading(monkeypatch):
+    import faiss
+
+    import widemem.storage.vector.faiss_store as store_mod
+
+    calls = []
+    monkeypatch.setattr(store_mod.sys, "platform", "linux")
+    monkeypatch.setattr(faiss, "omp_set_num_threads", calls.append)
+    FAISSVectorStore(VectorStoreConfig(provider="faiss"), dimensions=4)
+    assert calls == []

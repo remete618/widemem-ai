@@ -892,7 +892,7 @@ class WideMemory:
         return configured_weight * 0.6
 
     _LLM_DEFAULT_MODELS = {
-        "ollama": "llama3.2",
+        "ollama": "llama3.1:8b",
         "openai": "gpt-4o-mini",
         "anthropic": "claude-haiku-4-5-20251001",
     }

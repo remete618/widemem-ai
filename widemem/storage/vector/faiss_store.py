@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -44,6 +45,11 @@ class FAISSVectorStore(BaseVectorStore):
         self._lock = threading.Lock()
         self._defer_save = False
         self._storage_path: Path | None = None
+
+        if sys.platform == "darwin":
+            # faiss and torch each bundle libomp on macOS; a multithreaded
+            # faiss search after torch has loaded segfaults the process.
+            faiss.omp_set_num_threads(1)
 
         flat_index = faiss.IndexFlatIP(dimensions)
         self._index = faiss.IndexIDMap2(flat_index)

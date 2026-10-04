@@ -75,7 +75,7 @@ def test_readme_mcp_tool_list_matches_code():
 
 
 _ENV_READ = re.compile(r'os\.(?:environ\.get|getenv)\(\s*"([A-Z][A-Z0-9_]+)"\s*(?:,\s*([^)]*?))?\s*\)')
-_SDK_READS = {"ANTHROPIC_API_KEY", "OPENAI_BASE_URL"}  # read by the provider SDKs, not by widemem
+_SDK_READS = {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL"}  # read by the provider SDKs, not by widemem
 
 
 def _env_reads(module: str) -> dict[str, str | None]:

@@ -35,7 +35,7 @@ def _build_config() -> MemoryConfig:
     data_path = str(Path(data_path).expanduser())
 
     llm_provider = os.environ.get("WIDEMEM_LLM_PROVIDER", "ollama")
-    llm_model = os.environ.get("WIDEMEM_LLM_MODEL", "llama3.2")
+    llm_model = os.environ.get("WIDEMEM_LLM_MODEL", "llama3.1:8b")
     llm_base_url = os.environ.get("WIDEMEM_LLM_BASE_URL", "").strip() or None
     embedding_provider = os.environ.get("WIDEMEM_EMBEDDING_PROVIDER", "sentence-transformers")
 

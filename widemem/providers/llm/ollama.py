@@ -16,7 +16,7 @@ class OllamaLLM(BaseLLM):
             raise ProviderError("Install ollama: pip install \"widemem-ai[ollama]\"")
         self.client = Client(host=config.base_url or "http://localhost:11434")
 
-    def _generate(self, prompt: str, system: str | None = None) -> str:
+    def _generate(self, prompt: str, system: str | None = None, json_mode: bool = False) -> str:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -26,6 +26,7 @@ class OllamaLLM(BaseLLM):
             model=self.config.model,
             messages=messages,
             options={"temperature": self.config.temperature},
+            **({"format": "json"} if json_mode else {}),
         )
         content = response.get("message", {}).get("content", "")
         if not content:
@@ -34,7 +35,7 @@ class OllamaLLM(BaseLLM):
 
     def _generate_json(self, prompt: str, system: str | None = None) -> dict:
         json_system = (system or "") + "\n\nYou must respond with valid JSON only. No other text."
-        text = strip_json_fences(self._generate(prompt, system=json_system.strip()))
+        text = strip_json_fences(self._generate(prompt, system=json_system.strip(), json_mode=True))
 
         try:
             return json.loads(text)

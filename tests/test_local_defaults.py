@@ -19,7 +19,7 @@ def _memory(config: MemoryConfig) -> WideMemory:
 
 def test_default_config_is_local():
     cfg = MemoryConfig()
-    assert (cfg.llm.provider, cfg.llm.model) == ("ollama", "llama3.2")
+    assert (cfg.llm.provider, cfg.llm.model) == ("ollama", "llama3.1:8b")
     assert (cfg.embedding.provider, cfg.embedding.model, cfg.embedding.dimensions) == (
         "sentence-transformers", "all-MiniLM-L6-v2", 384,
     )
@@ -35,7 +35,7 @@ def test_an_openai_key_in_the_env_does_not_switch_the_default_to_the_cloud(_clie
 
 @pytest.mark.parametrize(
     "provider, model",
-    [("ollama", "llama3.2"), ("openai", "gpt-4o-mini"), ("anthropic", "claude-haiku-4-5-20251001")],
+    [("ollama", "llama3.1:8b"), ("openai", "gpt-4o-mini"), ("anthropic", "claude-haiku-4-5-20251001")],
 )
 def test_each_llm_provider_gets_its_own_default_model(provider, model):
     llm = WideMemory._llm_config(LLMConfig(provider=provider))
