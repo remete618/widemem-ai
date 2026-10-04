@@ -35,7 +35,7 @@ memory = WideMemory(MemoryConfig(
 ))
 
 memory.add("I live in San Francisco and work as a software engineer", user_id="alice")
-memory.add("I just moved to Boston", user_id="alice")   # the resolver should replace the old fact
+memory.add("I just moved to Boston", user_id="alice")   # checked against stored facts: ADD, UPDATE or DELETE
 
 results = memory.search("where does alice live", user_id="alice")
 if results:

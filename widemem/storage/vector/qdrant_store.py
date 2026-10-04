@@ -39,6 +39,15 @@ class QdrantVectorStore(BaseVectorStore):
                     distance=Distance.COSINE,
                 ),
             )
+        else:
+            vectors = self.client.get_collection(collection_name).config.params.vectors
+            stored = getattr(vectors, "size", None)
+            if stored is not None and stored != dimensions:
+                raise StorageError(
+                    f"Qdrant collection '{collection_name}' holds {stored}-dimensional vectors, "
+                    f"but the configured embedder produces {dimensions}. Configure the "
+                    "embedding model the collection was built with, or use a new collection."
+                )
 
     def insert(self, id: str, vector: List[float], metadata: Dict[str, Any]) -> None:
         from qdrant_client.models import PointStruct

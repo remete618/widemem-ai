@@ -38,9 +38,23 @@ def test_macos_pins_faiss_to_one_openmp_thread(monkeypatch, tmp_path):
 
     calls = []
     monkeypatch.setattr(store_mod.sys, "platform", "darwin")
+    monkeypatch.setitem(store_mod.sys.modules, "torch", object())
     monkeypatch.setattr(faiss, "omp_set_num_threads", calls.append)
     FAISSVectorStore(VectorStoreConfig(provider="faiss"), dimensions=4)
     assert calls == [1]
+
+
+def test_macos_without_torch_keeps_faiss_threading(monkeypatch):
+    import faiss
+
+    import widemem.storage.vector.faiss_store as store_mod
+
+    calls = []
+    monkeypatch.setattr(store_mod.sys, "platform", "darwin")
+    monkeypatch.delitem(store_mod.sys.modules, "torch", raising=False)
+    monkeypatch.setattr(faiss, "omp_set_num_threads", calls.append)
+    FAISSVectorStore(VectorStoreConfig(provider="faiss"), dimensions=4)
+    assert calls == []
 
 
 def test_other_platforms_keep_faiss_threading(monkeypatch):

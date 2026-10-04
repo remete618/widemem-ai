@@ -26,7 +26,7 @@ class OllamaLLM(BaseLLM):
             model=self.config.model,
             messages=messages,
             options={"temperature": self.config.temperature},
-            **({"format": "json"} if json_mode else {}),
+            format="json" if json_mode else None,
         )
         content = response.get("message", {}).get("content", "")
         if not content:

@@ -72,3 +72,39 @@ def test_explicit_openai_is_honoured(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     cfg = MemoryConfig(llm=LLMConfig(provider="openai", api_key="sk-test"))
     assert isinstance(_memory(cfg)._create_llm(), OpenAILLM)
+
+
+@pytest.mark.parametrize(
+    "provider, model, dims",
+    [
+        ("openai", "text-embedding-3-small", 1536),
+        ("openai", "text-embedding-3-large", 3072),
+        ("openai", "text-embedding-ada-002", 1536),
+        ("ollama", "nomic-embed-text", 768),
+        ("sentence-transformers", "all-MiniLM-L6-v2", 384),
+    ],
+)
+def test_explicit_model_without_dimensions_gets_that_models_size(provider, model, dims):
+    emb = WideMemory._embedding_config(EmbeddingConfig(provider=provider, model=model))
+    assert emb.dimensions == dims
+
+
+def test_explicit_dimensions_without_model_are_kept():
+    emb = WideMemory._embedding_config(EmbeddingConfig(provider="openai", dimensions=256))
+    assert (emb.model, emb.dimensions) == ("text-embedding-3-small", 256)
+
+
+def test_unknown_model_without_dimensions_keeps_the_field_default():
+    emb = WideMemory._embedding_config(EmbeddingConfig(provider="ollama", model="mxbai-embed-large"))
+    assert emb.dimensions == EmbeddingConfig().dimensions
+
+
+@patch("sentence_transformers.SentenceTransformer")
+def test_an_openai_key_in_the_env_does_not_switch_the_default_embedder(_st, monkeypatch):
+    pytest.importorskip("sentence_transformers")
+    from widemem.providers.embeddings.sentence_transformers import SentenceTransformerEmbedder
+
+    _st.return_value.get_sentence_embedding_dimension.return_value = 384
+    _st.return_value.get_embedding_dimension.return_value = 384
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert isinstance(_memory(MemoryConfig())._create_embedder(), SentenceTransformerEmbedder)

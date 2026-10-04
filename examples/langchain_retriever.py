@@ -1,7 +1,7 @@
 """Use widemem as the retrieval backend in a LangChain RAG chain.
 
-    pip install "widemem-ai[langchain,faiss]"
-    export OPENAI_API_KEY=...
+    pip install "widemem-ai[langchain,local]"
+    ollama pull llama3.1:8b
     python examples/langchain_retriever.py
 
 The retriever is an ordinary LangChain `BaseRetriever`, so it drops into any
@@ -31,9 +31,10 @@ def main() -> None:
         memory=memory,
         user_id="alice",
         top_k=5,
-        # Return nothing rather than weak matches, so the chain can branch on
-        # an empty list instead of answering from noise.
-        min_confidence=RetrievalConfidence.MODERATE,
+        # Return nothing rather than noise, so the chain can branch on an empty
+        # list. LOW suits the local embedder, where short correct facts often
+        # score LOW; with OpenAI embeddings, MODERATE is the stricter choice.
+        min_confidence=RetrievalConfidence.LOW,
     )
 
     for question in ("Where does she live?", "Any drug allergies?"):

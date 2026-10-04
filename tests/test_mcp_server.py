@@ -150,9 +150,9 @@ def clean_env(monkeypatch, tmp_path):
     return monkeypatch
 
 
-def test_default_openai_config_does_not_point_at_ollama(clean_env):
+def test_default_config_sets_no_base_url(clean_env):
     cfg = mcp_server._build_config()
-    assert cfg.llm.provider == "openai"
+    assert cfg.llm.provider == "ollama"
     assert cfg.llm.base_url is None
 
 
@@ -178,3 +178,26 @@ def test_explicit_base_url_wins(clean_env, provider):
 def test_blank_base_url_is_treated_as_unset(clean_env, blank):
     clean_env.setenv("WIDEMEM_LLM_BASE_URL", blank)
     assert mcp_server._build_config().llm.base_url is None
+
+
+@pytest.mark.parametrize(
+    "provider, model",
+    [("ollama", "llama3.1:8b"), ("openai", "gpt-4o-mini"), ("anthropic", "claude-haiku-4-5-20251001")],
+)
+def test_env_provider_without_a_model_gets_that_providers_default(monkeypatch, tmp_path, provider, model):
+    from widemem.core.memory import WideMemory
+
+    for var in ("WIDEMEM_LLM_MODEL", "WIDEMEM_LLM_BASE_URL"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("WIDEMEM_DATA_PATH", str(tmp_path))
+    monkeypatch.setenv("WIDEMEM_LLM_PROVIDER", provider)
+    assert WideMemory._llm_config(mcp_server._build_config().llm).model == model
+
+
+def test_env_model_wins(monkeypatch, tmp_path):
+    from widemem.core.memory import WideMemory
+
+    monkeypatch.setenv("WIDEMEM_DATA_PATH", str(tmp_path))
+    monkeypatch.setenv("WIDEMEM_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("WIDEMEM_LLM_MODEL", "gpt-4.1")
+    assert WideMemory._llm_config(mcp_server._build_config().llm).model == "gpt-4.1"

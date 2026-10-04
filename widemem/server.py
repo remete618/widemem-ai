@@ -35,17 +35,16 @@ def _build_config() -> MemoryConfig:
     data_path = str(Path(data_path).expanduser())
 
     llm_provider = os.environ.get("WIDEMEM_LLM_PROVIDER", "ollama")
-    llm_model = os.environ.get("WIDEMEM_LLM_MODEL", "llama3.1:8b")
+    llm_model = os.environ.get("WIDEMEM_LLM_MODEL")
     llm_base_url = os.environ.get("WIDEMEM_LLM_BASE_URL", "").strip() or None
     embedding_provider = os.environ.get("WIDEMEM_EMBEDDING_PROVIDER", "sentence-transformers")
 
-    llm_cfg = LLMConfig(provider=llm_provider, model=llm_model, base_url=llm_base_url)
+    llm_kwargs: dict = {"provider": llm_provider, "base_url": llm_base_url}
+    if llm_model:
+        llm_kwargs["model"] = llm_model
+    llm_cfg = LLMConfig(**llm_kwargs)
 
-    embedding_kwargs: dict = {"provider": embedding_provider}
-    if embedding_provider == "sentence-transformers":
-        embedding_kwargs["model"] = "all-MiniLM-L6-v2"
-        embedding_kwargs["dimensions"] = 384
-    emb_cfg = EmbeddingConfig(**embedding_kwargs)
+    emb_cfg = EmbeddingConfig(provider=embedding_provider)
 
     vs_cfg = VectorStoreConfig(provider="faiss", path=os.path.join(data_path, "faiss"))
 

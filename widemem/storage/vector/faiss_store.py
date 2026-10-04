@@ -46,9 +46,10 @@ class FAISSVectorStore(BaseVectorStore):
         self._defer_save = False
         self._storage_path: Path | None = None
 
-        if sys.platform == "darwin":
+        if sys.platform == "darwin" and "torch" in sys.modules:
             # faiss and torch each bundle libomp on macOS; a multithreaded
             # faiss search after torch has loaded segfaults the process.
+            # Process-wide, so it only applies once torch is in play.
             faiss.omp_set_num_threads(1)
 
         flat_index = faiss.IndexFlatIP(dimensions)
@@ -269,9 +270,8 @@ class FAISSVectorStore(BaseVectorStore):
         if index.d != self.dimensions:
             raise StorageError(
                 f"FAISS index at {self._storage_path} holds {index.d}-dimensional vectors, "
-                f"but the embedder produces {self.dimensions}. widemem 1.7 changed the default "
-                "embedder to sentence-transformers (384); set the EmbeddingConfig you stored "
-                "with, or re-embed into a new path."
+                f"but the configured embedder produces {self.dimensions}. Configure the "
+                "embedding model the index was built with, or re-embed into a new path."
             )
         self._index = index
         with open(state_path) as f:

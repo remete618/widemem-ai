@@ -8,13 +8,13 @@ Demonstrates the pieces a healthcare AI agent actually needs:
 - Active retrieval forces contradiction detection on critical facts
 - Confidence levels let the agent abstain instead of fabricating
 
-Run: OPENAI_API_KEY=sk-... python examples/healthcare_quickstart.py
+Runs on the local stack: pip install "widemem-ai[local]", ollama pull llama3.1:8b,
+then python examples/healthcare_quickstart.py
 """
 
 from widemem import WideMemory, MemoryConfig
 from widemem.core.types import (
     DecayFunction,
-    LLMConfig,
     RetrievalConfidence,
     ScoringConfig,
     YMYLConfig,
@@ -22,7 +22,6 @@ from widemem.core.types import (
 
 
 config = MemoryConfig(
-    llm=LLMConfig(provider="openai", model="gpt-4o-mini"),
     ymyl=YMYLConfig(
         enabled=True,
         categories=["health", "medical", "pharmaceutical", "safety"],

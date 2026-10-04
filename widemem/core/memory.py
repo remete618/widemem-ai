@@ -896,10 +896,17 @@ class WideMemory:
         "openai": "gpt-4o-mini",
         "anthropic": "claude-haiku-4-5-20251001",
     }
-    _EMBEDDING_DEFAULTS = {
-        "sentence-transformers": ("all-MiniLM-L6-v2", 384),
-        "ollama": ("nomic-embed-text", 768),
-        "openai": ("text-embedding-3-small", 1536),
+    _EMBEDDING_DEFAULT_MODELS = {
+        "sentence-transformers": "all-MiniLM-L6-v2",
+        "ollama": "nomic-embed-text",
+        "openai": "text-embedding-3-small",
+    }
+    _EMBEDDING_DIMENSIONS = {
+        "all-MiniLM-L6-v2": 384,
+        "nomic-embed-text": 768,
+        "text-embedding-3-small": 1536,
+        "text-embedding-3-large": 3072,
+        "text-embedding-ada-002": 1536,
     }
 
     @classmethod
@@ -910,14 +917,13 @@ class WideMemory:
 
     @classmethod
     def _embedding_config(cls, config: EmbeddingConfig) -> EmbeddingConfig:
-        if config.provider not in cls._EMBEDDING_DEFAULTS:
-            return config
-        model, dimensions = cls._EMBEDDING_DEFAULTS[config.provider]
         update: dict[str, Any] = {}
-        if "model" not in config.model_fields_set:
+        model = config.model
+        if "model" not in config.model_fields_set and config.provider in cls._EMBEDDING_DEFAULT_MODELS:
+            model = cls._EMBEDDING_DEFAULT_MODELS[config.provider]
             update["model"] = model
-            if "dimensions" not in config.model_fields_set:
-                update["dimensions"] = dimensions
+        if "dimensions" not in config.model_fields_set and model in cls._EMBEDDING_DIMENSIONS:
+            update["dimensions"] = cls._EMBEDDING_DIMENSIONS[model]
         return config.model_copy(update=update) if update else config
 
     def _create_llm(self) -> BaseLLM:

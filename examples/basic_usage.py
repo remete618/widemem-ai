@@ -2,7 +2,8 @@
 
 from widemem import WideMemory, MemoryConfig
 
-# Default config uses OpenAI for LLM + embeddings, FAISS for storage
+# Default config runs locally: Ollama (llama3.1:8b) + sentence-transformers + FAISS.
+# Needs: pip install "widemem-ai[local]" and ollama pull llama3.1:8b
 mem = WideMemory()
 
 # Add memories

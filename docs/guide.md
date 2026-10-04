@@ -137,6 +137,7 @@ config = MemoryConfig(enable_hierarchy=True)
 memory = WideMemory(config)
 
 # Add many facts
+conversation_history = ["I live in Vienna", "I work at a bakery", "I bake sourdough on weekends"]
 for msg in conversation_history:
     memory.add(msg, user_id="alice")
 
@@ -326,6 +327,7 @@ Each mode also adjusts the internal candidate pool size and similarity boost str
 Every write to a stored memory is logged to SQLite: adds, updates, deletes, imports, and the importance change behind `pin()`. Each entry carries the action, a UTC timestamp, and the content on both sides, so a record can be reconstructed from the log after the memory itself is gone.
 
 ```python
+memory_id = memory.search("where does alice live", user_id="alice")[0].memory.id
 history = memory.get_history(memory_id)
 for entry in history:
     print(f"{entry.timestamp}: {entry.action.value}")
