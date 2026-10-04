@@ -202,7 +202,8 @@ class WideMemory:
             tier=tier,
             mode=mode,
         )
-        confidence = assess_confidence(final)
+        model = getattr(getattr(self.embedder, "config", None), "model", None)
+        confidence = assess_confidence(final, model)
         if explain:
             from widemem.retrieval.explain import build_explanation
             return build_explanation(final, confidence)

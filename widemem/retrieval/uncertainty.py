@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from typing import Optional
@@ -12,26 +13,61 @@ from widemem.core.types import (
     UncertaintyMode,
 )
 
+logger = logging.getLogger(__name__)
+
 _DEFAULT_THRESHOLDS = {
     # Calibrated for text-embedding-3-small, whose cosine similarity has a high
     # baseline: unrelated short texts routinely score ~0.35-0.50, so the old
     # high=0.45 read an unrelated memory as "high confidence / safe to answer"
-    # (the explain=True false positive). Genuine matches sit ~0.6+. Heuristic
-    # defaults, env-overridable; refine with a labeled relevant/irrelevant sweep.
-    # Under all-MiniLM-L6-v2 they still keep unrelated memories out of HIGH, but
-    # short extracted facts often land in LOW even when they answer the question.
+    # (the explain=True false positive). Genuine matches sit ~0.6+. Used for any
+    # embedding model without its own entry below.
     "high": 0.60,
     "moderate": 0.50,
     "low": 0.30,
 }
 
+_MODEL_THRESHOLDS = {
+    # Measured on tests/fixtures/confidence_minilm.json: facts stored by a real
+    # add() with llama3.1:8b, 62 labeled queries (38 answerable, 12 questions
+    # about the same person with no stored answer, 12 unrelated), split by person.
+    # Top-1 similarity: unrelated 0.07-0.35, answerable 0.42-0.88. The answer
+    # fact with the subject stripped ("moved to Boston", the shape llama3.1:8b
+    # often stores) scores 0.12-0.57; recall at MODERATE+ on those goes from 19%
+    # to 77% (train) and 17% to 58% (holdout) at moderate=0.30; 0.38 would lose
+    # half of that on train. Cost: hard negatives at MODERATE+ go from 8/12 to 12/12, one
+    # unrelated query (0.351) moves LOW -> MODERATE, and precision on the whole
+    # fixture drops from 0.771 to 0.745. MiniLM confidence cannot separate
+    # "answer stored" from "something about this person stored": the name in the
+    # query dominates the score. Separating them is follow-up research.
+    "all-minilm-l6-v2": {"high": 0.60, "moderate": 0.30, "low": 0.20},
+}
 
-def get_confidence_thresholds() -> dict[str, float]:
-    return {
-        "high": float(os.environ.get("WIDEMEM_CONFIDENCE_HIGH", _DEFAULT_THRESHOLDS["high"])),
-        "moderate": float(os.environ.get("WIDEMEM_CONFIDENCE_MODERATE", _DEFAULT_THRESHOLDS["moderate"])),
-        "low": float(os.environ.get("WIDEMEM_CONFIDENCE_LOW", _DEFAULT_THRESHOLDS["low"])),
+_warned_non_monotonic: set[str] = set()  # repr keys, so NaN overrides warn once too
+
+
+def _model_key(embedding_model: object) -> str:
+    if not isinstance(embedding_model, str):
+        return ""
+    return embedding_model.strip().lower().rsplit("/", 1)[-1]
+
+
+def get_confidence_thresholds(embedding_model: Optional[str] = None) -> dict[str, float]:
+    """Thresholds for the given embedding model; WIDEMEM_CONFIDENCE_* env vars win."""
+    defaults = _MODEL_THRESHOLDS.get(_model_key(embedding_model), _DEFAULT_THRESHOLDS)
+    thresholds = {
+        "high": float(os.environ.get("WIDEMEM_CONFIDENCE_HIGH", defaults["high"])),
+        "moderate": float(os.environ.get("WIDEMEM_CONFIDENCE_MODERATE", defaults["moderate"])),
+        "low": float(os.environ.get("WIDEMEM_CONFIDENCE_LOW", defaults["low"])),
     }
+    key = (thresholds["high"], thresholds["moderate"], thresholds["low"])
+    if not key[0] >= key[1] >= key[2] and repr(key) not in _warned_non_monotonic:
+        _warned_non_monotonic.add(repr(key))
+        logger.warning(
+            "Confidence thresholds are not ordered high >= moderate >= low "
+            "(high=%s, moderate=%s, low=%s); check WIDEMEM_CONFIDENCE_* overrides.",
+            *key,
+        )
+    return thresholds
 
 FRUSTRATION_SIGNALS = (
     "i told you", "i already said", "remember when i", "i mentioned",
@@ -41,7 +77,9 @@ FRUSTRATION_SIGNALS = (
 )
 
 
-def assess_confidence(results: list[MemorySearchResult]) -> RetrievalConfidence:
+def assess_confidence(
+    results: list[MemorySearchResult], embedding_model: Optional[str] = None
+) -> RetrievalConfidence:
     """Assess how confident we are that the search results are relevant."""
     if not results:
         return RetrievalConfidence.NONE
@@ -52,7 +90,7 @@ def assess_confidence(results: list[MemorySearchResult]) -> RetrievalConfidence:
         if top_result.raw_similarity_score is not None
         else top_result.similarity_score
     )
-    thresholds = get_confidence_thresholds()
+    thresholds = get_confidence_thresholds(embedding_model)
 
     if top_sim >= thresholds["high"]:
         return RetrievalConfidence.HIGH
@@ -159,13 +197,19 @@ def build_frustration_response(
     Returns None if no frustration detected.
     Otherwise returns guidance for how to respond, including
     the extracted fact to pin.
+
+    Only HIGH confidence reassures. MODERATE means a memory about the same
+    person or topic exists, not that this fact was stored: under
+    all-MiniLM-L6-v2, "I told you I moved to Boston!" scores 0.42 (MODERATE)
+    against "live in San Francisco" alone, and 0.80 (HIGH) once Boston is
+    stored. Reassuring on MODERATE would drop a fact the user is restating.
     """
     if not detect_frustration(query):
         return None
 
     fact = extract_forgotten_fact(query)
 
-    if confidence in (RetrievalConfidence.HIGH, RetrievalConfidence.MODERATE):
+    if confidence == RetrievalConfidence.HIGH:
         return {
             "action": "reassure",
             "message": "I do have some information about this. Let me check.",

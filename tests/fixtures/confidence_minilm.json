@@ -1,0 +1,822 @@
+{
+ "meta": {
+  "about": "Labeled retrieval-confidence cases. Facts are what WideMemory.add() stored with llama3.1:8b (Ollama, temperature 0) from each user's inputs, kept verbatim. All similarities are cosine under all-MiniLM-L6-v2 with normalized embeddings, computed live and rounded to 4 places. top_similarity: top-1 over all of the user's facts. answer_fact_similarity: max over the answer facts only (null when not answerable). subjectless_answer_similarity: the same, with the person's name stripped from the answer facts, the shape an extractor produces when it drops the subject ('moved to Boston'). Caveats: for 21 of 38 answerable cases the top-1 fact is not an answer fact but a fact naming the person, so top_similarity overstates retrieval of the answer. WideMemory.search() scores results[0] after final_score ranking, which can differ from max cosine under mixed importance or recency, so recall measured here is an upper bound.",
+  "embedding_model": "all-MiniLM-L6-v2",
+  "split": "train = alice, bob, carmen, dev; holdout = emma, frank (split by person)"
+ },
+ "users": {
+  "alice": {
+   "inputs": [
+    "Hi, I'm Alice. I moved to Boston last spring after five years in Chicago.",
+    "I work as a nurse at Mass General, mostly night shifts in the ICU.",
+    "I have a golden retriever named Biscuit who is four years old.",
+    "I'm allergic to penicillin, found out the hard way as a kid."
+   ],
+   "facts": [
+    "Alice moved to Boston",
+    "Alice lived in Chicago for five years",
+    "Alice moved to Boston last spring",
+    "works as a nurse at Mass General",
+    "mostly works night shifts",
+    "Biscuit is a golden retriever",
+    "Biscuit is four years old",
+    "allergic to penicillin",
+    "found out the hard way as a kid"
+   ]
+  },
+  "bob": {
+   "inputs": [
+    "Bob here. I'm a backend engineer at a fintech startup, writing mostly Go.",
+    "My wife Priya and I just had our first baby, a daughter named Maya.",
+    "I train for marathons; my next one is Berlin in September.",
+    "I don't drink coffee at all, only green tea."
+   ],
+   "facts": [
+    "Bob is a backend engineer",
+    "Bob works at a fintech startup",
+    "Bob writes mostly in Go",
+    "Priya is Maya's mother",
+    "Maya is a female",
+    "Maya is Priya and [timestamp] user's daughter",
+    "training for marathons",
+    "next marathon is in Berlin",
+    "next marathon is in September",
+    "drinks only green tea"
+   ]
+  },
+  "carmen": {
+   "inputs": [
+    "I'm Carmen, I teach high school chemistry in Madrid.",
+    "I'm learning to play the cello, I take lessons every Thursday.",
+    "My favorite food is my grandmother's paella.",
+    "I drive a red 2015 Toyota Corolla."
+   ],
+   "facts": [
+    "Carmen teaches high school chemistry",
+    "Carmen teaches in Madrid",
+    "I take cello lessons every Thursday",
+    "I am learning to play the cello",
+    "grandmother's paella is the favorite food",
+    "I drive a red 2015 Toyota Corolla"
+   ]
+  },
+  "dev": {
+   "inputs": [
+    "My name is Dev and I'm vegetarian, I haven't eaten meat in ten years.",
+    "I'm studying for a PhD in astrophysics at Caltech.",
+    "My brother Arjun lives in Toronto and works as a dentist.",
+    "I take metformin every morning for type 2 diabetes."
+   ],
+   "facts": [
+    "Dev is vegetarian",
+    "Dev hasn't eaten meat in ten years",
+    "studying for a PhD in astrophysics",
+    "at Caltech",
+    "Arjun lives in Toronto",
+    "Arjun works as a dentist",
+    "takes metformin every morning",
+    "has type 2 diabetes"
+   ]
+  },
+  "emma": {
+   "inputs": [
+    "Emma here, I'm a freelance graphic designer working from Lisbon.",
+    "I'm planning a trip to Japan in April to see the cherry blossoms.",
+    "I speak Portuguese, English and a little Japanese.",
+    "My laptop is a 2021 MacBook Pro and it is starting to overheat."
+   ],
+   "facts": [
+    "Emma is a freelance graphic designer",
+    "Emma works from Lisbon",
+    "planning a trip to Japan",
+    "trip is in April",
+    "goal is to see the cherry blossoms",
+    "You speak Portuguese, English and a little Japanese.",
+    "You speak 3 languages.",
+    "the laptop is a 2021 MacBook Pro",
+    "the laptop is starting to overheat"
+   ]
+  },
+  "frank": {
+   "inputs": [
+    "I'm Frank, retired firefighter, 67 years old.",
+    "I grow tomatoes and peppers in my backyard garden every summer.",
+    "My blood pressure is high so my doctor put me on lisinopril.",
+    "My grandson Leo just started college at Ohio State."
+   ],
+   "facts": [
+    "Frank is 67 years old",
+    "Frank is a retired firefighter",
+    "grows tomatoes and peppers in their backyard garden every summer",
+    "the doctor prescribed lisinopril",
+    "Leo started college",
+    "Leo is attending Ohio State"
+   ]
+  }
+ },
+ "cases": [
+  {
+   "user": "alice",
+   "query": "where does alice live",
+   "kind": "answerable",
+   "answer_facts": [
+    0,
+    2
+   ],
+   "split": "train",
+   "top_similarity": 0.7265,
+   "answer_fact_similarity": 0.7265,
+   "subjectless_answer_similarity": 0.3205
+  },
+  {
+   "user": "alice",
+   "query": "what city is she based in now",
+   "kind": "answerable",
+   "answer_facts": [
+    0,
+    2
+   ],
+   "split": "train",
+   "top_similarity": 0.4202,
+   "answer_fact_similarity": 0.4202,
+   "subjectless_answer_similarity": 0.3281
+  },
+  {
+   "user": "alice",
+   "query": "what does alice do for a living",
+   "kind": "answerable",
+   "answer_facts": [
+    3
+   ],
+   "split": "train",
+   "top_similarity": 0.6084,
+   "answer_fact_similarity": 0.1852,
+   "subjectless_answer_similarity": 0.1852
+  },
+  {
+   "user": "alice",
+   "query": "which hospital does she work at",
+   "kind": "answerable",
+   "answer_facts": [
+    3
+   ],
+   "split": "train",
+   "top_similarity": 0.4621,
+   "answer_fact_similarity": 0.4621,
+   "subjectless_answer_similarity": 0.4621
+  },
+  {
+   "user": "alice",
+   "query": "what kind of dog does alice have",
+   "kind": "answerable",
+   "answer_facts": [
+    5
+   ],
+   "split": "train",
+   "top_similarity": 0.4978,
+   "answer_fact_similarity": 0.425,
+   "subjectless_answer_similarity": 0.425
+  },
+  {
+   "user": "alice",
+   "query": "is she allergic to any medication",
+   "kind": "answerable",
+   "answer_facts": [
+    7
+   ],
+   "split": "train",
+   "top_similarity": 0.5707,
+   "answer_fact_similarity": 0.5707,
+   "subjectless_answer_similarity": 0.5707
+  },
+  {
+   "user": "alice",
+   "query": "does alice work days or nights",
+   "kind": "answerable",
+   "answer_facts": [
+    4
+   ],
+   "split": "train",
+   "top_similarity": 0.506,
+   "answer_fact_similarity": 0.506,
+   "subjectless_answer_similarity": 0.506
+  },
+  {
+   "user": "alice",
+   "query": "is alice married",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.5861,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "alice",
+   "query": "what car does alice drive",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.4996,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "alice",
+   "query": "how do I reset my router password",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.1451,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "alice",
+   "query": "best recipe for chocolate chip cookies",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.3511,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "bob",
+   "query": "what is bob's job",
+   "kind": "answerable",
+   "answer_facts": [
+    0
+   ],
+   "split": "train",
+   "top_similarity": 0.7252,
+   "answer_fact_similarity": 0.7252,
+   "subjectless_answer_similarity": 0.1893
+  },
+  {
+   "user": "bob",
+   "query": "which programming language does bob use",
+   "kind": "answerable",
+   "answer_facts": [
+    2
+   ],
+   "split": "train",
+   "top_similarity": 0.5781,
+   "answer_fact_similarity": 0.5401,
+   "subjectless_answer_similarity": 0.2388
+  },
+  {
+   "user": "bob",
+   "query": "what is the name of bob's daughter",
+   "kind": "answerable",
+   "answer_facts": [
+    3,
+    5
+   ],
+   "split": "train",
+   "top_similarity": 0.5073,
+   "answer_fact_similarity": 0.2576,
+   "subjectless_answer_similarity": 0.2576
+  },
+  {
+   "user": "bob",
+   "query": "where is his next race",
+   "kind": "answerable",
+   "answer_facts": [
+    7
+   ],
+   "split": "train",
+   "top_similarity": 0.5341,
+   "answer_fact_similarity": 0.5341,
+   "subjectless_answer_similarity": 0.5341
+  },
+  {
+   "user": "bob",
+   "query": "does bob drink coffee",
+   "kind": "answerable",
+   "answer_facts": [
+    9
+   ],
+   "split": "train",
+   "top_similarity": 0.4824,
+   "answer_fact_similarity": 0.3478,
+   "subjectless_answer_similarity": 0.3478
+  },
+  {
+   "user": "bob",
+   "query": "what kind of company does bob work for",
+   "kind": "answerable",
+   "answer_facts": [
+    1
+   ],
+   "split": "train",
+   "top_similarity": 0.7262,
+   "answer_fact_similarity": 0.6993,
+   "subjectless_answer_similarity": 0.3491
+  },
+  {
+   "user": "bob",
+   "query": "where did bob go to university",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.5678,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "bob",
+   "query": "does bob have any pets",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.5159,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "bob",
+   "query": "what is the capital of australia",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.0877,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "bob",
+   "query": "explain how photosynthesis works",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.1127,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "carmen",
+   "query": "what subject does carmen teach",
+   "kind": "answerable",
+   "answer_facts": [
+    0
+   ],
+   "split": "train",
+   "top_similarity": 0.7934,
+   "answer_fact_similarity": 0.7777,
+   "subjectless_answer_similarity": 0.3933
+  },
+  {
+   "user": "carmen",
+   "query": "which city does carmen work in",
+   "kind": "answerable",
+   "answer_facts": [
+    1
+   ],
+   "split": "train",
+   "top_similarity": 0.7112,
+   "answer_fact_similarity": 0.7112,
+   "subjectless_answer_similarity": 0.3103
+  },
+  {
+   "user": "carmen",
+   "query": "what instrument is she learning",
+   "kind": "answerable",
+   "answer_facts": [
+    3,
+    2
+   ],
+   "split": "train",
+   "top_similarity": 0.5366,
+   "answer_fact_similarity": 0.5366,
+   "subjectless_answer_similarity": 0.5366
+  },
+  {
+   "user": "carmen",
+   "query": "when are her music lessons",
+   "kind": "answerable",
+   "answer_facts": [
+    2
+   ],
+   "split": "train",
+   "top_similarity": 0.4675,
+   "answer_fact_similarity": 0.4675,
+   "subjectless_answer_similarity": 0.4675
+  },
+  {
+   "user": "carmen",
+   "query": "what is carmen's favourite dish",
+   "kind": "answerable",
+   "answer_facts": [
+    4
+   ],
+   "split": "train",
+   "top_similarity": 0.5487,
+   "answer_fact_similarity": 0.2763,
+   "subjectless_answer_similarity": 0.2763
+  },
+  {
+   "user": "carmen",
+   "query": "what kind of car does carmen have",
+   "kind": "answerable",
+   "answer_facts": [
+    5
+   ],
+   "split": "train",
+   "top_similarity": 0.5761,
+   "answer_fact_similarity": 0.3067,
+   "subjectless_answer_similarity": 0.3067
+  },
+  {
+   "user": "carmen",
+   "query": "does carmen have children",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.6132,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "carmen",
+   "query": "what is carmen's blood type",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.477,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "carmen",
+   "query": "how many moons does jupiter have",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.1225,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "carmen",
+   "query": "translate good morning into french",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.1445,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "dev",
+   "query": "does dev eat meat",
+   "kind": "answerable",
+   "answer_facts": [
+    0,
+    1
+   ],
+   "split": "train",
+   "top_similarity": 0.7718,
+   "answer_fact_similarity": 0.7718,
+   "subjectless_answer_similarity": 0.525
+  },
+  {
+   "user": "dev",
+   "query": "what is dev's diet",
+   "kind": "answerable",
+   "answer_facts": [
+    0,
+    1
+   ],
+   "split": "train",
+   "top_similarity": 0.6661,
+   "answer_fact_similarity": 0.6661,
+   "subjectless_answer_similarity": 0.3008
+  },
+  {
+   "user": "dev",
+   "query": "what is dev studying",
+   "kind": "answerable",
+   "answer_facts": [
+    2
+   ],
+   "split": "train",
+   "top_similarity": 0.468,
+   "answer_fact_similarity": 0.3359,
+   "subjectless_answer_similarity": 0.3359
+  },
+  {
+   "user": "dev",
+   "query": "which university is dev at",
+   "kind": "answerable",
+   "answer_facts": [
+    3
+   ],
+   "split": "train",
+   "top_similarity": 0.4527,
+   "answer_fact_similarity": 0.4527,
+   "subjectless_answer_similarity": 0.4527
+  },
+  {
+   "user": "dev",
+   "query": "where does dev's brother live",
+   "kind": "answerable",
+   "answer_facts": [
+    4
+   ],
+   "split": "train",
+   "top_similarity": 0.4304,
+   "answer_fact_similarity": 0.2526,
+   "subjectless_answer_similarity": 0.2526
+  },
+  {
+   "user": "dev",
+   "query": "what medication does dev take",
+   "kind": "answerable",
+   "answer_facts": [
+    6
+   ],
+   "split": "train",
+   "top_similarity": 0.4411,
+   "answer_fact_similarity": 0.3487,
+   "subjectless_answer_similarity": 0.3487
+  },
+  {
+   "user": "dev",
+   "query": "does dev have any chronic illness",
+   "kind": "answerable",
+   "answer_facts": [
+    7
+   ],
+   "split": "train",
+   "top_similarity": 0.4494,
+   "answer_fact_similarity": 0.3743,
+   "subjectless_answer_similarity": 0.3743
+  },
+  {
+   "user": "dev",
+   "query": "what is dev's favourite movie",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.4769,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "dev",
+   "query": "where did dev grow up",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.481,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "dev",
+   "query": "how do I fix a leaking faucet",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.1552,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "dev",
+   "query": "who won the 2018 world cup",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "train",
+   "top_similarity": 0.0887,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "emma",
+   "query": "what does emma do for work",
+   "kind": "answerable",
+   "answer_facts": [
+    0
+   ],
+   "split": "holdout",
+   "top_similarity": 0.7853,
+   "answer_fact_similarity": 0.7853,
+   "subjectless_answer_similarity": 0.1985
+  },
+  {
+   "user": "emma",
+   "query": "where is emma based",
+   "kind": "answerable",
+   "answer_facts": [
+    1
+   ],
+   "split": "holdout",
+   "top_similarity": 0.7246,
+   "answer_fact_similarity": 0.6996,
+   "subjectless_answer_similarity": 0.1983
+  },
+  {
+   "user": "emma",
+   "query": "where is emma travelling to",
+   "kind": "answerable",
+   "answer_facts": [
+    2
+   ],
+   "split": "holdout",
+   "top_similarity": 0.6265,
+   "answer_fact_similarity": 0.2056,
+   "subjectless_answer_similarity": 0.2056
+  },
+  {
+   "user": "emma",
+   "query": "when is her vacation",
+   "kind": "answerable",
+   "answer_facts": [
+    3
+   ],
+   "split": "holdout",
+   "top_similarity": 0.5302,
+   "answer_fact_similarity": 0.5302,
+   "subjectless_answer_similarity": 0.5302
+  },
+  {
+   "user": "emma",
+   "query": "what languages does emma speak",
+   "kind": "answerable",
+   "answer_facts": [
+    5,
+    6
+   ],
+   "split": "holdout",
+   "top_similarity": 0.5311,
+   "answer_fact_similarity": 0.4042,
+   "subjectless_answer_similarity": 0.4042
+  },
+  {
+   "user": "emma",
+   "query": "what computer does emma use",
+   "kind": "answerable",
+   "answer_facts": [
+    7
+   ],
+   "split": "holdout",
+   "top_similarity": 0.6139,
+   "answer_fact_similarity": 0.3543,
+   "subjectless_answer_similarity": 0.3543
+  },
+  {
+   "user": "emma",
+   "query": "is anything wrong with her laptop",
+   "kind": "answerable",
+   "answer_facts": [
+    8
+   ],
+   "split": "holdout",
+   "top_similarity": 0.4703,
+   "answer_fact_similarity": 0.4386,
+   "subjectless_answer_similarity": 0.4386
+  },
+  {
+   "user": "emma",
+   "query": "does emma have siblings",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.5954,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "emma",
+   "query": "what is emma's favourite food",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.5729,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "emma",
+   "query": "how tall is mount everest",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.0896,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "emma",
+   "query": "what time zone is new york in",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.2252,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "frank",
+   "query": "how old is frank",
+   "kind": "answerable",
+   "answer_facts": [
+    0
+   ],
+   "split": "holdout",
+   "top_similarity": 0.8825,
+   "answer_fact_similarity": 0.8825,
+   "subjectless_answer_similarity": 0.4103
+  },
+  {
+   "user": "frank",
+   "query": "what was frank's career",
+   "kind": "answerable",
+   "answer_facts": [
+    1
+   ],
+   "split": "holdout",
+   "top_similarity": 0.7091,
+   "answer_fact_similarity": 0.6932,
+   "subjectless_answer_similarity": 0.1158
+  },
+  {
+   "user": "frank",
+   "query": "what vegetables does frank grow",
+   "kind": "answerable",
+   "answer_facts": [
+    2
+   ],
+   "split": "holdout",
+   "top_similarity": 0.5029,
+   "answer_fact_similarity": 0.4284,
+   "subjectless_answer_similarity": 0.4284
+  },
+  {
+   "user": "frank",
+   "query": "what blood pressure medicine is he on",
+   "kind": "answerable",
+   "answer_facts": [
+    3
+   ],
+   "split": "holdout",
+   "top_similarity": 0.5291,
+   "answer_fact_similarity": 0.5291,
+   "subjectless_answer_similarity": 0.5291
+  },
+  {
+   "user": "frank",
+   "query": "where does frank's grandson study",
+   "kind": "answerable",
+   "answer_facts": [
+    5
+   ],
+   "split": "holdout",
+   "top_similarity": 0.6905,
+   "answer_fact_similarity": 0.1921,
+   "subjectless_answer_similarity": 0.1921
+  },
+  {
+   "user": "frank",
+   "query": "does frank have any pets",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.6826,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "frank",
+   "query": "where does frank live",
+   "kind": "hard_negative",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.7006,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "frank",
+   "query": "what is the boiling point of water in kelvin",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.0724,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  },
+  {
+   "user": "frank",
+   "query": "recommend a good sci-fi novel",
+   "kind": "unrelated",
+   "answer_facts": [],
+   "split": "holdout",
+   "top_similarity": 0.1179,
+   "answer_fact_similarity": null,
+   "subjectless_answer_similarity": null
+  }
+ ]
+}
