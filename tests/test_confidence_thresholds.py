@@ -295,6 +295,31 @@ def test_sentence_transformers_embedder_records_the_model_it_loads(configured, r
     assert emb.dimensions == 384
 
 
+def test_sentence_transformers_embedder_copies_config_and_keeps_fields(monkeypatch):
+    import sys
+
+    from widemem.core.types import EmbeddingConfig
+    from widemem.providers.embeddings.sentence_transformers import SentenceTransformerEmbedder
+
+    class FakeST:
+        def __init__(self, name):
+            pass
+
+        def get_sentence_embedding_dimension(self):
+            return 384
+
+    monkeypatch.setitem(sys.modules, "sentence_transformers", SimpleNamespace(SentenceTransformer=FakeST))
+    cfg = EmbeddingConfig(
+        provider="sentence-transformers", model="", api_key="k", base_url="http://x", dimensions=768,
+    )
+    emb = SentenceTransformerEmbedder(cfg)
+    assert emb.config is not cfg
+    assert (emb.config.model, emb.config.dimensions) == ("all-MiniLM-L6-v2", 384)
+    assert emb.config.base_url == "http://x"
+    assert emb.config.api_key is not None and emb.config.api_key.get_secret_value() == "k"
+    assert (cfg.model, cfg.dimensions, cfg.base_url) == ("", 768, "http://x")
+
+
 def test_empty_model_string_reaches_the_embedder_unresolved():
     from widemem.core.memory import WideMemory
     from widemem.core.types import EmbeddingConfig
