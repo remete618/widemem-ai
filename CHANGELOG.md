@@ -6,9 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-04
+
+widemem is local-first: the defaults run on your machine, and cloud providers are opt-in. Three breaking changes, each with a migration step below.
+
+### Changed
+
+- **BREAKING: local-first defaults.** `MemoryConfig()` now runs on Ollama (`llama3.1:8b`) and sentence-transformers (`all-MiniLM-L6-v2`, 384 dimensions); it used to default to OpenAI and fall back to Ollama only when no `OPENAI_API_KEY` was set, so a key in the environment sent memories to OpenAI without being asked. Cloud providers are now used only when configured. Each provider gets its own default model unless `model` is set (`openai`: `gpt-4o-mini` and `text-embedding-3-small`; `anthropic`: `claude-haiku-4-5-20251001`). The MCP server defaults to Ollama too. `pip install "widemem-ai[local]"` installs the whole local stack. Under all-MiniLM-L6-v2 the existing confidence thresholds still keep unrelated memories out of HIGH, but short extracted facts often score LOW even when they answer the question; per-embedder calibration is open work. `llama3.1:8b` rather than the smaller `llama3.2`: in an add, contradict, YMYL and miss scenario run 3 times each, `llama3.2` kept the stale fact and split "I'm allergic to penicillin" into one fact per word every time; `llama3.1:8b` passed every check. `EmbeddingConfig.dimensions` now defaults to 384 and, when unset, follows the model (`text-embedding-3-small` 1536, `text-embedding-3-large` 3072, `nomic-embed-text` 768). **If you relied on the implicit OpenAI default**, set `LLMConfig(provider="openai")` and `EmbeddingConfig(provider="openai")`; for the MCP or REST server, set `WIDEMEM_LLM_PROVIDER=openai` and `WIDEMEM_EMBEDDING_PROVIDER=openai`. A FAISS index or Qdrant collection built with 1536-dimensional vectors now refuses to open under a 384-dimensional embedder instead of failing on the first write. pgvector has no such check yet: its first insert fails in Postgres.
+
+- **BREAKING: OpenAI is now an optional extra.** `openai` moved from the core dependencies to `pip install "widemem-ai[openai]"` (also in `[all]`). A base install pulls no cloud SDK, and widemem imports and runs on a local stack (Ollama, sentence-transformers, FAISS) without it. The OpenAI providers load the SDK on first use and raise `ProviderError` naming the extra when it is missing. If you use OpenAI, add the extra.
+
+- **BREAKING for the `mcp` extra: the MCP server now requires mcp 2.x.** The pin moves from `mcp>=1.0,<2` to `mcp>=2,<3`. mcp 2.0 removed the low-level `@server.list_tools()` and `@server.call_tool()` decorators the server was built on, so `widemem/mcp_server.py` did not import at all under 2.x. The handlers are now passed to `Server(...)` as `on_list_tools` and `on_call_tool`, which is how mcp 2.x registers them. Supporting both generations was considered and rejected: it needs two handler signatures and doubles the test matrix for an opt-in extra. Pin `widemem-ai<2` if you need mcp 1.x.
+
+  The seven tools, their names, their input schemas and their response bodies are unchanged. This is an internal migration, not a protocol change, and a real stdio handshake against the ported server was used to confirm it: initialize, `tools/list` returning all seven, and a `widemem_health` round trip.
+
 ### Added
 
 - **A contract suite every LLM provider must pass** - `tests/test_provider_contract.py` runs openai, anthropic and ollama through the same assertions, each against its real SDK with the HTTP transport mocked. A structural check fails when a provider is added to the package without a case, so a fourth one cannot drift in unseen.
+
+- **LangChain retriever adapter** - `widemem.integrations.langchain.WidememRetriever` is a real `BaseRetriever`, so widemem drops into any chain that takes one. Documents carry the memory id, owner, importance, YMYL category, timestamp and both scores. `min_confidence` is all-or-nothing rather than a per-document filter, because widemem reports confidence for the result set: a chain can branch on an empty list, where a thinned list of weak matches would quietly degrade the answer. The async path runs the synchronous search in a worker thread so it does not stall the event loop. Install with the `langchain` extra. Example in `examples/langchain_retriever.py`.
 
 ### Fixed
 
@@ -23,21 +39,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **The OpenAI provider did not strip code fences from JSON responses.** It relied on `response_format={"type": "json_object"}` to prevent them, which the OpenAI API honours. `base_url` is a supported setting and points at OpenAI-compatible endpoints that may ignore that field, in which case a fenced reply raised `ProviderError` on valid JSON. All three providers now share `strip_json_fences()` instead of two of them carrying their own copy. Found by the contract suite on its first run.
 
 - **`purge_expired()` stopped at a fixed row cap and still reported success.** The sweep listed with `max_results=1_000_000`, and every backend honours that limit: FAISS stops appending, qdrant scrolls with it, pgvector adds a `LIMIT`. A larger store had its tail examined by nothing while the returned count read as a completed purge. The request is now sized from the store's own count for the same scope, so the caller's view cannot be truncated by the sweep's own request. Bounded-memory paging would need an offset on the vector-store interface and is deliberately not part of this fix.
-
-### Added
-
-- **LangChain retriever adapter** - `widemem.integrations.langchain.WidememRetriever` is a real `BaseRetriever`, so widemem drops into any chain that takes one. Documents carry the memory id, owner, importance, YMYL category, timestamp and both scores. `min_confidence` is all-or-nothing rather than a per-document filter, because widemem reports confidence for the result set: a chain can branch on an empty list, where a thinned list of weak matches would quietly degrade the answer. The async path runs the synchronous search in a worker thread so it does not stall the event loop. Install with the `langchain` extra. Example in `examples/langchain_retriever.py`.
-
-### Changed
-
-- **BREAKING: local-first defaults.** `MemoryConfig()` now runs on Ollama (`llama3.1:8b`) and sentence-transformers (`all-MiniLM-L6-v2`, 384 dimensions); it used to default to OpenAI and fall back to Ollama only when no `OPENAI_API_KEY` was set, so a key in the environment sent memories to OpenAI without being asked. Cloud providers are now used only when configured. Each provider gets its own default model unless `model` is set (`openai`: `gpt-4o-mini` and `text-embedding-3-small`; `anthropic`: `claude-haiku-4-5-20251001`). The MCP server defaults to Ollama too. `pip install "widemem-ai[local]"` installs the whole local stack. Under all-MiniLM-L6-v2 the existing confidence thresholds still keep unrelated memories out of HIGH, but short extracted facts often score LOW even when they answer the question; per-embedder calibration is open work. `llama3.1:8b` rather than the smaller `llama3.2`: in an add, contradict, YMYL and miss scenario run 3 times each, `llama3.2` kept the stale fact and split "I'm allergic to penicillin" into one fact per word every time; `llama3.1:8b` passed every check. `EmbeddingConfig.dimensions` now defaults to 384 and, when unset, follows the model (`text-embedding-3-small` 1536, `text-embedding-3-large` 3072, `nomic-embed-text` 768). **If you relied on the implicit OpenAI default**, set `LLMConfig(provider="openai")` and `EmbeddingConfig(provider="openai")`; for the MCP or REST server, set `WIDEMEM_LLM_PROVIDER=openai` and `WIDEMEM_EMBEDDING_PROVIDER=openai`. A FAISS index or Qdrant collection built with 1536-dimensional vectors now refuses to open under a 384-dimensional embedder instead of failing on the first write. pgvector has no such check yet: its first insert fails in Postgres.
-
-- **BREAKING: OpenAI is now an optional extra.** `openai` moved from the core dependencies to `pip install "widemem-ai[openai]"` (also in `[all]`). A base install pulls no cloud SDK, and widemem imports and runs on a local stack (Ollama, sentence-transformers, FAISS) without it. The OpenAI providers load the SDK on first use and raise `ProviderError` naming the extra when it is missing. If you use OpenAI, add the extra.
-
-- **BREAKING for the `mcp` extra: the MCP server now requires mcp 2.x.** The pin moves from `mcp>=1.0,<2` to `mcp>=2,<3`. mcp 2.0 removed the low-level `@server.list_tools()` and `@server.call_tool()` decorators the server was built on, so `widemem/mcp_server.py` did not import at all under 2.x. The handlers are now passed to `Server(...)` as `on_list_tools` and `on_call_tool`, which is how mcp 2.x registers them. Supporting both generations was considered and rejected: it needs two handler signatures and doubles the test matrix for an opt-in extra. Pin `widemem-ai<1.7` if you need mcp 1.x.
-
-  The seven tools, their names, their input schemas and their response bodies are unchanged. This is an internal migration, not a protocol change, and a real stdio handshake against the ported server was used to confirm it: initialize, `tools/list` returning all seven, and a `widemem_health` round trip.
-
 
 ## [1.6.0] - 2026-09-14
 
