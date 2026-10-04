@@ -55,6 +55,6 @@ Add to `claude_desktop_config.json`:
 | `WIDEMEM_DATA_PATH` | `~/.widemem/data` | Storage directory |
 | `WIDEMEM_LLM_PROVIDER` | `openai` | LLM provider (`openai`, `anthropic`, `ollama`) |
 | `WIDEMEM_LLM_MODEL` | `gpt-4o-mini` | LLM model name |
-| `WIDEMEM_LLM_BASE_URL` | `http://localhost:11434` | LLM API base URL |
+| `WIDEMEM_LLM_BASE_URL` | (unset) | Base URL for the OpenAI and Ollama providers; Anthropic ignores it. Unset, OpenAI uses its SDK default (honours `OPENAI_BASE_URL`) and Ollama uses `http://localhost:11434` |
 | `WIDEMEM_EMBEDDING_PROVIDER` | `sentence-transformers` | Embedding provider |
 | `WIDEMEM_API_KEY` | (unset) | Optional shared key for the optional REST server |

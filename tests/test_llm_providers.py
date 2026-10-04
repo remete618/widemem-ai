@@ -308,3 +308,23 @@ def test_benchmark_harnesses_do_not_import_an_http_library():
         "choice: openai < 2 uses httpx, openai >= 2 uses httpx2, and neither accepts "
         "the other's client. Pass a plain timeout instead."
     )
+
+
+def test_openai_without_base_url_reaches_the_openai_api(monkeypatch):
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    llm = OpenAILLM(LLMConfig(provider="openai", api_key="sk-test"))
+    assert str(llm.client.base_url) == "https://api.openai.com/v1/"
+
+
+def test_openai_passes_an_explicit_base_url_to_the_sdk(monkeypatch):
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    llm = OpenAILLM(LLMConfig(provider="openai", api_key="sk-test", base_url="http://gateway.internal:8080/v1"))
+    assert str(llm.client.base_url) == "http://gateway.internal:8080/v1/"
+
+
+@patch("ollama.Client")
+def test_ollama_llm_without_base_url_reaches_localhost(mock_client):
+    from widemem.providers.llm.ollama import OllamaLLM
+
+    OllamaLLM(LLMConfig(provider="ollama", model="llama3.2"))
+    mock_client.assert_called_once_with(host="http://localhost:11434")

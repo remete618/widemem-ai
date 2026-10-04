@@ -92,3 +92,20 @@ def test_public_bind_with_key_no_warning(monkeypatch, caplog):
     assert not any(
         "authentication is disabled" in r.message for r in caplog.records
     )
+
+
+@pytest.mark.parametrize("provider", ["openai", "anthropic", "ollama"])
+def test_build_config_sets_no_base_url_unless_asked(monkeypatch, tmp_path, provider):
+    from widemem.server import _build_config
+
+    monkeypatch.delenv("WIDEMEM_LLM_BASE_URL", raising=False)
+    monkeypatch.setenv("WIDEMEM_DATA_PATH", str(tmp_path))
+    monkeypatch.setenv("WIDEMEM_LLM_PROVIDER", provider)
+    assert _build_config().llm.base_url is None
+
+    for blank in ("", "   "):
+        monkeypatch.setenv("WIDEMEM_LLM_BASE_URL", blank)
+        assert _build_config().llm.base_url is None
+
+    monkeypatch.setenv("WIDEMEM_LLM_BASE_URL", "http://gateway.internal:8080/v1")
+    assert _build_config().llm.base_url == "http://gateway.internal:8080/v1"
