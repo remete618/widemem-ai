@@ -15,7 +15,7 @@ def handle_clarification(clarifications):
     print("\n--- Contradiction detected ---")
     answers = []
     for c in clarifications:
-        print(f"  Existing: {c.existing_memory}")
+        print(f"  Existing: {c.existing_content}")
         print(f"  New:      {c.new_fact}")
         print(f"  Question: {c.question}")
         answers.append("Accept the updated information")

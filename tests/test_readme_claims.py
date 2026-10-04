@@ -65,6 +65,116 @@ def test_every_documented_mcp_tool_exists():
     assert not ghosts, f"tools documented in docs/mcp.md but absent from code: {sorted(ghosts)}"
 
 
+def test_readme_mcp_tool_list_matches_code():
+    line = re.search(r"^Tools exposed: (.+)$", read("README.md"), re.M)
+    assert line, "README.md lost its 'Tools exposed:' line"
+    listed = set(re.findall(r"`(widemem_[a-z_]+)`", line.group(1)))
+    assert listed == _tools_in_code(), (
+        f"README lists {sorted(listed)}, mcp_server.py has {sorted(_tools_in_code())}"
+    )
+
+
+_ENV_READ = re.compile(r'os\.(?:environ\.get|getenv)\(\s*"([A-Z][A-Z0-9_]+)"\s*(?:,\s*([^)]*?))?\s*\)')
+_SDK_READS = {"ANTHROPIC_API_KEY", "OPENAI_BASE_URL"}  # read by the provider SDKs, not by widemem
+
+
+def _env_reads(module: str) -> dict[str, str | None]:
+    return {name: default.strip() if default else None for name, default in _ENV_READ.findall(read(module))}
+
+
+def _literal(expr: str | None) -> str | None:
+    if expr is None:
+        return None
+    m = re.fullmatch(r'"([^"]*)"', expr)
+    assert m, f"env default {expr!r} is not a string literal; this test cannot compare it to the docs"
+    return m.group(1)
+
+
+def _user_docs() -> dict[str, str]:
+    docs = {rel: read(rel) for rel in ("README.md", "YMYL.md")}
+    docs.update(
+        {f"docs/{p.name}": p.read_text(encoding="utf-8") for p in (ROOT / "docs").glob("*.md") if p.name != "HISTORY.md"}
+    )
+    return docs
+
+
+def test_every_documented_env_var_is_read_somewhere():
+    source = "\n".join(p.read_text(encoding="utf-8") for p in (ROOT / "widemem").rglob("*.py"))
+    for rel, text in _user_docs().items():
+        for name in set(re.findall(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)`", text)):
+            assert f'"{name}"' in source or name in _SDK_READS, f"{rel} documents {name}, which nothing reads"
+
+
+def test_mcp_doc_env_defaults_match_the_server():
+    mcp, rest = _env_reads("widemem/mcp_server.py"), _env_reads("widemem/server.py")
+    rows = re.findall(r"^\|\s*`(WIDEMEM_[A-Z_]+)`\s*\|\s*([^|]+?)\s*\|", read("docs/mcp.md"), re.M)
+    assert rows, "env var table missing from docs/mcp.md"
+    for name, doc_default in rows:
+        assert name in mcp or name in rest, f"docs/mcp.md documents {name}, which no server reads"
+        if name not in mcp:
+            continue
+        code_default = _literal(mcp[name])
+        if doc_default.startswith("`"):
+            assert doc_default.strip("`") == code_default, (
+                f"docs/mcp.md says {name} defaults to {doc_default}, mcp_server.py uses {code_default!r}"
+            )
+        else:
+            assert not code_default, (
+                f"docs/mcp.md says {name} is {doc_default}, mcp_server.py defaults it to {code_default!r}"
+            )
+
+
+def _clarification_fields() -> set[str]:
+    body = read("widemem/retrieval/active.py").split("class Clarification", 1)[1]
+    body = re.split(r"\n(?=\S)", body, maxsplit=1)[0]
+    return set(re.findall(r"^    (\w+):", body, re.M))
+
+
+def test_documented_clarification_fields_exist():
+    fields = _clarification_fields()
+    assert {"existing_content", "new_fact", "question"} <= fields, f"parsed Clarification fields: {sorted(fields)}"
+    for rel in ("README.md", "examples/ymyl_active_retrieval.py"):
+        text = read(rel)
+        loop_vars = set(re.findall(r"for (\w+) in clarifications", text))
+        assert loop_vars, f"{rel} no longer loops over clarifications; update this test"
+        used = {attr for var in loop_vars for attr in re.findall(rf"\b{var}\.(\w+)", text)}
+        assert used <= fields, f"{rel} reads Clarification.{sorted(used - fields)}, fields are {sorted(fields)}"
+
+
+def test_no_doc_or_example_sets_the_unread_uncertainty_mode():
+    if "config.uncertainty_mode" in "\n".join(p.read_text(encoding="utf-8") for p in (ROOT / "widemem").rglob("*.py")):
+        return
+    texts = dict(_user_docs())
+    texts.update({f"examples/{p.name}": p.read_text(encoding="utf-8") for p in (ROOT / "examples").glob("*.py")})
+    for rel, text in texts.items():
+        assert not re.search(r"uncertainty_mode\s*=(?!=)", text), (
+            f"{rel} sets uncertainty_mode, which nothing reads; show build_uncertainty_guidance() instead"
+        )
+
+
+def test_ymyl_doc_floors_match_the_extractor():
+    doc, ext = read("YMYL.md"), read("widemem/extraction/llm_extractor.py")
+    default = re.search(r"min_importance: float = ([\d.]+)", read("widemem/core/types.py"))
+    assert default, "YMYLConfig.min_importance default not found"
+    assert set(re.findall(r"importance = max\(importance, ([\d.]+)\)", doc)) == {default.group(1)}
+    config_floors = ext.count("importance = max(importance, self.ymyl_config.min_importance)")
+    assert config_floors == doc.count("→ importance = max(importance,"), (
+        f"extractor applies the configured floor on {config_floors} paths; YMYL.md's diagram disagrees"
+    )
+    assert not re.search(r"importance = max\(importance, \d", ext), "extractor has a literal floor YMYL.md does not show"
+    assert not re.search(r"(?:nudged|bump|boost)\w* to (?:importance )?\d", doc), "YMYL.md promises a floor by number"
+
+
+def test_qdrant_url_claim_matches_the_store():
+    store = read("widemem/storage/vector/qdrant_store.py")
+    row = re.search(r"^\| `url` \|.*$", read("docs/configuration.md"), re.M)
+    assert row, "url row missing from docs/configuration.md"
+    reads_url = "config.url" in store
+    assert ("Qdrant ignores" in row.group(0)) != reads_url, (
+        "docs/configuration.md and qdrant_store.py disagree on whether Qdrant reads VectorStoreConfig.url"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Scoring and decay claims
 # ---------------------------------------------------------------------------

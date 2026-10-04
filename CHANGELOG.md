@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **Docs described behavior the code does not have.** A crashing active-retrieval example, a config field nothing reads, a YMYL importance floor that does not exist, wrong MCP defaults, unread env vars and a Qdrant `url` the store ignores. Listed in `docs/HISTORY.md`. `tests/test_readme_claims.py` now gates all of them except the FAISS-in-RAM note.
+
 - **The OpenAI provider did not strip code fences from JSON responses.** It relied on `response_format={"type": "json_object"}` to prevent them, which the OpenAI API honours. `base_url` is a supported setting and points at OpenAI-compatible endpoints that may ignore that field, in which case a fenced reply raised `ProviderError` on valid JSON. All three providers now share `strip_json_fences()` instead of two of them carrying their own copy. Found by the contract suite on its first run.
 
 - **`purge_expired()` stopped at a fixed row cap and still reported success.** The sweep listed with `max_results=1_000_000`, and every backend honours that limit: FAISS stops appending, qdrant scrolls with it, pgvector adds a `LIMIT`. A larger store had its tail examined by nothing while the returned count read as a completed purge. The request is now sized from the store's own count for the same scope, so the caller's view cannot be truncated by the sweep's own request. Bounded-memory paging would need an offset on the vector-store interface and is deliberately not part of this fix.

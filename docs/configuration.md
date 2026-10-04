@@ -35,7 +35,7 @@ from widemem.core.types import (
 | `topics` | `TopicConfig` | `TopicConfig()` | Topic boost and custom extraction hint settings. |
 | `history_db_path` | `str` | `"~/.widemem/history.db"` | SQLite path for the memory history and audit trail. |
 | `retrieval_mode` | `RetrievalMode` | `RetrievalMode.BALANCED` | Default retrieval preset: `FAST`, `BALANCED`, or `DEEP`. |
-| `uncertainty_mode` | `UncertaintyMode` | `UncertaintyMode.HELPFUL` | How responses handle low-confidence retrieval: `STRICT`, `HELPFUL`, or `CREATIVE`. |
+| `uncertainty_mode` | `UncertaintyMode` | `UncertaintyMode.HELPFUL` | Stored on the config but not read by `search()`. Pass a mode to `widemem.retrieval.uncertainty.build_uncertainty_guidance()` instead. |
 | `enable_hierarchy` | `bool` | `False` | Forces hierarchical memory routing on when set. |
 | `enable_active_retrieval` | `bool` | `False` | Enables contradiction checks and clarification callbacks for new memories. |
 | `active_retrieval_threshold` | `float` | `0.6` | Similarity threshold used by active retrieval conflict detection. |
@@ -73,8 +73,8 @@ from widemem.core.types import (
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `provider` | `str` | `"faiss"` | Vector store backend name. Supported by `WideMemory`: `faiss`, `qdrant`, `pgvector`. |
-| `path` | `Optional[str]` | `None` | Local persistence path for backends that support file-backed storage. |
-| `url` | `Optional[str]` | `None` | Connection URL for network-backed stores such as pgvector and Qdrant Cloud. |
+| `path` | `Optional[str]` | `None` | Local persistence path. FAISS without a path keeps vectors in RAM only. Qdrant with a path runs embedded. |
+| `url` | `Optional[str]` | `None` | Connection URL for pgvector. Qdrant ignores it: without `path` it connects to `localhost:6333`. |
 | `table_name` | `str` | `"widemem_vectors"` | Table name used by the pgvector backend. |
 
 ## ScoringConfig
@@ -209,5 +209,6 @@ memory = WideMemory(config)
 | --- | --- |
 | `OPENAI_API_KEY` | OpenAI LLM and embedding providers. |
 | `ANTHROPIC_API_KEY` | Anthropic LLM provider. |
-| `OLLAMA_BASE_URL` | Ollama defaults used by the server and MCP server. |
-| `QDRANT_URL` | Remote Qdrant configuration used by environment-driven server setup. |
+| `WIDEMEM_*` | Provider, model and data path for the MCP server ([mcp.md](mcp.md#environment-variables)) and the REST server. The REST server defaults to `ollama` / `llama3.2` and also reads `WIDEMEM_HOST`, `WIDEMEM_PORT` (or `PORT`) and `WIDEMEM_API_KEY`. |
+| `WIDEMEM_CONFIDENCE_HIGH`, `WIDEMEM_CONFIDENCE_MODERATE`, `WIDEMEM_CONFIDENCE_LOW` | Override the similarity thresholds behind `RetrievalConfidence`. |
+| `WIDEMEM_COLLECT_EXTRACTIONS` | Set to `1` to log extractions for distillation. |

@@ -145,6 +145,8 @@ memory.delete(results[0].memory.id)
 history = memory.get_history(results[0].memory.id)
 ```
 
+`WideMemory()` with no config keeps FAISS vectors in RAM, so they are gone when the process exits (the SQLite history persists). Set `VectorStoreConfig(provider="faiss", path="./widemem_faiss")` to keep them on disk.
+
 That's it. No 47-step setup guide. No YAML files. No existential dread. Your AI just went from goldfish to elephant in six lines.
 
 WideMemory also works as a context manager if you're the responsible type:
@@ -231,7 +233,7 @@ ScoringConfig(decay_function=DecayFunction.NONE)
 | Vector store | FAISS (default) | `pip install widemem-ai[faiss]` | `VectorStoreConfig(provider="faiss")` |
 | Vector store | Qdrant | `pip install widemem-ai[qdrant]` | `VectorStoreConfig(provider="qdrant", path="./qdrant_data")` |
 
-For Ollama, pair with sentence-transformers if you want fully local: `EmbeddingConfig(provider="sentence-transformers", model="all-MiniLM-L6-v2", dimensions=384)`. Set `QDRANT_URL` env var for remote Qdrant.
+For Ollama, pair with sentence-transformers if you want fully local: `EmbeddingConfig(provider="sentence-transformers", model="all-MiniLM-L6-v2", dimensions=384)`. Qdrant runs embedded when `path` is set, otherwise it connects to a server on `localhost:6333`.
 
 ---
 
@@ -359,7 +361,7 @@ memory = WideMemory(config)
 def handle_clarification(clarifications):
     for c in clarifications:
         print(f"Conflict: {c.question}")
-        print(f"  Old: {c.existing_memory}")
+        print(f"  Old: {c.existing_content}")
         print(f"  New: {c.new_fact}")
     # Return None to abort the add, or a list of answers to proceed
     return ["User moved to Boston"]
@@ -436,16 +438,23 @@ for r in response:
 
 ### Three uncertainty modes
 
+`search()` reports confidence; deciding what to say is up to your app. `build_uncertainty_guidance()` turns a confidence level and a mode into an action (`answer`, `hedge`, `refuse`, `offer_guess`) plus a message:
+
 ```python
+from widemem import UncertaintyMode
+from widemem.retrieval.uncertainty import build_uncertainty_guidance
+
+response = mem.search("What's Alice's favorite movie?", user_id="alice")
+
 # Strict: refuses to answer if unsure
-mem = WideMemory(config=MemoryConfig(uncertainty_mode="strict"))
-
-# Helpful (default): "I don't have that, but here's what I do know..."
-mem = WideMemory(config=MemoryConfig(uncertainty_mode="helpful"))
-
+# Helpful: "I don't have that, but here's what I do know..."
 # Creative: "I can guess if you want, fair warning, it might be wrong"
-mem = WideMemory(config=MemoryConfig(uncertainty_mode="creative"))
+guidance = build_uncertainty_guidance(response.confidence, UncertaintyMode.HELPFUL, list(response))
+if guidance:  # None means HIGH confidence: answer normally
+    print(guidance["action"], guidance["message"])
 ```
+
+`MemoryConfig.uncertainty_mode` is not read by `search()`; pass the mode to the helper.
 
 ### Pin important memories
 
@@ -619,7 +628,7 @@ pip install widemem-ai[mcp]
 python -m widemem.mcp_server
 ```
 
-Tools exposed: `widemem_add`, `widemem_search`, `widemem_delete`, `widemem_count`, `widemem_health`. Configure providers via `WIDEMEM_LLM_PROVIDER`, `WIDEMEM_EMBEDDING_PROVIDER`, etc.
+Tools exposed: `widemem_add`, `widemem_search`, `widemem_delete`, `widemem_count`, `widemem_pin`, `widemem_export`, `widemem_health`. Configure providers via `WIDEMEM_LLM_PROVIDER`, `WIDEMEM_EMBEDDING_PROVIDER`, etc.
 
 Full setup, env vars, and Claude Desktop config: **[docs/mcp.md](docs/mcp.md)**.
 
@@ -664,7 +673,6 @@ Tracked publicly as GitHub issues. Vote with reactions to prioritize. Issues tag
 ### Framework integrations
 
 - [#22 LangChain `BaseChatMessageHistory` adapter](https://github.com/remete618/widemem-ai/issues/22) — drop-in conversation-history backend for LangChain chains and agents
-- [#23 LangChain `BaseRetriever` adapter](https://github.com/remete618/widemem-ai/issues/23) — RAG-style retrieval from widemem in any LangChain chain
 - [#24 LangGraph `BaseStore` adapter](https://github.com/remete618/widemem-ai/issues/24) — memory backend for stateful LangGraph agents
 
 ### In flight

@@ -17,7 +17,6 @@ from widemem.core.types import (
     LLMConfig,
     RetrievalConfidence,
     ScoringConfig,
-    UncertaintyMode,
     YMYLConfig,
 )
 
@@ -35,7 +34,6 @@ config = MemoryConfig(
         decay_function=DecayFunction.EXPONENTIAL,
         decay_rate=0.01,
     ),
-    uncertainty_mode=UncertaintyMode.HELPFUL,
     enable_active_retrieval=True,
     active_retrieval_threshold=0.6,
 )

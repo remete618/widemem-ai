@@ -19,6 +19,20 @@
 | `import_json(data)` | Import memories from JSON string. Returns count imported. |
 | `close()` | Close connections (called automatically when used as context manager). |
 
+## WidememRetriever
+
+`widemem.integrations.langchain.WidememRetriever` is a LangChain `BaseRetriever`. Install with `pip install "widemem-ai[langchain]"`. Example: `examples/langchain_retriever.py`.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `memory` | `WideMemory` | required | The store to search. |
+| `user_id` | `Optional[str]` | `None` | Scope to one user. Without it, every user's memories are in scope. |
+| `top_k` | `int` | `5` | Maximum documents to return. |
+| `retrieval_mode` | `RetrievalMode` | `BALANCED` | Candidate pool size versus latency and tokens. |
+| `min_confidence` | `Optional[RetrievalConfidence]` | `None` | Return no documents when the result set's confidence is below this. All or nothing: confidence is per result set, not per document. |
+
+Each `Document` carries the memory id, owner, importance, YMYL category, timestamp and both scores in its metadata.
+
 ## AddResult
 
 | Field | Type | Description |
