@@ -16,21 +16,40 @@ _DEFAULT_THRESHOLDS = {
     # Calibrated for text-embedding-3-small, whose cosine similarity has a high
     # baseline: unrelated short texts routinely score ~0.35-0.50, so the old
     # high=0.45 read an unrelated memory as "high confidence / safe to answer"
-    # (the explain=True false positive). Genuine matches sit ~0.6+. Heuristic
-    # defaults, env-overridable; refine with a labeled relevant/irrelevant sweep.
-    # Under all-MiniLM-L6-v2 they still keep unrelated memories out of HIGH, but
-    # short extracted facts often land in LOW even when they answer the question.
+    # (the explain=True false positive). Genuine matches sit ~0.6+. Used for any
+    # embedding model without its own entry below.
     "high": 0.60,
     "moderate": 0.50,
     "low": 0.30,
 }
 
+_MODEL_THRESHOLDS = {
+    # Measured on tests/fixtures/confidence_minilm.json: facts stored by a real
+    # add() with llama3.1:8b, 62 labeled queries, split by person. MiniLM puts
+    # unrelated queries at 0.07-0.35 (median 0.12) and answerable ones at
+    # 0.42-0.88, or 0.16-0.57 when the extractor drops the subject ("moved to
+    # Boston"). moderate=0.30 moves recall at MODERATE+ from 62% to 100%
+    # (holdout 92% to 100%), and on subjectless facts from 19% to 77% (holdout
+    # 17% to 67%); high stays at 0.60.
+    # Questions about the same person with no stored answer score 0.48-0.70,
+    # inside the answerable range: top-1 similarity cannot flag them.
+    "all-minilm-l6-v2": {"high": 0.60, "moderate": 0.30, "low": 0.20},
+}
 
-def get_confidence_thresholds() -> dict[str, float]:
+
+def _model_key(embedding_model: object) -> str:
+    if not isinstance(embedding_model, str):
+        return ""
+    return embedding_model.strip().lower().rsplit("/", 1)[-1]
+
+
+def get_confidence_thresholds(embedding_model: Optional[str] = None) -> dict[str, float]:
+    """Thresholds for the given embedding model; WIDEMEM_CONFIDENCE_* env vars win."""
+    defaults = _MODEL_THRESHOLDS.get(_model_key(embedding_model), _DEFAULT_THRESHOLDS)
     return {
-        "high": float(os.environ.get("WIDEMEM_CONFIDENCE_HIGH", _DEFAULT_THRESHOLDS["high"])),
-        "moderate": float(os.environ.get("WIDEMEM_CONFIDENCE_MODERATE", _DEFAULT_THRESHOLDS["moderate"])),
-        "low": float(os.environ.get("WIDEMEM_CONFIDENCE_LOW", _DEFAULT_THRESHOLDS["low"])),
+        "high": float(os.environ.get("WIDEMEM_CONFIDENCE_HIGH", defaults["high"])),
+        "moderate": float(os.environ.get("WIDEMEM_CONFIDENCE_MODERATE", defaults["moderate"])),
+        "low": float(os.environ.get("WIDEMEM_CONFIDENCE_LOW", defaults["low"])),
     }
 
 FRUSTRATION_SIGNALS = (
@@ -41,7 +60,9 @@ FRUSTRATION_SIGNALS = (
 )
 
 
-def assess_confidence(results: list[MemorySearchResult]) -> RetrievalConfidence:
+def assess_confidence(
+    results: list[MemorySearchResult], embedding_model: Optional[str] = None
+) -> RetrievalConfidence:
     """Assess how confident we are that the search results are relevant."""
     if not results:
         return RetrievalConfidence.NONE
@@ -52,7 +73,7 @@ def assess_confidence(results: list[MemorySearchResult]) -> RetrievalConfidence:
         if top_result.raw_similarity_score is not None
         else top_result.similarity_score
     )
-    thresholds = get_confidence_thresholds()
+    thresholds = get_confidence_thresholds(embedding_model)
 
     if top_sim >= thresholds["high"]:
         return RetrievalConfidence.HIGH
