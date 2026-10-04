@@ -67,3 +67,19 @@ def test_other_platforms_keep_faiss_threading(monkeypatch):
     monkeypatch.setattr(faiss, "omp_set_num_threads", calls.append)
     FAISSVectorStore(VectorStoreConfig(provider="faiss"), dimensions=4)
     assert calls == []
+
+
+def test_store_built_before_torch_pins_at_first_search(monkeypatch):
+    import faiss
+
+    import widemem.storage.vector.faiss_store as store_mod
+
+    calls = []
+    monkeypatch.setattr(store_mod.sys, "platform", "darwin")
+    monkeypatch.delitem(store_mod.sys.modules, "torch", raising=False)
+    monkeypatch.setattr(faiss, "omp_set_num_threads", calls.append)
+    store = FAISSVectorStore(VectorStoreConfig(provider="faiss"), dimensions=4)
+    assert calls == []
+    monkeypatch.setitem(store_mod.sys.modules, "torch", object())
+    store.search([1.0, 0.0, 0.0, 0.0], top_k=1)
+    assert calls == [1]

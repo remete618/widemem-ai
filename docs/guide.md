@@ -143,7 +143,7 @@ for msg in conversation_history:
 
 # Group related facts into summaries and themes.
 # A no-op under 10 facts unless force=True.
-memory.summarize(user_id="alice")
+memory.summarize(user_id="alice", force=True)
 
 # Broad queries return themes, specific queries return facts
 results = memory.search("tell me about alice", user_id="alice")    # themes

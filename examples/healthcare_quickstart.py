@@ -88,7 +88,8 @@ with WideMemory(config) as mem:
         "but lab confirmed AB negative on 2026-04-30.",
         user_id="garcia-patient",
     )
-    print(f"Pinned with importance {pinned.importance:.1f}, ymyl={pinned.ymyl_category}.")
+    for m in pinned.memories:
+        print(f"Pinned with importance {m.importance:.1f}, ymyl={m.ymyl_category}.")
 
     # 5. Re-query to confirm pinned correction outranks the older fact
     print("\n=== Re-query: blood type ===")

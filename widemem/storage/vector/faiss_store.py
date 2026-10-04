@@ -22,6 +22,14 @@ except ImportError:
     faiss = None
 
 
+
+def _pin_openmp_if_torch_loaded() -> None:
+    # faiss and torch each bundle libomp on macOS; a multithreaded faiss search
+    # after torch has loaded segfaults the process. The setting is process-wide,
+    # so it only applies once torch is in play.
+    if sys.platform == "darwin" and "torch" in sys.modules:
+        faiss.omp_set_num_threads(1)
+
 class FAISSVectorStore(BaseVectorStore):
     """FAISS-backed vector store with thread-safe operations.
 
@@ -46,11 +54,7 @@ class FAISSVectorStore(BaseVectorStore):
         self._defer_save = False
         self._storage_path: Path | None = None
 
-        if sys.platform == "darwin" and "torch" in sys.modules:
-            # faiss and torch each bundle libomp on macOS; a multithreaded
-            # faiss search after torch has loaded segfaults the process.
-            # Process-wide, so it only applies once torch is in play.
-            faiss.omp_set_num_threads(1)
+        _pin_openmp_if_torch_loaded()
 
         flat_index = faiss.IndexFlatIP(dimensions)
         self._index = faiss.IndexIDMap2(flat_index)
@@ -87,6 +91,7 @@ class FAISSVectorStore(BaseVectorStore):
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Tuple[str, float, Dict[str, Any]]]:
         self._validate_vector(vector)
+        _pin_openmp_if_torch_loaded()
         vec = np.array([vector], dtype=np.float32)
         faiss.normalize_L2(vec)
 
