@@ -1,4 +1,4 @@
-"""widemem MCP server — exposes memory operations as MCP tools over stdio."""
+"""widemem MCP server: exposes memory operations as MCP tools over stdio."""
 
 from __future__ import annotations
 
@@ -171,7 +171,7 @@ TOOLS: list[types.Tool] = [
     ),
     types.Tool(
         name="widemem_health",
-        description="Health check — verify the widemem server is running and responsive.",
+        description="Health check: verify the widemem server is running and responsive.",
         input_schema={
             "type": "object",
             "properties": {},

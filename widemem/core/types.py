@@ -89,7 +89,7 @@ class MemorySearchResult(BaseModel):
 
 class SearchResult:
     """Wraps search results with confidence metadata.
-    Behaves like a list for backward compatibility — existing code that
+    Behaves like a list for backward compatibility: existing code that
     iterates, indexes, or checks len() works unchanged."""
 
     __slots__ = ("results", "confidence", "has_relevant")
