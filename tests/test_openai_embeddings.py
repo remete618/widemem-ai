@@ -14,7 +14,7 @@ def _response(vector):
 def test_openai_embedder_omits_dimensions_for_legacy_models():
     client = MagicMock()
     client.embeddings.create.return_value = _response([0.1, 0.2, 0.3])
-    with patch("widemem.providers.embeddings.openai.OpenAI", return_value=client):
+    with patch("openai.OpenAI", return_value=client):
         embedder = OpenAIEmbedder(EmbeddingConfig(model="text-embedding-ada-002", dimensions=3))
         assert embedder.embed("hello") == [0.1, 0.2, 0.3]
 
@@ -27,7 +27,7 @@ def test_openai_embedder_omits_dimensions_for_legacy_models():
 def test_openai_embedder_passes_dimensions_for_v3_models():
     client = MagicMock()
     client.embeddings.create.return_value = _response([0.1, 0.2, 0.3])
-    with patch("widemem.providers.embeddings.openai.OpenAI", return_value=client):
+    with patch("openai.OpenAI", return_value=client):
         embedder = OpenAIEmbedder(EmbeddingConfig(model="text-embedding-3-small", dimensions=3))
         assert embedder.embed("hello") == [0.1, 0.2, 0.3]
 

@@ -53,7 +53,7 @@ def _build_openai(handler, temperature):
     from widemem.providers.llm.openai import OpenAILLM
 
     client = mocked_client(openai.OpenAI, handler)
-    with patch("widemem.providers.llm.openai.OpenAI", return_value=client):
+    with patch("openai.OpenAI", return_value=client):
         return OpenAILLM(LLMConfig(model="gpt-4o-mini", api_key="sk-test",
                                    temperature=temperature, max_tokens=64))
 

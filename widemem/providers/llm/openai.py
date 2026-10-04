@@ -1,19 +1,24 @@
 from __future__ import annotations
 
 import json
-
-from openai import OpenAI
-from openai.types.chat import ChatCompletionMessageParam
-from openai.types.shared_params.response_format_json_object import ResponseFormatJSONObject
+from typing import TYPE_CHECKING
 
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import LLMConfig
 from widemem.providers.llm.base import BaseLLM, strip_json_fences
 
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletionMessageParam
+    from openai.types.shared_params.response_format_json_object import ResponseFormatJSONObject
+
 
 class OpenAILLM(BaseLLM):
     def __init__(self, config: LLMConfig) -> None:
         super().__init__(config)
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ProviderError('Install openai: pip install "widemem-ai[openai]"')
         self.client = OpenAI(
             api_key=config.api_key.get_secret_value() if config.api_key else None,
             base_url=config.base_url,

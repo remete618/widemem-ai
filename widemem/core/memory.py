@@ -31,9 +31,7 @@ from widemem.hierarchy.manager import HierarchyManager
 from widemem.hierarchy.query_router import classify_query, route_results
 from widemem.hierarchy.summarizer import MemorySummarizer
 from widemem.providers.embeddings.base import BaseEmbedder
-from widemem.providers.embeddings.openai import OpenAIEmbedder
 from widemem.providers.llm.base import BaseLLM
-from widemem.providers.llm.openai import OpenAILLM
 from widemem.retrieval.active import ActiveRetrieval, Clarification
 from widemem.retrieval.entity_boost import apply_entity_boost
 from widemem.retrieval.temporal import score_and_rank, score_candidate
@@ -896,6 +894,7 @@ class WideMemory:
     def _create_llm(self) -> BaseLLM:
         provider = self._resolve_provider(self.config.llm.provider, self.config.llm.api_key, "llm")
         if provider == "openai":
+            from widemem.providers.llm.openai import OpenAILLM
             return OpenAILLM(self.config.llm)
         if provider == "anthropic":
             from widemem.providers.llm.anthropic import AnthropicLLM
@@ -913,6 +912,7 @@ class WideMemory:
     def _create_embedder(self) -> BaseEmbedder:
         provider = self._resolve_provider(self.config.embedding.provider, self.config.embedding.api_key, "embedding")
         if provider == "openai":
+            from widemem.providers.embeddings.openai import OpenAIEmbedder
             return OpenAIEmbedder(self.config.embedding)
         if provider == "sentence-transformers":
             from widemem.providers.embeddings.sentence_transformers import (

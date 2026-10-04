@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **BREAKING: OpenAI is now an optional extra.** `openai` moved from the core dependencies to `pip install "widemem-ai[openai]"` (also in `[all]`). A base install pulls no cloud SDK, and widemem imports and runs on a local stack (Ollama, sentence-transformers, FAISS) without it. The OpenAI providers load the SDK on first use and raise `ProviderError` naming the extra when it is missing. If you use OpenAI, add the extra.
+
 - **BREAKING for the `mcp` extra: the MCP server now requires mcp 2.x.** The pin moves from `mcp>=1.0,<2` to `mcp>=2,<3`. mcp 2.0 removed the low-level `@server.list_tools()` and `@server.call_tool()` decorators the server was built on, so `widemem/mcp_server.py` did not import at all under 2.x. The handlers are now passed to `Server(...)` as `on_list_tools` and `on_call_tool`, which is how mcp 2.x registers them. Supporting both generations was considered and rejected: it needs two handler signatures and doubles the test matrix for an opt-in extra. Pin `widemem-ai<1.7` if you need mcp 1.x.
 
   The seven tools, their names, their input schemas and their response bodies are unchanged. This is an internal migration, not a protocol change, and a real stdio handshake against the ported server was used to confirm it: initialize, `tools/list` returning all seven, and a `widemem_health` round trip.

@@ -34,7 +34,6 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.0,<3",
-    "openai>=1.0,<4",
     "numpy>=1.24,<3",
 ]
 
@@ -47,6 +46,7 @@ dev = [
     "mypy>=1.8",
 ]
 faiss = ["faiss-cpu>=1.7,<2"]
+openai = ["openai>=1.0,<4"]
 anthropic = ["anthropic>=0.30,<2"]
 ollama = ["ollama>=0.2,<1"]
 qdrant = ["qdrant-client>=1.9,<2"]
@@ -74,6 +74,7 @@ all = [
     "langchain-core>=1.0,<2",
     "mcp>=2,<3",
     "ollama>=0.2,<1",
+    "openai>=1.0,<4",
     "pgvector>=0.3.0,<1",
     "psycopg[binary]>=3.1,<4",
     "qdrant-client>=1.9,<2",
