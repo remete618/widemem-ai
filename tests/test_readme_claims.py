@@ -75,7 +75,7 @@ def test_readme_mcp_tool_list_matches_code():
 
 
 _ENV_READ = re.compile(r'os\.(?:environ\.get|getenv)\(\s*"([A-Z][A-Z0-9_]+)"\s*(?:,\s*([^)]*?))?\s*\)')
-_SDK_READS = {"ANTHROPIC_API_KEY", "OPENAI_BASE_URL"}  # read by the provider SDKs, not by widemem
+_SDK_READS = {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL"}  # read by the provider SDKs, not by widemem
 
 
 def _env_reads(module: str) -> dict[str, str | None]:
@@ -133,7 +133,7 @@ def _clarification_fields() -> set[str]:
 def test_documented_clarification_fields_exist():
     fields = _clarification_fields()
     assert {"existing_content", "new_fact", "question"} <= fields, f"parsed Clarification fields: {sorted(fields)}"
-    for rel in ("README.md", "examples/ymyl_active_retrieval.py"):
+    for rel in ("docs/guide.md", "examples/ymyl_active_retrieval.py"):
         text = read(rel)
         loop_vars = set(re.findall(r"for (\w+) in clarifications", text))
         assert loop_vars, f"{rel} no longer loops over clarifications; update this test"
@@ -184,7 +184,7 @@ def test_readme_step_decay_matches_code():
         assert re.search(rf"age_days < {age}:\s*\n\s*return {score}", decay), (
             f"decay.py step tier changed: expected <{age} days -> {score}"
         )
-    readme = read("README.md")
+    readme = read("docs/guide.md")
     assert "1.0 / 0.7 / 0.4 / 0.1 at 7/30/90 days" in readme, (
         "README step-decay row no longer matches decay.py tiers"
     )
@@ -212,7 +212,7 @@ def test_configuration_doc_defaults_match_types():
 
 def test_readme_formula_names_real_fields():
     types_src = read("widemem/core/types.py")
-    readme = read("README.md")
+    readme = read("docs/guide.md")
     for field in ["similarity_weight", "importance_weight", "recency_weight"]:
         assert field in types_src, f"{field} gone from types.py; update the README formula"
         assert field in readme, f"README formula section no longer mentions {field}"
@@ -221,7 +221,7 @@ def test_readme_formula_names_real_fields():
 # ---------------------------------------------------------------------------
 # Audit-trail claims
 # ---------------------------------------------------------------------------
-_AUDIT_SECTION = r"## History & Audit Trail\n(.*?)\n---"
+_AUDIT_SECTION = r"## History & Audit Trail\n(.*?)\n## "
 
 
 def _audit_section() -> str:
@@ -230,7 +230,7 @@ def _audit_section() -> str:
     Collapsing newlines keeps these guards from passing or failing on where
     a sentence happens to wrap.
     """
-    match = re.search(_AUDIT_SECTION, read("README.md"), re.S)
+    match = re.search(_AUDIT_SECTION, read("docs/guide.md"), re.S)
     assert match, "README 'History & Audit Trail' section not found"
     return re.sub(r"\s+", " ", match.group(1))
 

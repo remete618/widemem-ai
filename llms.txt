@@ -1,13 +1,14 @@
 # widemem-ai
 
-> Open-source AI memory layer for LLM apps and agents: hierarchical memory, importance scoring, temporal decay, automatic conflict resolution, and confidence-aware retrieval. Python 3.10+, pip-installable, works with OpenAI / Anthropic / Ollama and FAISS / Qdrant.
+> Local-first, open-source memory layer for LLM apps and agents: importance scoring, temporal decay, batch conflict resolution, and confidence-aware retrieval. Runs offline on Ollama, sentence-transformers, FAISS and SQLite by default; OpenAI and Anthropic are optional. Python 3.10+.
 
-widemem gives an AI persistent memory. It extracts facts from text, stores them in a vector store, resolves contradictions automatically, decays stale memories over time, and returns ranked, confidence-scored results. Defaults are sane, so a working memory takes six lines.
+widemem gives an AI persistent memory. It extracts facts from text, stores them in a vector store, resolves contradictions automatically, decays stale memories over time, and returns ranked, confidence-scored results. The defaults run entirely on your machine.
 
 Install and run:
 
 ```bash
-pip install widemem-ai[faiss]   # core + the default local vector store
+pip install "widemem-ai[local]"   # FAISS, Ollama client, sentence-transformers
+ollama pull llama3.1:8b           # the default local model
 ```
 
 ```python
@@ -19,16 +20,16 @@ results = memory.search("where does alice live", user_id="alice")
 for r in results:
     print(r.memory.content, round(r.final_score, 2))
 
-# Contradictions are resolved automatically:
+# New facts are checked against stored ones in one LLM call (ADD, UPDATE or DELETE):
 memory.add("I just moved to Boston", user_id="alice")
 ```
 
-`WideMemory()` defaults to OpenAI for the LLM and embeddings (set `OPENAI_API_KEY`) and FAISS for storage. For local, no-API-key use, configure Ollama plus sentence-transformers (see Configuration).
+`WideMemory()` defaults to Ollama (`llama3.1:8b`) for the LLM, sentence-transformers (`all-MiniLM-L6-v2`) for embeddings, and FAISS plus SQLite for storage; no API key needed. Without a FAISS `path`, vectors live in RAM. To use OpenAI or Anthropic, install the `[openai]` or `[anthropic]` extra and set `LLMConfig(provider=...)` / `EmbeddingConfig(provider=...)`.
 
 ## Start here
 - [README](README.md): full overview, features, and install matrix
-- [Quick Start](README.md#quick-start): the six-line working example
-- [Install and optional providers](README.md#install): faiss / qdrant, openai / anthropic / ollama, sentence-transformers, mcp
+- [Quick start](README.md#quick-start): the working example
+- [Install](README.md#install): the `[local]` stack; cloud providers are optional extras
 
 ## Docs
 - [Configuration](docs/configuration.md): every config field, its default, and the tradeoff
@@ -36,13 +37,13 @@ memory.add("I just moved to Boston", user_id="alice")
 - [MCP server](docs/mcp.md): run widemem as a Model Context Protocol server for agents
 
 ## Concepts
-- [Scoring and decay](README.md#scoring--decay): the ranking formula and decay functions
-- [YMYL prioritization](README.md#ymyl-your-money-or-your-life): two-stage semantic classification for high-stakes facts
-- [Hierarchical memory and tiers](README.md#hierarchical-memory): summarization and memory tiers
-- [Temporal search](README.md#temporal-search): time-aware retrieval and boosts
-- [Uncertainty and confidence](README.md#uncertainty--confidence): confidence modes and frustration recovery
-- [Batch conflict resolution](README.md#batch-conflict-resolution): single-call ADD/UPDATE/DELETE resolution
-- [Prompt-injection sanitizer](README.md#prompt-injection-sanitizer): input sanitization for stored content
+- [Scoring and decay](docs/guide.md#scoring--decay): the ranking formula and decay functions
+- [YMYL prioritization](docs/guide.md#ymyl-your-money-or-your-life): two-stage semantic classification for high-stakes facts
+- [Hierarchical memory and tiers](docs/guide.md#hierarchical-memory): summarization and memory tiers
+- [Temporal search](docs/guide.md#temporal-search): time-aware retrieval and boosts
+- [Uncertainty and confidence](docs/guide.md#uncertainty--confidence): confidence modes and frustration recovery
+- [Batch conflict resolution](docs/guide.md#batch-conflict-resolution): single-call ADD/UPDATE/DELETE resolution
+- [Prompt-injection sanitizer](docs/guide.md#prompt-injection-sanitizer): input sanitization for stored content
 
 ## Examples
 - [basic_usage.py](examples/basic_usage.py): add and search
@@ -52,5 +53,4 @@ memory.add("I just moved to Boston", user_id="alice")
 - [healthcare_quickstart.py](examples/healthcare_quickstart.py): a domain example
 
 ## Optional
-- [Claude Code skill](README.md#claude-code-skill): persistent-memory skill powered by widemem
 - [Development](README.md#development): running tests and contributing

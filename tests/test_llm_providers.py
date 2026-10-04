@@ -239,7 +239,7 @@ def _openai_llm(handler, **cfg):
     import openai
 
     client = _mocked(openai.OpenAI, handler)
-    with patch("widemem.providers.llm.openai.OpenAI", return_value=client):
+    with patch("openai.OpenAI", return_value=client):
         return OpenAILLM(LLMConfig(model="gpt-4o-mini", api_key="sk-test", **cfg))
 
 

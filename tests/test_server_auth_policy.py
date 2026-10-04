@@ -109,3 +109,14 @@ def test_build_config_sets_no_base_url_unless_asked(monkeypatch, tmp_path, provi
 
     monkeypatch.setenv("WIDEMEM_LLM_BASE_URL", "http://gateway.internal:8080/v1")
     assert _build_config().llm.base_url == "http://gateway.internal:8080/v1"
+
+
+@pytest.mark.parametrize("provider, model", [("ollama", "llama3.1:8b"), ("openai", "gpt-4o-mini")])
+def test_rest_env_provider_without_a_model_gets_that_providers_default(monkeypatch, tmp_path, provider, model):
+    from widemem.core.memory import WideMemory
+    from widemem.server import _build_config
+
+    monkeypatch.delenv("WIDEMEM_LLM_MODEL", raising=False)
+    monkeypatch.setenv("WIDEMEM_DATA_PATH", str(tmp_path))
+    monkeypatch.setenv("WIDEMEM_LLM_PROVIDER", provider)
+    assert WideMemory._llm_config(_build_config().llm).model == model

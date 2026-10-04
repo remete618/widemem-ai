@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -10,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from widemem.core.exceptions import StorageError
 from widemem.core.types import VectorStoreConfig
 from widemem.storage.vector.base import BaseVectorStore
 
@@ -19,6 +21,14 @@ try:
 except ImportError:
     faiss = None
 
+
+
+def _pin_openmp_if_torch_loaded() -> None:
+    # faiss and torch each bundle libomp on macOS; a multithreaded faiss search
+    # after torch has loaded segfaults the process. The setting is process-wide,
+    # so it only applies once torch is in play.
+    if sys.platform == "darwin" and "torch" in sys.modules:
+        faiss.omp_set_num_threads(1)
 
 class FAISSVectorStore(BaseVectorStore):
     """FAISS-backed vector store with thread-safe operations.
@@ -43,6 +53,8 @@ class FAISSVectorStore(BaseVectorStore):
         self._lock = threading.Lock()
         self._defer_save = False
         self._storage_path: Path | None = None
+
+        _pin_openmp_if_torch_loaded()
 
         flat_index = faiss.IndexFlatIP(dimensions)
         self._index = faiss.IndexIDMap2(flat_index)
@@ -79,6 +91,7 @@ class FAISSVectorStore(BaseVectorStore):
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Tuple[str, float, Dict[str, Any]]]:
         self._validate_vector(vector)
+        _pin_openmp_if_torch_loaded()
         vec = np.array([vector], dtype=np.float32)
         faiss.normalize_L2(vec)
 
@@ -258,7 +271,14 @@ class FAISSVectorStore(BaseVectorStore):
         state_path = self._storage_path / "state.json"
         if not index_path.exists() or not state_path.exists():
             return
-        self._index = faiss.read_index(str(index_path))
+        index = faiss.read_index(str(index_path))
+        if index.d != self.dimensions:
+            raise StorageError(
+                f"FAISS index at {self._storage_path} holds {index.d}-dimensional vectors, "
+                f"but the configured embedder produces {self.dimensions}. Configure the "
+                "embedding model the index was built with, or re-embed into a new path."
+            )
+        self._index = index
         with open(state_path) as f:
             state = json.load(f)
         self._metadata = state["metadata"]

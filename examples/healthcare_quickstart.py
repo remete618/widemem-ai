@@ -8,13 +8,13 @@ Demonstrates the pieces a healthcare AI agent actually needs:
 - Active retrieval forces contradiction detection on critical facts
 - Confidence levels let the agent abstain instead of fabricating
 
-Run: OPENAI_API_KEY=sk-... python examples/healthcare_quickstart.py
+Runs on the local stack: pip install "widemem-ai[local]", ollama pull llama3.1:8b,
+then python examples/healthcare_quickstart.py
 """
 
 from widemem import WideMemory, MemoryConfig
 from widemem.core.types import (
     DecayFunction,
-    LLMConfig,
     RetrievalConfidence,
     ScoringConfig,
     YMYLConfig,
@@ -22,7 +22,6 @@ from widemem.core.types import (
 
 
 config = MemoryConfig(
-    llm=LLMConfig(provider="openai", model="gpt-4o-mini"),
     ymyl=YMYLConfig(
         enabled=True,
         categories=["health", "medical", "pharmaceutical", "safety"],
@@ -89,7 +88,8 @@ with WideMemory(config) as mem:
         "but lab confirmed AB negative on 2026-04-30.",
         user_id="garcia-patient",
     )
-    print(f"Pinned with importance {pinned.importance:.1f}, ymyl={pinned.ymyl_category}.")
+    for m in pinned.memories:
+        print(f"Pinned with importance {m.importance:.1f}, ymyl={m.ymyl_category}.")
 
     # 5. Re-query to confirm pinned correction outranks the older fact
     print("\n=== Re-query: blood type ===")

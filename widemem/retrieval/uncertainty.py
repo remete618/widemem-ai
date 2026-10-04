@@ -18,6 +18,8 @@ _DEFAULT_THRESHOLDS = {
     # high=0.45 read an unrelated memory as "high confidence / safe to answer"
     # (the explain=True false positive). Genuine matches sit ~0.6+. Heuristic
     # defaults, env-overridable; refine with a labeled relevant/irrelevant sweep.
+    # Under all-MiniLM-L6-v2 they still keep unrelated memories out of HIGH, but
+    # short extracted facts often land in LOW even when they answer the question.
     "high": 0.60,
     "moderate": 0.50,
     "low": 0.30,

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from openai import OpenAI
-
 from widemem.core.exceptions import ProviderError
 from widemem.core.types import EmbeddingConfig
 from widemem.providers.embeddings.base import BaseEmbedder
@@ -10,6 +8,10 @@ from widemem.providers.embeddings.base import BaseEmbedder
 class OpenAIEmbedder(BaseEmbedder):
     def __init__(self, config: EmbeddingConfig) -> None:
         super().__init__(config)
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ProviderError('Install openai: pip install "widemem-ai[openai]"')
         self.client = OpenAI(api_key=config.api_key.get_secret_value() if config.api_key else None)
 
     def _embed(self, text: str) -> list[float]:

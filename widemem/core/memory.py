@@ -31,9 +31,7 @@ from widemem.hierarchy.manager import HierarchyManager
 from widemem.hierarchy.query_router import classify_query, route_results
 from widemem.hierarchy.summarizer import MemorySummarizer
 from widemem.providers.embeddings.base import BaseEmbedder
-from widemem.providers.embeddings.openai import OpenAIEmbedder
 from widemem.providers.llm.base import BaseLLM
-from widemem.providers.llm.openai import OpenAILLM
 from widemem.retrieval.active import ActiveRetrieval, Clarification
 from widemem.retrieval.entity_boost import apply_entity_boost
 from widemem.retrieval.temporal import score_and_rank, score_candidate
@@ -893,59 +891,72 @@ class WideMemory:
         # Broad / unknown
         return configured_weight * 0.6
 
+    _LLM_DEFAULT_MODELS = {
+        "ollama": "llama3.1:8b",
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-haiku-4-5-20251001",
+    }
+    _EMBEDDING_DEFAULT_MODELS = {
+        "sentence-transformers": "all-MiniLM-L6-v2",
+        "ollama": "nomic-embed-text",
+        "openai": "text-embedding-3-small",
+    }
+    _EMBEDDING_DIMENSIONS = {
+        "all-MiniLM-L6-v2": 384,
+        "nomic-embed-text": 768,
+        "text-embedding-3-small": 1536,
+        "text-embedding-3-large": 3072,
+        "text-embedding-ada-002": 1536,
+    }
+
+    @classmethod
+    def _llm_config(cls, config: LLMConfig) -> LLMConfig:
+        if "model" in config.model_fields_set or config.provider not in cls._LLM_DEFAULT_MODELS:
+            return config
+        return config.model_copy(update={"model": cls._LLM_DEFAULT_MODELS[config.provider]})
+
+    @classmethod
+    def _embedding_config(cls, config: EmbeddingConfig) -> EmbeddingConfig:
+        update: dict[str, Any] = {}
+        model = config.model
+        if "model" not in config.model_fields_set and config.provider in cls._EMBEDDING_DEFAULT_MODELS:
+            model = cls._EMBEDDING_DEFAULT_MODELS[config.provider]
+            update["model"] = model
+        if "dimensions" not in config.model_fields_set and model in cls._EMBEDDING_DIMENSIONS:
+            update["dimensions"] = cls._EMBEDDING_DIMENSIONS[model]
+        return config.model_copy(update=update) if update else config
+
     def _create_llm(self) -> BaseLLM:
-        provider = self._resolve_provider(self.config.llm.provider, self.config.llm.api_key, "llm")
-        if provider == "openai":
-            return OpenAILLM(self.config.llm)
-        if provider == "anthropic":
+        config = self._llm_config(self.config.llm)
+        if config.provider == "openai":
+            from widemem.providers.llm.openai import OpenAILLM
+            return OpenAILLM(config)
+        if config.provider == "anthropic":
             from widemem.providers.llm.anthropic import AnthropicLLM
-            return AnthropicLLM(self.config.llm)
-        if provider == "ollama":
+            return AnthropicLLM(config)
+        if config.provider == "ollama":
             from widemem.providers.llm.ollama import OllamaLLM
-            config = self.config.llm
-            if config.model == "gpt-4o-mini":
-                config = LLMConfig(provider="ollama", model="llama3.2", base_url=config.base_url)
             return OllamaLLM(config)
         raise ValueError(
-            f"Unknown LLM provider: {provider}. Supported: openai, anthropic, ollama"
+            f"Unknown LLM provider: {config.provider}. Supported: openai, anthropic, ollama"
         )
 
     def _create_embedder(self) -> BaseEmbedder:
-        provider = self._resolve_provider(self.config.embedding.provider, self.config.embedding.api_key, "embedding")
-        if provider == "openai":
-            return OpenAIEmbedder(self.config.embedding)
-        if provider == "sentence-transformers":
+        config = self._embedding_config(self.config.embedding)
+        if config.provider == "openai":
+            from widemem.providers.embeddings.openai import OpenAIEmbedder
+            return OpenAIEmbedder(config)
+        if config.provider == "sentence-transformers":
             from widemem.providers.embeddings.sentence_transformers import (
                 SentenceTransformerEmbedder,
             )
-            return SentenceTransformerEmbedder(self.config.embedding)
-        if provider == "ollama":
+            return SentenceTransformerEmbedder(config)
+        if config.provider == "ollama":
             from widemem.providers.embeddings.ollama import OllamaEmbedder
-            config = self.config.embedding
-            if config.model == "text-embedding-3-small":
-                config = EmbeddingConfig(provider="ollama", model="nomic-embed-text", dimensions=768, base_url=config.base_url)
             return OllamaEmbedder(config)
         raise ValueError(
-            f"Unknown embedding provider: {provider}. Supported: openai, sentence-transformers, ollama"
+            f"Unknown embedding provider: {config.provider}. Supported: openai, sentence-transformers, ollama"
         )
-
-    @staticmethod
-    def _resolve_provider(configured: str, api_key: Any, kind: str) -> str:
-        """If provider is 'openai' (default) but no API key is available, fall back to Ollama."""
-        if configured != "openai":
-            return configured
-        if api_key is not None:
-            return "openai"
-        import os
-        if os.environ.get("OPENAI_API_KEY"):
-            return "openai"
-        import logging
-        logging.getLogger(__name__).info(
-            "No OpenAI API key found for %s provider, falling back to Ollama (local). "
-            "Set OPENAI_API_KEY or configure a provider explicitly to use OpenAI.",
-            kind,
-        )
-        return "ollama"
 
     def _create_vector_store(self) -> BaseVectorStore:
         provider = self.config.vector_store.provider

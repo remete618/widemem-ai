@@ -1,720 +1,171 @@
-# widemem.ai
+# widemem
 
-```
-        .__    .___                                        .__
-__  _  _|__| __| _/____   _____   ____   _____      _____  |__|
-\ \/ \/ /  |/ __ |/ __ \ /     \_/ __ \ /     \     \__  \ |  |
- \     /|  / /_/ \  ___/|  Y Y  \  ___/|  Y Y  \     / __ \|  |
-  \/\_/ |__\____ |\___  >__|_|  /\___  >__|_|  / /\ (____  /__|
-                \/    \/      \/     \/      \/  \/      \/
-```
-
-> <img src="docs/widemem-fish.png" width="48" align="middle" alt="widemem fish" /> &nbsp; *Goldfish memory? ¬_¬ Fixed.*
+> <img src="https://raw.githubusercontent.com/remete618/widemem-ai/main/docs/widemem-fish.png" width="48" align="middle" alt="widemem fish" /> &nbsp; *Goldfish memory? ¬_¬ Fixed.*
 
 [![PyPI version](https://img.shields.io/pypi/v/widemem-ai.svg)](https://pypi.org/project/widemem-ai/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/widemem-ai.svg)](https://pypi.org/project/widemem-ai/)
 [![CI](https://github.com/remete618/widemem-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/remete618/widemem-ai/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/remete618/widemem-ai/badge)](https://scorecard.dev/viewer/?uri=github.com/remete618/widemem-ai)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/remete618/widemem-ai/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
 
-**Background reading:**
-- [Whitepaper: How LLMs Handle Memory](https://github.com/remete618/llm-memory-whitepaper). Technical paper on memory architectures, security risks, and in-weights personalisation.
-- [Why Context Windows Aren't Memory](https://widemem.ai/blog/context-windows). The problem widemem solves.
-- [Your AI Memory Can't Tell a River Bank from a Savings Account](https://widemem.ai/blog/semantic-ymyl). How YMYL classification actually works.
-- [Your AI Should Know When It Doesn't Know](https://widemem.ai/blog/uncertainty). Uncertainty-aware retrieval.
-- [Corrections log](docs/HISTORY.md). Published claims that turned out wrong, and their fixes.
-
-### Because your AI deserves better than amnesia. ¬_¬
-
-An open-source AI memory layer that actually remembers what matters. Local-first, batteries-included, and opinionated about not forgetting your user's blood type.
-
-Look, AI memory has come a long way. Context windows are bigger, RAG pipelines are everywhere, and most frameworks have some form of "remember this for later." It's not terrible anymore. But it's not great either. Most memory systems treat every fact the same: your user's blood type sits next to what they had for lunch, decaying at the same rate, with the same priority. Contradictions pile up silently. There's no sense of "this matters more than that." And when you need to remember something from three months ago that actually matters? Good luck.
-
-widemem is for when "good enough" isn't good enough.
-
-widemem gives your AI a real memory: one that scores what matters, forgets what doesn't, and absolutely refuses to lose track of someone's prescription medication just because 72 hours passed and the decay function got bored. Think of it as long-term memory for LLMs, except it actually works and doesn't require a PhD to set up.
-
-- **Memories that know their place.** Importance scoring (1-10) plus time decay means "has a peanut allergy" always outranks "had pizza on Tuesday". As it should. Not all memories are created equal, and your retrieval system should know the difference between a life-threatening allergy and a lunch preference.
-- **One brain, three layers.** Facts roll up into summaries, summaries into themes. Ask "where does Alice live" and get the fact. Ask "tell me about Alice" and get the big picture. Your AI can zoom in and zoom out without breaking a sweat or making a second API call.
-- **YMYL or GTFO.** Health, legal, and financial facts get VIP treatment: higher importance floors, immunity from decay, and forced contradiction detection. Two-stage classification (regex for obvious matches, LLM for implied content) catches "my chest hurts" as health while ignoring "the bank of the river." [Read more ↗](https://widemem.ai/blog/semantic-ymyl)
-- **Conflict resolution that isn't stupid.** Add "I live in Boston" after "I live in San Francisco" and the system doesn't just blindly append both. It detects the contradiction, resolves it in a single LLM call, and updates the memory. Like a reasonable adult would.
-- **Graceful memory-miss handling.** Every retrieval returns a confidence level (HIGH / MODERATE / LOW / NONE) so your agent knows when memory has nothing relevant and can abstain instead of guessing. Three modes: `strict` (refuse on low confidence), `helpful` (hedge with related context), `creative` (offer to guess, with a warning). For high-stakes contexts where a wrong answer is worse than no answer.
-- **Local by default, cloud if you want.** SQLite plus FAISS out of the box. No accounts, no API keys for storage, no "please sign up for our enterprise plan to store more than 100 memories". Plug in Qdrant or any cloud provider when you're ready. Or don't. We won't guilt-trip you.
-
----
-
-## Architecture
-
-<p align="center">
-  <img src="docs/architecture.png" alt="widemem architecture diagram" width="100%">
-</p>
-
----
-
-## TL;DR
-
-Seven features, one library. Here's what widemem does that most memory systems don't:
-
-| # | Feature | What it does | Why it matters |
-|---|---|---|---|
-| 1 | **Batch conflict resolution** | Single LLM call for all facts vs. existing memories | N facts equals 1 API call, not N. Your wallet will thank you. |
-| 2 | **Importance + decay** | Facts rated 1-10, with exponential/linear/step decay | Old trivia fades. Critical facts don't. |
-| 3 | **Hierarchical memory** | Facts to summaries to themes, auto-routed | Broad questions get themes, specific ones get facts. |
-| 4 | **Active retrieval** | Contradiction detection plus clarifying questions | "Wait, you said you live in San Francisco AND Boston?" |
-| 5 | **YMYL prioritization** | Health/legal/financial facts are untouchable | Some things you just don't forget. |
-| 6 | **Confidence & abstention** | Returns confidence level for every retrieval; abstains on memory miss | Lets the agent fall back to "I don't have that" instead of guessing |
-| 7 | **Retrieval modes** | fast / balanced / deep, pick your accuracy-cost tradeoff | Same system, three price points. You pick. |
-
-600+ tests. Zero external services required. SQLite plus FAISS by default. Plug in OpenAI, Anthropic, Ollama, Qdrant, or sentence-transformers as needed.
-
----
-
-## Table of Contents
-
-- [Install](#install)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Scoring & Decay](#scoring--decay)
-- [Providers](#providers)
-- [YMYL (Your Money or Your Life)](#ymyl-your-money-or-your-life)
-- [Hierarchical Memory](#hierarchical-memory)
-- [Active Retrieval](#active-retrieval)
-- [Temporal Search](#temporal-search)
-- [Uncertainty & Confidence](#uncertainty--confidence)
-- [Retrieval Modes](#retrieval-modes)
-- [History & Audit Trail](#history--audit-trail)
-- [Batch Conflict Resolution](#batch-conflict-resolution)
-- [Prompt-Injection Sanitizer](#prompt-injection-sanitizer)
-- [API Reference](#api-reference)
-- [Claude Code Skill](#claude-code-skill)
-- [MCP Server](#mcp-server)
-- [Development](#development)
-- [Benchmarks](#benchmarks)
-- [Disclaimer & intended use](#disclaimer--intended-use)
-- [Contact](#contact)
-- [License](#license)
-
----
+widemem is a local-first memory layer for LLM apps. It extracts facts from conversations, ranks them by importance and recency, resolves contradictions in one LLM call, and tells your agent how confident it is before it answers. By default everything runs on your machine: Ollama for the LLM, sentence-transformers for embeddings, FAISS and SQLite for storage. Cloud providers (OpenAI, Anthropic) are optional add-ons.
 
 ## Install
 
 ```bash
-pip install widemem-ai[faiss]
+pip install "widemem-ai[local]"   # FAISS, Ollama client, sentence-transformers
+ollama pull llama3.1:8b           # the default local model, 4.9 GB
 ```
 
-The `[faiss]` extra installs the default local vector store. Plain `pip install widemem-ai` installs the core only; you'll need at least one vector backend (`[faiss]` or `[qdrant]`) before `WideMemory()` will work. Python 3.10+ required.
+You need [Ollama](https://ollama.com) installed and running. The first run also downloads the `all-MiniLM-L6-v2` embedding model (about 90 MB) from Hugging Face; after that, set `HF_HUB_OFFLINE=1` and widemem runs fully offline. Python 3.10+.
 
-### Optional providers
+What local costs: `[local]` pulls PyTorch through sentence-transformers (about 550 MB on macOS; more on Linux with CUDA wheels), and each `add()` makes two LLM calls, extract then resolve. On an Apple M4 with 32 GB, an `add()` took 5 to 17 seconds and a search 0.04 seconds. The default is `llama3.1:8b` because `llama3.2` (3B) kept the stale fact and split "I'm allergic to penicillin" into one fact per word in every one of our test runs.
 
-```bash
-pip install widemem-ai[anthropic]             # Claude LLM provider
-pip install widemem-ai[ollama]                # Local LLM via Ollama
-pip install widemem-ai[sentence-transformers] # Local embeddings (no API key needed)
-pip install widemem-ai[qdrant]                # Qdrant vector store
-pip install widemem-ai[mcp]                   # Model Context Protocol server
-pip install widemem-ai[all]                   # Everything. You want it all? You got it.
-```
+**Upgrading from 1.6 or earlier:** the defaults moved from OpenAI to local, and a 1536-dimension FAISS index will not load under the 384-dimension default embedder. Set `provider="openai"` on both `LLMConfig` and `EmbeddingConfig` to keep the old behavior. Details in the [changelog](https://github.com/remete618/widemem-ai/blob/main/CHANGELOG.md).
 
----
-
-## Quick Start
-
-Five lines to a working memory system. Six if you count the import.
+## Quick start
 
 ```python
 from widemem import WideMemory, MemoryConfig
+from widemem.core.types import VectorStoreConfig
 
-memory = WideMemory()
+memory = WideMemory(MemoryConfig(
+    vector_store=VectorStoreConfig(provider="faiss", path="./widemem_data"),
+))
 
-# Add memories
-result = memory.add("I live in San Francisco and work as a software engineer", user_id="alice")
+memory.add("I live in San Francisco and work as a software engineer", user_id="alice")
+memory.add("I just moved to Boston", user_id="alice")   # checked against stored facts: ADD, UPDATE or DELETE
 
-# Search
 results = memory.search("where does alice live", user_id="alice")
-for r in results:
-    print(f"{r.memory.content} (score: {r.final_score:.2f})")
-
-# Update happens automatically. Add contradicting info and the resolver handles it.
-memory.add("I just moved to Boston", user_id="alice")
-
-# Delete
-memory.delete(results[0].memory.id)
-
-# History audit trail
-history = memory.get_history(results[0].memory.id)
+if results:
+    print(results[0].memory.content)                   # results.confidence says how sure it is
+    history = memory.get_history(results[0].memory.id) # every write is logged
 ```
 
-`WideMemory()` with no config keeps FAISS vectors in RAM, so they are gone when the process exits (the SQLite history persists). Set `VectorStoreConfig(provider="faiss", path="./widemem_faiss")` to keep them on disk.
+Without a `path`, FAISS keeps vectors in RAM and they are gone when the process exits; the SQLite history persists either way. `WideMemory` also works as a context manager.
 
-That's it. No 47-step setup guide. No YAML files. No existential dread. Your AI just went from goldfish to elephant in six lines.
+## Cloud providers, if you want them
 
-WideMemory also works as a context manager if you're the responsible type:
+No memory, prompt or embedding leaves your machine unless you configure a cloud provider. Each provider picks its own default model.
 
-```python
-with WideMemory() as memory:
-    memory.add("I live in San Francisco", user_id="alice")
-    results = memory.search("where does alice live", user_id="alice")
-# Connection closed automatically. You're welcome.
+```bash
+pip install "widemem-ai[openai,faiss]"      # or [anthropic,local] for Claude + local embeddings
 ```
-
----
-
-## Configuration
-
-Most defaults are sane, so a minimal config is usually enough:
 
 ```python
 from widemem import WideMemory, MemoryConfig
-from widemem.core.types import LLMConfig, ScoringConfig, YMYLConfig
+from widemem.core.types import EmbeddingConfig, LLMConfig
 
-config = MemoryConfig(
-    llm=LLMConfig(provider="openai", model="gpt-4o-mini"),
-    scoring=ScoringConfig(decay_rate=0.01),
-    ymyl=YMYLConfig(enabled=True),
-    history_db_path="~/.widemem/history.db",
-)
-memory = WideMemory(config)
+# OpenAI for both: gpt-4o-mini and text-embedding-3-small
+memory = WideMemory(MemoryConfig(
+    llm=LLMConfig(provider="openai"),
+    embedding=EmbeddingConfig(provider="openai"),
+))
+
+# Claude for extraction; embeddings and vectors stay local
+memory = WideMemory(MemoryConfig(llm=LLMConfig(provider="anthropic")))
 ```
 
-Full reference for every field, default, and tradeoff: **[docs/configuration.md](docs/configuration.md)**.
+Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Mixing is fine: a cloud LLM with local embeddings keeps every vector on your machine.
 
----
+<p align="center">
+  <img src="https://raw.githubusercontent.com/remete618/widemem-ai/main/docs/architecture.png" alt="widemem architecture: the default stack runs on your machine; OpenAI, Anthropic, Qdrant and pgvector are optional" width="100%">
+</p>
 
-## Scoring & Decay
-
-### The Formula
-
-Every search result gets a combined score. It's not rocket science, but it's close enough:
-
-```
-final_score = (similarity_weight * similarity) + (importance_weight * importance) + (recency_weight * recency)
-final_score *= topic_boost   # if topic weights are set
-```
-
-- `similarity`: cosine similarity from vector search (0-1)
-- `importance`: normalized from the 1-10 rating assigned at extraction (0-1)
-- `recency`: time decay score (0-1), computed by the decay function
-- `topic_boost`: multiplier from topic weights (default 1.0)
-
-### Decay Functions
-
-Control how memories fade over time. Like real memories, but configurable. Unlike a goldfish, you can turn decay off entirely.
-
-| Function | Formula | Use Case |
+| Layer | Default (local) | Options |
 |---|---|---|
-| `exponential` | `e^(-rate * days)` | Smooth, natural decay (default) |
-| `linear` | `max(1 - rate * days, 0)` | Predictable, linear drop-off |
-| `step` | 1.0 / 0.7 / 0.4 / 0.1 at 7/30/90 days | Discrete tiers |
-| `none` | Always 1.0 | Elephants never forget |
+| LLM | Ollama `llama3.1:8b` | OpenAI, Anthropic, any Ollama model |
+| Embeddings | sentence-transformers `all-MiniLM-L6-v2` | Ollama `nomic-embed-text`, OpenAI |
+| Vectors | FAISS | Qdrant (embedded or `localhost:6333`), pgvector |
+| History | SQLite | |
 
-```python
-# Fast decay: what happened last week? who cares
-ScoringConfig(decay_function=DecayFunction.EXPONENTIAL, decay_rate=0.05)
+Every field and default: [docs/configuration.md](https://github.com/remete618/widemem-ai/blob/main/docs/configuration.md).
 
-# Slow decay: memories stay relevant longer
-ScoringConfig(decay_function=DecayFunction.EXPONENTIAL, decay_rate=0.005)
+## How widemem differs
 
-# No decay: all memories equally fresh forever
-ScoringConfig(decay_function=DecayFunction.NONE)
-```
-
----
-
-## Providers
-
-| Type | Provider | Install | One-line example |
-|---|---|---|---|
-| LLM | OpenAI (default) | `pip install widemem-ai[faiss]` | `LLMConfig(provider="openai", model="gpt-4o-mini")` |
-| LLM | Anthropic | `pip install widemem-ai[anthropic]` | `LLMConfig(provider="anthropic", model="claude-haiku-4-5-20251001")` |
-| LLM | Ollama (local) | `pip install widemem-ai[ollama]` | `LLMConfig(provider="ollama", model="llama3")` |
-| Embedding | OpenAI (default) | `pip install widemem-ai[faiss]` | `EmbeddingConfig(provider="openai", model="text-embedding-3-small", dimensions=1536)` |
-| Embedding | Sentence Transformers | `pip install widemem-ai[sentence-transformers]` | `EmbeddingConfig(provider="sentence-transformers", model="all-MiniLM-L6-v2", dimensions=384)` |
-| Vector store | FAISS (default) | `pip install widemem-ai[faiss]` | `VectorStoreConfig(provider="faiss")` |
-| Vector store | Qdrant | `pip install widemem-ai[qdrant]` | `VectorStoreConfig(provider="qdrant", path="./qdrant_data")` |
-
-For Ollama, pair with sentence-transformers if you want fully local: `EmbeddingConfig(provider="sentence-transformers", model="all-MiniLM-L6-v2", dimensions=384)`. Qdrant runs embedded when `path` is set, otherwise it connects to a server on `localhost:6333`.
-
----
-
-## YMYL (Your Money or Your Life)
-
-Some facts are more equal than others. YMYL prioritization ensures that critical facts about health, finances, legal matters, and safety are never lost, never deprioritized, and never quietly forgotten because the decay function decided Tuesday was a good day to forget someone's insulin dosage.
-
-> For the full deep dive on how YMYL works, edge cases, and limitations, see **[YMYL.md](YMYL.md)**.
-
-```python
-config = MemoryConfig(
-    ymyl=YMYLConfig(
-        enabled=True,
-        categories=["health", "medical", "financial", "legal", "safety", "insurance", "tax", "pharmaceutical"],
-        min_importance=8.0,          # Floor importance for strong YMYL facts
-        decay_immune=True,           # Strong YMYL facts don't decay over time
-        force_active_retrieval=True, # Force contradiction detection for strong YMYL facts
-    ),
-)
-```
-
-### Two-Stage Semantic Classification
-
-Not every mention of "bank" means someone's talking about their finances. And "my chest has been hurting for three days" is a health concern even though it contains no medical keyword. widemem uses a **two-stage pipeline** to handle both cases:
-
-| Stage | How it works | Example |
-|---|---|---|
-| **1. Regex (fast)** | Multi-word strong patterns fire immediately | "blood pressure" -> health, "401k" -> financial |
-| **2. LLM (semantic)** | LLM classifies during fact extraction (zero extra API calls) | "my chest hurts" -> health, "bank of the river" -> null |
-
-Strong regex matches get immediate YMYL protection. For everything else, the LLM decides based on context. This catches implied YMYL content ("I stopped taking my pills" -> medical) and rejects false positives ("The Doctor is a great TV show" -> not medical).
-
-> For the full breakdown with accuracy data and examples, see **[Your AI Memory Can't Tell a River Bank from a Savings Account](https://widemem.ai/blog/semantic-ymyl)**.
-
-| Classification | Importance | Decay immunity | Active retrieval |
-|---|---|---|---|
-| **YMYL (regex or LLM)** | Floor at 8.0 | Yes | Forced |
-| **Not YMYL** | Unchanged | No | No |
-
-### YMYL Categories
-
-8 categories, each with strong (unambiguous) and weak (context-dependent) patterns:
-
-| Category | Strong Patterns | Weak Patterns |
-|---|---|---|
-| `health` | blood pressure, diabetes diagnosis, mental health | doctor, hospital, medication, anxiety |
-| `medical` | lab results, medical condition, treatment plan | clinic, vaccine, MRI, scan |
-| `financial` | bank account, savings account, credit score, 401k | bank, loan, debt, salary |
-| `legal` | power of attorney, child custody, court order | lawyer, contract, divorce |
-| `safety` | emergency contact, blood type, epipen, DNR order | evacuation, flood |
-| `insurance` | insurance policy, insurance premium | insurance, coverage, claim |
-| `tax` | tax return, W-2, 1099, IRS audit | deduction, filing |
-| `pharmaceutical` | side effect, drug interaction | drug, dosage, prescription |
-
-You can enable a subset if you only care about some categories:
-
-```python
-YMYLConfig(enabled=True, categories=["health", "medical", "financial"])
-```
-
-### Topic Weights (related)
-
-Boost or suppress specific topics during retrieval as a multiplier on `final_score`:
-
-```python
-config = MemoryConfig(
-    topics=TopicConfig(
-        weights={"python": 2.0, "cooking": 0.5},
-        custom_topics=["python", "machine learning"],  # Extraction hints
-    ),
-)
-```
-
-Matching is case-insensitive substring. Values above 1.0 boost, below 1.0 suppress. `custom_topics` are passed to the LLM during extraction as a hint.
-
----
-
-## Hierarchical Memory
-
-Three-tier memory system. Facts are great, but sometimes you need the big picture.
-
-```python
-config = MemoryConfig(enable_hierarchy=True)
-memory = WideMemory(config)
-
-# Add many facts
-for msg in conversation_history:
-    memory.add(msg, user_id="alice")
-
-# Trigger summarization (groups related facts, creates summaries and themes)
-memory.summarize(user_id="alice")
-
-# Broad queries return themes, specific queries return facts
-results = memory.search("tell me about alice")        # Returns themes
-results = memory.search("where does alice live")      # Returns facts
-
-# Filter by tier
-from widemem.core.types import MemoryTier
-results = memory.search("alice", tier=MemoryTier.SUMMARY)
-```
-
-### Tiers
-
-| Tier | Description | Query Type |
-|---|---|---|
-| `fact` | Individual extracted facts | Specific questions ("what is X?") |
-| `summary` | Groups of related facts summarized | Moderate scope ("alice's work") |
-| `theme` | High-level themes across summaries | Broad questions ("tell me about alice") |
-
-Query routing uses keyword heuristics (no extra LLM call) with a fallback chain. If the preferred tier has no results, it falls back to the next tier. No results left behind.
-
----
-
-## Active Retrieval
-
-Your AI shouldn't silently overwrite "lives in San Francisco" with "lives in Boston" without at least raising an eyebrow. Active retrieval detects contradictions and ambiguities, then asks clarifying questions via callbacks. [Read more ↗](https://widemem.ai/blog/contradictions)
-
-```python
-config = MemoryConfig(
-    enable_active_retrieval=True,
-    active_retrieval_threshold=0.6,  # Similarity threshold for conflict detection
-)
-memory = WideMemory(config)
-
-def handle_clarification(clarifications):
-    for c in clarifications:
-        print(f"Conflict: {c.question}")
-        print(f"  Old: {c.existing_content}")
-        print(f"  New: {c.new_fact}")
-    # Return None to abort the add, or a list of answers to proceed
-    return ["User moved to Boston"]
-
-result = memory.add(
-    "I just moved to Boston",
-    user_id="alice",
-    on_clarification=handle_clarification,
-)
-
-if result.has_clarifications:
-    print(f"Resolved {len(result.clarifications)} conflicts")
-```
-
-### Callback behavior
-
-- `on_clarification` receives a list of `Clarification` objects
-- Return `None` to abort the add entirely (the nuclear option)
-- Return a list of strings (answers) to proceed with the add
-- If no callback is provided, the add proceeds and clarifications are returned in `AddResult.clarifications` for you to deal with later. Or never. We won't judge.
-
----
-
-## Temporal Search
-
-Filter and rank memories by time. Because sometimes you only care about what happened recently.
-
-```python
-from datetime import datetime, timedelta
-
-now = datetime.utcnow()
-
-# Only memories from the last week
-results = memory.search(
-    "what happened recently",
-    user_id="alice",
-    time_after=now - timedelta(days=7),
-)
-
-# Only memories before January 2026
-results = memory.search(
-    "old preferences",
-    user_id="alice",
-    time_before=datetime(2026, 1, 1),
-)
-
-# Combined range
-results = memory.search(
-    "december events",
-    user_id="alice",
-    time_after=datetime(2025, 12, 1),
-    time_before=datetime(2025, 12, 31),
-)
-```
-
----
-
-## Uncertainty & Confidence
-
-Every retrieval returns a `RetrievalConfidence` level (`HIGH`, `MODERATE`, `LOW`, `NONE`) based on how relevant the top results are. Your agent can use this to abstain on low-confidence queries instead of guessing from irrelevant memories. Three response modes (`strict`, `helpful`, `creative`) let you tune the abstention behavior to the use case. [Read more ↗](https://widemem.ai/blog/uncertainty)
-
-Every search returns a confidence level:
-
-```python
-response = mem.search("What's Alice's favorite movie?", user_id="alice")
-
-response.confidence     # RetrievalConfidence.NONE: nothing relevant found
-response.has_relevant   # False
-
-# But it still works like a list (backward compatible):
-for r in response:
-    print(r.memory.content)
-```
-
-### Three uncertainty modes
-
-`search()` reports confidence; deciding what to say is up to your app. `build_uncertainty_guidance()` turns a confidence level and a mode into an action (`answer`, `hedge`, `refuse`, `offer_guess`) plus a message:
-
-```python
-from widemem import UncertaintyMode
-from widemem.retrieval.uncertainty import build_uncertainty_guidance
-
-response = mem.search("What's Alice's favorite movie?", user_id="alice")
-
-# Strict: refuses to answer if unsure
-# Helpful: "I don't have that, but here's what I do know..."
-# Creative: "I can guess if you want, fair warning, it might be wrong"
-guidance = build_uncertainty_guidance(response.confidence, UncertaintyMode.HELPFUL, list(response))
-if guidance:  # None means HIGH confidence: answer normally
-    print(guidance["action"], guidance["message"])
-```
-
-`MemoryConfig.uncertainty_mode` is not read by `search()`; pass the mode to the helper.
-
-### Pin important memories
-
-When a user explicitly tells you something important, pin it so it sticks:
-
-```python
-# Normal add: importance decided by LLM (might be 3-6)
-mem.add("I had pasta for lunch", user_id="alice")
-
-# Pin: stored with importance 9, resistant to decay
-mem.pin("My blood type is O negative", user_id="alice")
-```
-
-### Frustration recovery
-
-When users say "I told you this!", widemem detects the frustration, extracts the fact, and offers to pin it:
-
-```python
-from widemem.retrieval.uncertainty import build_frustration_response
-
-response = build_frustration_response(
-    "I told you my blood type is O negative!",
-    confidence=RetrievalConfidence.NONE,
-    mode=UncertaintyMode.HELPFUL,
-)
-# response = {
-#     "action": "recover_and_pin",
-#     "message": "Sorry about that. I'm saving this now with high importance.",
-#     "pin_fact": "my blood type is O negative",
-#     "pin_importance": 9.0,
-# }
-```
-
----
-
-## Retrieval Modes
-
-Not every query needs the same depth. A casual chatbot doesn't need 50 retrieved memories. A medical assistant does. widemem lets you choose:
-
-```python
-from widemem import WideMemory, MemoryConfig, RetrievalMode
-
-# Set at config level (default for all queries)
-mem = WideMemory(config=MemoryConfig(retrieval_mode="balanced"))
-
-# Override per query when needed
-results = mem.search("critical question", mode=RetrievalMode.DEEP)
-```
-
-| Mode | Memories retrieved | ~Tokens | Best for |
-|------|-------------------|---------|----------|
-| `fast` | 10 | ~150 | Chatbots, casual assistants |
-| `balanced` (default) | 25 | ~500 | Most production apps |
-| `deep` | 50 | ~1,500 | Healthcare, legal, enterprise |
-
-Each mode also adjusts the internal candidate pool size and similarity boost strength. `balanced` is the sweet spot for most use cases. Enough context for good answers without burning tokens.
-
----
-
-## History & Audit Trail
-
-Every write to a stored memory is logged to SQLite: adds, updates, deletes, imports, and the importance change behind `pin()`. Each entry carries the action, a UTC timestamp, and the content on both sides, so a record can be reconstructed from the log after the memory itself is gone.
-
-```python
-history = memory.get_history(memory_id)
-for entry in history:
-    print(f"{entry.timestamp}: {entry.action.value}")
-    if entry.old_content:
-        print(f"  From: {entry.old_content}")
-    if entry.new_content:
-        print(f"  To: {entry.new_content}")
-```
-
-What the log covers today is *what* changed and *when*. Entries are not attributed to a caller, so it answers "what happened to this memory" and not "who did it". Reads and searches are not recorded, only writes. Retention is `purge_expired()`; `ttl_days` hides old memories from search and leaves them on disk.
-
----
-
-## Batch Conflict Resolution
-
-When new facts are added, widemem finds related existing memories and sends everything to the LLM in a single call. The LLM decides for each fact whether to ADD (new), UPDATE (modify existing), DELETE (contradicted), or NONE (duplicate).
-
-This is the main architectural improvement over per-fact approaches. One call instead of N. The LLM sees the full context and can make better decisions. Your API bill sees fewer line items.
-
----
-
-## Prompt-Injection Sanitizer
-
-Memory content gets fed back into LLM prompts at extraction, conflict resolution, summarization, and answer time. Hostile content stored once can poison every later call. widemem strips well-known prompt-injection patterns before content reaches the LLM:
-
-- Direct instruction overrides (`ignore previous instructions`, `disregard the rules`, `forget what I said`)
-- System-prompt tags (`<system>`, `<|im_start|>`, `[system]`)
-- Role markers at line start (`system:`, `assistant:`)
-- Common jailbreak vocabulary (`DAN mode`, `developer mode`)
-- Memory-targeted destructive actions (`delete all memories`)
-
-Conservative by design: only the most well-established attack patterns are matched, so legitimate clinical or operational content like "ignore all previous medications" or "the patient often forgets everything by morning" passes through untouched.
-
-```python
-from widemem.security import detect_injection, sanitize
-
-cats = detect_injection("Please ignore all previous instructions.")
-# ["instruction-override"]
-
-sanitized, found = sanitize("<system>do harmful stuff</system>")
-# sanitized = "[REDACTED]do harmful stuff[REDACTED]"
-# found = ["system-tag", "system-tag"]
-```
-
-The sanitizer runs automatically inside `LLMExtractor.extract()`. This is a baseline defense, not a complete solution: defense-in-depth still requires output validation, structured prompts that distinguish data from instruction, and provider-side guardrails.
-
----
-
-## Self-Supervised Extraction
-
-widemem can collect extraction training pairs (`collect_extractions=True` in `MemoryConfig`) and let you distill a small local model from them, falling back to the LLM when the small model's confidence is low. Code in `widemem/extraction/collector.py`. Training scripts under `scripts/`.
-
-Collection is off by default and opt-in, because it persists raw, pre-sanitization input text (a PII risk). `ExtractionCollector` stays disabled unless you pass `enabled=True` or set `WIDEMEM_COLLECT_EXTRACTIONS=1`; while disabled it opens no database and every operation is a no-op.
-
----
-
-## API Reference
-
-Full method signatures, parameters, and return types: **[docs/api.md](docs/api.md)**.
-
-The most-used surface area:
-
-| Method | Description |
+| Feature | What it does |
 |---|---|
-| `add(text, user_id, ...)` | Extract and store memories. Returns `AddResult`. |
-| `search(query, user_id, top_k, mode, ...)` | Search memories. Returns `SearchResult` (list-compatible, with `.confidence`). |
-| `pin(text, user_id, importance=9.0)` | Store memory with elevated importance. |
-| `get(memory_id)` | Get a single memory by ID. |
-| `delete(memory_id)` | Delete a memory by ID. |
-| `summarize(user_id, force)` | Trigger hierarchical summarization. |
+| **Importance and decay** | The LLM rates each fact 1 to 10. Search blends similarity, importance and recency, with weights adapted to the question type. |
+| **Batch conflict resolution** | New facts and the related stored memories go to the LLM in one call, which decides ADD, UPDATE, DELETE or no-op for each. |
+| **YMYL protection** | Opt-in. Health, financial, legal and safety facts get an importance floor of 8, no decay, and forced contradiction checks. Regex catches the obvious cases; the extraction LLM tags the implied ones. |
+| **Confidence** | Every search returns HIGH, MODERATE, LOW or NONE, so an agent can say "I don't have that" instead of guessing. |
+| **Hierarchy** | `summarize()` rolls facts into summaries and themes (a no-op under 10 facts unless `force=True`). In `balanced` and `deep` mode, broad questions then get themes and specific ones get facts. |
+| **Retrieval modes** | `fast`, `balanced` and `deep` retrieve 10, 25 or 50 memories. |
+| **Audit log** | Adds, updates, deletes, imports and pins are logged to SQLite with the content on both sides. Entries record what changed and when, not who. |
 
----
+How each one works, with snippets: [docs/guide.md](https://github.com/remete618/widemem-ai/blob/main/docs/guide.md). YMYL details and limits: [YMYL.md](https://github.com/remete618/widemem-ai/blob/main/YMYL.md).
 
-## Claude Code Skill
+## Benchmark
 
-Try widemem directly in Claude Code with the official memory skill.
+On [LoCoMo](https://github.com/snap-research/locomo)'s 1,540 answerable questions (the adversarial category excluded, as for every system on the comparison page), widemem 1.5.0 scored **55.15%** with an independent GPT-4o judge (56.32% self-graded), using about **213 tokens of context per query**. That run used OpenAI (`gpt-4o-mini`, `text-embedding-3-small`) with `top_k=10` per speaker; the local default has not been benchmarked yet. It places widemem in the lower half of the eight systems on [widemem.ai/benchmarks](https://widemem.ai/benchmarks), at a small fraction of the context most of them use.
 
-### Install
+Per-category labels published before 2026-07-06 were wrong; the correction is in the [corrections log](https://github.com/remete618/widemem-ai/blob/main/docs/HISTORY.md).
+
+The runner (`benchmark/run_ws1.py`) and question split are in this repo. To re-run it, clone snap-research/locomo into `benchmark/locomo-data/` (the runner reads `data/locomo10.json`) and set `OPENAI_API_KEY`.
+
+## Integrations
+
+**MCP server** for Claude Desktop, Cursor and other MCP clients. Runs on the local stack by default.
 
 ```bash
-pip install widemem-ai[mcp,sentence-transformers]
-```
-
-### Available commands
-
-| Command | Description |
-|---|---|
-| `/mem search <query>` | Semantic search across all memories |
-| `/mem add <text>` | Store a fact (with quality gates) |
-| `/mem pin <text>` | Pin critical fact with high importance |
-| `/mem stats` | Memory count and health check |
-| `/mem export` | Export all memories as JSON |
-| `/mem reflect` | Full memory audit (duplicates, contradictions, staleness) |
-
-### Skill repo
-
-Full setup instructions and source: [widemem-skill](https://github.com/remete618/widemem-skill).
-
----
-
-## MCP Server
-
-widemem ships an MCP server for Claude Desktop, Cursor, or any MCP-compatible client.
-
-```bash
-pip install widemem-ai[mcp]
+pip install "widemem-ai[mcp,local]"
 python -m widemem.mcp_server
 ```
 
-Tools exposed: `widemem_add`, `widemem_search`, `widemem_delete`, `widemem_count`, `widemem_pin`, `widemem_export`, `widemem_health`. Configure providers via `WIDEMEM_LLM_PROVIDER`, `WIDEMEM_EMBEDDING_PROVIDER`, etc.
+Tools exposed: `widemem_add`, `widemem_search`, `widemem_delete`, `widemem_count`, `widemem_pin`, `widemem_export`, `widemem_health`. Setup and environment variables: [docs/mcp.md](https://github.com/remete618/widemem-ai/blob/main/docs/mcp.md).
 
-Full setup, env vars, and Claude Desktop config: **[docs/mcp.md](docs/mcp.md)**.
+**LangChain.** `widemem.integrations.langchain.WidememRetriever` is a `BaseRetriever`. Install `[langchain]`; example in `examples/langchain_retriever.py`.
 
----
+**REST server.** `pip install "widemem-ai[server,local]"`, then `python -m widemem.server`. It refuses to start when `WIDEMEM_HOST` is non-local and `WIDEMEM_API_KEY` is unset. The check reads `WIDEMEM_HOST`, not the bind address, so set it even when you launch uvicorn yourself.
+
+## API
+
+| Method | Does |
+|---|---|
+| `add(text, user_id, ...)` / `add_batch(texts, ...)` | Extract, resolve and store facts |
+| `search(query, user_id, top_k, mode, explain, ...)` | Ranked results with `.confidence`; `explain=True` returns a scored breakdown |
+| `search_stream(...)` | Async generator, approximate order |
+| `pin(text, user_id, importance=9.0)` | Store a fact the user flagged as important |
+| `get`, `delete`, `count`, `get_history` | The usual |
+| `purge_expired(older_than_days, ...)` | Delete old memories for good (YMYL kept unless asked) |
+| `export_json` / `import_json` | Move memories between stores |
+| `summarize(user_id, force)` | Build summaries and themes |
+
+Full signatures: [docs/api.md](https://github.com/remete618/widemem-ai/blob/main/docs/api.md).
+
+## Scope and safety
+
+widemem is developer infrastructure, provided under Apache 2.0 as is. It is not medical, legal, tax or financial advice, and not a medical device. YMYL handling is a best-effort heuristic, the prompt-injection sanitizer is a baseline defense on extraction input, and the history log does not record callers. Keep a human in the loop for high-stakes decisions. When you self-host, your data stays in your environment and we receive nothing. The software may be subject to export-control and sanctions laws (including the US EAR and OFAC lists).
+
+## Roadmap
+
+Open issues; vote with reactions:
+
+- [#21 Source-message provenance](https://github.com/remete618/widemem-ai/issues/21): link each fact in the history log to the message that produced it
+- [#22 LangChain `BaseChatMessageHistory` adapter](https://github.com/remete618/widemem-ai/issues/22)
+- [#24 LangGraph `BaseStore` adapter](https://github.com/remete618/widemem-ai/issues/24)
+
+Not planned: more vector backends beyond FAISS, Qdrant and pgvector; a hosted multi-tenant service; a web UI; a GraphQL API; a memory-management CLI.
 
 ## Development
 
 ```bash
 git clone https://github.com/remete618/widemem-ai
 cd widemem-ai
-pip install -e ".[dev,faiss]"
+pip install -e ".[all,dev]"
 pytest
 ```
 
-600+ tests. They all pass. We checked.
+## Further reading
 
----
+- [Why Context Windows Aren't Memory](https://widemem.ai/blog/context-windows)
+- [Your AI Memory Can't Tell a River Bank from a Savings Account](https://widemem.ai/blog/semantic-ymyl)
+- [Your AI Should Know When It Doesn't Know](https://widemem.ai/blog/uncertainty)
+- [Whitepaper: How LLMs Handle Memory](https://github.com/remete618/llm-memory-whitepaper)
 
-## Benchmarks
+## Contact and license
 
-Measured on the full 1,540-question [LoCoMo](https://github.com/snap-research/locomo) benchmark, v1.5.0:
+[hello@widemem.ai](mailto:hello@widemem.ai) · [widemem.ai](https://widemem.ai) · [issues](https://github.com/remete618/widemem-ai/issues)
 
-| Metric | Result |
-|---|---|
-| Overall accuracy | **55.15%** (independent GPT-4o judge; 56.32% self-graded) |
-| Context per query | **~213 tokens** (vs ~26k for full-context stuffing) |
-
-Mid-pack accuracy at a fraction of the token cost: reference systems spend 1,700 to 26,000 tokens per query. Per-category labels published before 2026-07-06 had single-hop and multi-hop transposed; the multi-hop leadership claim is retracted and the correction is logged in [docs/HISTORY.md](docs/HISTORY.md). Full methodology, per-category breakdowns, and reference-system comparisons: [widemem.ai/benchmarks](https://widemem.ai/benchmarks).
-
-To re-run it: the harness (`benchmark/run_ws1.py`, `val.py`, `honest_core.py`) and the question split (`benchmark/locomo_split.json`) are in this repo. The LoCoMo dataset itself is not vendored here, so fetch it from [snap-research/locomo](https://github.com/snap-research/locomo) into `benchmark/locomo-data/` first. Published result files are not committed.
-
----
-
-## Roadmap
-
-Tracked publicly as GitHub issues. Vote with reactions to prioritize. Issues tagged `good first issue` are ideal entry points for new contributors. Each carries a scope, a quality bar, and a 48-hour review SLA in the body.
-
-### Audit-grade core
-
-- [#21 Source-message provenance](https://github.com/remete618/widemem-ai/issues/21) — link every fact in the history log back to the inbound message that produced it
-
-### Framework integrations
-
-- [#22 LangChain `BaseChatMessageHistory` adapter](https://github.com/remete618/widemem-ai/issues/22) — drop-in conversation-history backend for LangChain chains and agents
-- [#24 LangGraph `BaseStore` adapter](https://github.com/remete618/widemem-ai/issues/24) — memory backend for stateful LangGraph agents
-
-### In flight
-
-- [#6 Streaming memory search](https://github.com/remete618/widemem-ai/issues/6) — async iterator over results as they rank (claimed by @harishkotra)
-
-What we are explicitly **not** building: 20-provider integration matrix, additional vector store backends beyond FAISS and Qdrant, hosted multi-tenant service, web UI for memory management, GraphQL API, command-line interface. The 80/20 is the audit-grade core for regulated deployments. Everything else is application code.
-
----
-
-## Disclaimer & intended use
-
-widemem is developer infrastructure, provided under the Apache License 2.0, as is and without warranty of any kind. It is not medical, legal, tax, or financial advice, not a medical device, and not a substitute for a qualified professional. Its YMYL handling (regex plus LLM classification) is a best-effort safety net, not a guarantee. Keep a human in the loop and verify outputs before relying on them in any high-stakes decision.
-
-You are responsible for your own deployment, the data you store, and meeting the regulatory obligations that apply to you. When you self-host, your data stays in your environment and we receive nothing.
-
-Export note: the software may be subject to export-control and sanctions laws (including the US EAR and OFAC lists). Do not download, use, or re-export it in violation of those laws.
-
-The Apache 2.0 license in [LICENSE](LICENSE) governs your use of the code. Terms for the hosted service and website are at [widemem.ai/terms](https://widemem.ai/terms). LLM provider terms apply to provider API calls.
-
----
-
-## Contact
-
-- Email: [hello@widemem.ai](mailto:hello@widemem.ai)
-- Project: [widemem.ai](https://widemem.ai)
-- Repository: [github.com/remete618/widemem-ai](https://github.com/remete618/widemem-ai)
-
-Bug reports, feature requests, and unsolicited opinions are all welcome at the GitHub issues page.
-
----
-
-## License
-
-Apache 2.0. See [LICENSE](LICENSE) for the full text that nobody reads.
-
----
-
-<p align="center">
-  <a href="https://widemem.ai">
-    <img src="assets/widemem-landing.png" alt="widemem.ai landing page" width="700" />
-  </a>
-  <br />
-  <a href="https://widemem.ai">widemem.ai</a>
-</p>
+Apache 2.0, see [LICENSE](https://github.com/remete618/widemem-ai/blob/main/LICENSE). Website terms: [widemem.ai/terms](https://widemem.ai/terms).
