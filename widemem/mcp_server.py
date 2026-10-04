@@ -32,7 +32,7 @@ def _build_config() -> MemoryConfig:
 
     llm_provider = os.environ.get("WIDEMEM_LLM_PROVIDER", "openai")
     llm_model = os.environ.get("WIDEMEM_LLM_MODEL", "gpt-4o-mini")
-    llm_base_url = os.environ.get("WIDEMEM_LLM_BASE_URL", "http://localhost:11434")
+    llm_base_url = os.environ.get("WIDEMEM_LLM_BASE_URL", "").strip() or None
     embedding_provider = os.environ.get("WIDEMEM_EMBEDDING_PROVIDER", "sentence-transformers")
 
     llm_cfg = LLMConfig(provider=llm_provider, model=llm_model, base_url=llm_base_url)

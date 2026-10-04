@@ -140,3 +140,41 @@ def test_the_server_actually_has_the_handlers_registered():
         assert mcp_server.server.get_request_handler(method) is not None, (
             f"{method} has no handler; the server would reject the request"
         )
+
+
+@pytest.fixture
+def clean_env(monkeypatch, tmp_path):
+    for var in ("WIDEMEM_LLM_PROVIDER", "WIDEMEM_LLM_MODEL", "WIDEMEM_LLM_BASE_URL"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("WIDEMEM_DATA_PATH", str(tmp_path))
+    return monkeypatch
+
+
+def test_default_openai_config_does_not_point_at_ollama(clean_env):
+    cfg = mcp_server._build_config()
+    assert cfg.llm.provider == "openai"
+    assert cfg.llm.base_url is None
+
+
+@pytest.mark.parametrize("provider", ["openai", "anthropic"])
+def test_hosted_providers_get_no_base_url_by_default(clean_env, provider):
+    clean_env.setenv("WIDEMEM_LLM_PROVIDER", provider)
+    assert mcp_server._build_config().llm.base_url is None
+
+
+def test_ollama_leaves_the_host_to_the_provider(clean_env):
+    clean_env.setenv("WIDEMEM_LLM_PROVIDER", "ollama")
+    assert mcp_server._build_config().llm.base_url is None
+
+
+@pytest.mark.parametrize("provider", ["openai", "ollama"])
+def test_explicit_base_url_wins(clean_env, provider):
+    clean_env.setenv("WIDEMEM_LLM_PROVIDER", provider)
+    clean_env.setenv("WIDEMEM_LLM_BASE_URL", "http://gateway.internal:8080/v1")
+    assert mcp_server._build_config().llm.base_url == "http://gateway.internal:8080/v1"
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_base_url_is_treated_as_unset(clean_env, blank):
+    clean_env.setenv("WIDEMEM_LLM_BASE_URL", blank)
+    assert mcp_server._build_config().llm.base_url is None
