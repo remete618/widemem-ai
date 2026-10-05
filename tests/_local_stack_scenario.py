@@ -55,9 +55,11 @@ class FakeLLM(BaseLLM):
                     return {"facts": facts}
             raise AssertionError(f"no canned extraction for prompt: {prompt[:200]!r}")
         if system.startswith("You are a memory conflict resolution engine"):
-            self.calls.append("resolve")
             new_facts = prompt.split("New facts to process:\n", 1)[1].split("\n\n", 1)[0]
             indices = [int(i) for i in re.findall(r"^\[(\d+)\]", new_facts, flags=re.M)]
+            if not indices:
+                raise AssertionError(f"no fact lines in resolve prompt: {prompt[:200]!r}")
+            self.calls.append("resolve")
             return {"actions": [{"fact_index": i, "action": "add", "target_id": None} for i in indices]}
         raise AssertionError(f"unexpected LLM call, system={system[:80]!r}")
 
@@ -84,6 +86,19 @@ def main(workdir: str) -> None:
         "config_llm": list(WideMemory._llm_config(config.llm).model_dump(include={"provider", "model"}).values()),
     }
 
+    # The resolver falls back to plain adds when the LLM call fails, which would
+    # make a broken resolve path look healthy. Record any fallback.
+    from widemem.conflict.batch_resolver import BatchConflictResolver
+
+    fallbacks: list[str] = []
+    original_fallback = BatchConflictResolver._fallback_add_with_dedup
+
+    def recording_fallback(self, *args, **kwargs):
+        fallbacks.append(repr(args[-1]) if args else "fallback")
+        return original_fallback(self, *args, **kwargs)
+
+    BatchConflictResolver._fallback_add_with_dedup = recording_fallback
+
     llm = FakeLLM()
     try:
         mem = WideMemory(config=config, llm=llm)
@@ -104,6 +119,7 @@ def main(workdir: str) -> None:
         added.append(len(mem.add(text, user_id=USER).memories))
     report["added"] = added
     report["llm_calls"] = llm.calls
+    report["resolver_fallbacks"] = fallbacks
     report["first"] = _search(mem)
     report["count"] = mem.count(user_id=USER)
     report["history"] = len(mem.get_history(report["first"]["top_id"]))

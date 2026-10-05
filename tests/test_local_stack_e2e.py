@@ -68,6 +68,7 @@ def test_add_add_search_after_torch_loads(run):
     # Resolution only runs once the index is non-empty: proof the later adds
     # searched FAISS with torch loaded.
     assert r["llm_calls"] == ["extract", "extract", "resolve", "extract", "resolve"]
+    assert r["resolver_fallbacks"] == [], "the resolver fell back to plain adds"
     assert r["count"] == 4
     assert r["first"]["top"] == "Alice lives in Boston"
 

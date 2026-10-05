@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -221,6 +222,8 @@ def test_fixture_scores_match_the_live_model():
     try:
         model = st.SentenceTransformer("all-MiniLM-L6-v2")
     except Exception as exc:  # no network and no cached weights
+        if os.environ.get("CI"):
+            raise
         pytest.skip(f"all-MiniLM-L6-v2 unavailable: {exc}")
     data = _load()
     for c in data["cases"]:
