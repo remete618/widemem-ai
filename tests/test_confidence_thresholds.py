@@ -209,41 +209,62 @@ def test_answer_fields_are_null_exactly_when_unanswerable():
             assert c["answer_fact_similarity"] <= c["top_similarity"] + 1e-4
 
 
+_LIVE_CHECK = r"""
+import json, re, sys
+from sentence_transformers import SentenceTransformer
+try:
+    model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+except Exception as exc:
+    print("MODEL_UNAVAILABLE", exc)
+    sys.exit(3)
+data = json.load(open(sys.argv[1]))
+bad = []
+for c in data["cases"]:
+    facts = data["users"][c["user"]]["facts"]
+    q = model.encode([c["query"]], normalize_embeddings=True)[0]
+    checks = [(facts, c["top_similarity"])]
+    if c["answer_facts"]:
+        answers = [facts[i] for i in c["answer_facts"]]
+        stripped = [
+            re.sub(r"\s+", " ", re.sub(rf"\b{c['user']}('s)?\b", "", f, flags=re.I)).strip()
+            for f in answers
+        ]
+        checks += [(answers, c["answer_fact_similarity"]), (stripped, c["subjectless_answer_similarity"])]
+    for texts, stored in checks:
+        got = float((model.encode(texts, normalize_embeddings=True) @ q).max())
+        if abs(got - stored) >= 0.01:
+            bad.append([c["query"], round(got, 4), stored])
+print("BAD " + json.dumps(bad))
+"""
+
+
 def test_fixture_scores_match_the_live_model():
-    """Recomputes every stored similarity with the real model.
+    """Recomputes every stored similarity with the real model, on CPU.
 
-    Skips without sentence-transformers, as in the main CI matrix (no torch);
-    the CI `local-stack` job runs it, and test_fixture_integrity_hash guards
-    the matrix.
+    Runs in a fresh subprocess. CPU is the reference: GitHub's macOS runners
+    expose a virtual MPS device whose MiniLM similarities drift by ~0.19, and
+    in a process where faiss was imported before torch, torch's CPU path
+    segfaults on macOS (two libomp runtimes). Skips without
+    sentence-transformers, as in the main CI matrix; the CI `local-stack` job
+    runs it, and test_fixture_integrity_hash guards the matrix.
     """
-    import re
+    import importlib.util
+    import subprocess
+    import sys
 
-    st = pytest.importorskip("sentence_transformers")
-    try:
-        # CPU is the reference: GitHub's macOS runners expose a virtual MPS
-        # device whose MiniLM similarities drift by ~0.19 (real Apple Silicon
-        # and Linux CPU agree to 4 decimals).
-        model = st.SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
-    except Exception as exc:  # no network and no cached weights
+    if importlib.util.find_spec("sentence_transformers") is None:
+        pytest.skip("sentence-transformers not installed")
+    proc = subprocess.run(
+        [sys.executable, "-c", _LIVE_CHECK, str(FIXTURE)],
+        capture_output=True, text=True, timeout=600,
+    )
+    if proc.returncode == 3:
         if os.environ.get("CI"):
-            raise
-        pytest.skip(f"all-MiniLM-L6-v2 unavailable: {exc}")
-    data = _load()
-    for c in data["cases"]:
-        facts = data["users"][c["user"]]["facts"]
-        f = model.encode(facts, normalize_embeddings=True)
-        q = model.encode([c["query"]], normalize_embeddings=True)[0]
-        assert abs(float((f @ q).max()) - c["top_similarity"]) < 0.01, c["query"]
-        if c["answer_facts"]:
-            answers = [facts[i] for i in c["answer_facts"]]
-            a = model.encode(answers, normalize_embeddings=True)
-            assert abs(float((a @ q).max()) - c["answer_fact_similarity"]) < 0.01, c["query"]
-            stripped = [
-                re.sub(r"\s+", " ", re.sub(rf"\b{c['user']}('s)?\b", "", f, flags=re.I)).strip()
-                for f in answers
-            ]
-            sl = model.encode(stripped, normalize_embeddings=True)
-            assert abs(float((sl @ q).max()) - c["subjectless_answer_similarity"]) < 0.01, c["query"]
+            pytest.fail(proc.stdout[-2000:])
+        pytest.skip("all-MiniLM-L6-v2 unavailable")
+    assert proc.returncode == 0, f"exit {proc.returncode}: {(proc.stdout + proc.stderr)[-3000:]}"
+    line = next(x for x in proc.stdout.splitlines() if x.startswith("BAD "))
+    assert json.loads(line[4:]) == []
 
 
 @pytest.mark.parametrize("split", ["train", "holdout"])
