@@ -49,6 +49,63 @@ jobs:
       - name: Test
         run: pytest tests/ -v --cov=widemem --cov-report=term-missing
 
+  # The 2.0 default stack (sentence-transformers + FAISS + SQLite) with a fake
+  # LLM. Separate from `test` so torch never lands in the main matrix. macOS is
+  # here because faiss and torch each bundle libomp there, which segfaulted.
+  local-stack:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Cache Hugging Face models
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/huggingface
+          key: hf-all-MiniLM-L6-v2-${{ runner.os }}-v1
+
+      - name: Install CPU-only torch (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,local]"
+          python -c "import faiss, sentence_transformers, torch; print('torch', torch.__version__, 'cuda', torch.version.cuda)"
+          if [ "$RUNNER_OS" = "Linux" ]; then python -c "import torch; assert torch.version.cuda is None, 'CUDA torch installed'"; fi
+
+      - name: Download all-MiniLM-L6-v2
+        run: |
+          for i in 1 2 3; do
+            python -c "from sentence_transformers import SentenceTransformer as S; S('all-MiniLM-L6-v2')" && exit 0
+            sleep 10
+          done
+          exit 1
+
+      - name: Test
+        run: >-
+          pytest -v -rs
+          tests/test_local_stack_e2e.py
+          tests/test_faiss_dimension_guard.py
+          tests/test_confidence_thresholds.py
+
   build:
     runs-on: ubuntu-latest
     steps:

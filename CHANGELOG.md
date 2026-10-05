@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - **Breaking: config models reject unknown fields.** `MemoryConfig`, `LLMConfig`, `EmbeddingConfig`, `VectorStoreConfig`, `ScoringConfig`, `YMYLConfig` and `TopicConfig` now raise `ValidationError` on a field they do not define. A typo such as `MemoryConfig(embeddings=...)` (the field is `embedding`) used to be accepted and ignored, so widemem ran on defaults without saying so. If you pass extra keys on purpose, remove them.
+- **CI tests the default local stack.** A new `local-stack` job (Ubuntu with CPU-only torch, and macOS, Python 3.12) installs `.[dev,local]` and runs `tests/test_local_stack_e2e.py`: the real `all-MiniLM-L6-v2` embedder, FAISS on disk and SQLite history, with a fake LLM in place of Ollama. It covers the default config, add, add, search after torch loads (the sequence that segfaulted on macOS), persistence across a new instance, confidence on a known match, and the 384 vs 1536 dimension guard. The stack runs in a subprocess so a native crash fails the test instead of killing pytest. The live-model check in `tests/test_confidence_thresholds.py`, previously skipped in CI, runs there too. The main matrix still installs no torch.
 
 ## [2.0.1] - 2026-10-04
 
