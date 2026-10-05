@@ -211,8 +211,9 @@ def test_answer_fields_are_null_exactly_when_unanswerable():
 def test_fixture_scores_match_the_live_model():
     """Recomputes every stored similarity with the real model.
 
-    Accepted gap: CI does not install sentence-transformers (no torch), so this
-    skips there; test_fixture_integrity_hash is the CI-side guard.
+    Skips without sentence-transformers, as in the main CI matrix (no torch);
+    the CI `local-stack` job runs it, and test_fixture_integrity_hash guards
+    the matrix.
     """
     import re
 
