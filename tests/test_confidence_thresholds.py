@@ -220,7 +220,10 @@ def test_fixture_scores_match_the_live_model():
 
     st = pytest.importorskip("sentence_transformers")
     try:
-        model = st.SentenceTransformer("all-MiniLM-L6-v2")
+        # CPU is the reference: GitHub's macOS runners expose a virtual MPS
+        # device whose MiniLM similarities drift by ~0.19 (real Apple Silicon
+        # and Linux CPU agree to 4 decimals).
+        model = st.SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
     except Exception as exc:  # no network and no cached weights
         if os.environ.get("CI"):
             raise
