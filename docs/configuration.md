@@ -66,7 +66,7 @@ from widemem.core.types import (
 | `model` | `str` | `"all-MiniLM-L6-v2"` | Embedding model name. Left unset, each provider gets its own default model and size: `sentence-transformers` `all-MiniLM-L6-v2` (384), `ollama` `nomic-embed-text` (768), `openai` `text-embedding-3-small` (1536). |
 | `api_key` | `Optional[SecretStr]` | `None` | API key passed to embedding providers that need one. |
 | `base_url` | `Optional[str]` | `None` | Provider base URL override, commonly used for Ollama or compatible endpoints. |
-| `dimensions` | `int` | `384` | Embedding vector size; must match the model. A stored FAISS index refuses to load under a different size. |
+| `dimensions` | `int` | `384` | Embedding vector size; must match the model. A stored FAISS index, Qdrant collection or pgvector table refuses to open under a different size. |
 
 ## VectorStoreConfig
 

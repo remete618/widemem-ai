@@ -79,9 +79,14 @@ class PgVectorStore(BaseVectorStore):
         self.dimensions = dimensions
         self.table_name = self._sanitize_identifier(config.table_name)
         self._conn = psycopg.connect(config.url, autocommit=True)
-        self._verify_extension()
-        register_vector(self._conn)
-        self._create_table_if_needed()
+        try:
+            self._verify_extension()
+            register_vector(self._conn)
+            self._check_existing_table()
+            self._create_table_if_needed()
+        except BaseException:
+            self._conn.close()
+            raise
 
     # ------------------------------------------------------------------
     # Initialization
@@ -109,6 +114,33 @@ class PgVectorStore(BaseVectorStore):
                     "before using PgVectorStore. On Supabase, this extension "
                     "is enabled via the dashboard under Database > Extensions."
                 )
+
+    def _check_existing_table(self) -> None:
+        # pgvector stores the declared size in atttypmod; -1 means a bare
+        # `vector` column with no fixed size, which accepts any length.
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT to_regclass(%s) IS NOT NULL, "
+                "(SELECT atttypmod FROM pg_attribute "
+                "WHERE attrelid = to_regclass(%s) AND attname = 'embedding' "
+                "AND NOT attisdropped)",
+                (self.table_name, self.table_name),
+            )
+            row = cur.fetchone()
+        exists, stored = (row[0], row[1]) if row else (False, None)
+        if not exists:
+            return
+        if stored is None:
+            raise StorageError(
+                f"Postgres table '{self.table_name}' exists but has no embedding column. "
+                "Point table_name at a widemem table or at a name that does not exist yet."
+            )
+        if stored >= 1 and stored != self.dimensions:
+            raise StorageError(
+                f"Postgres table '{self.table_name}' holds {stored}-dimensional vectors, "
+                f"but the configured embedder produces {self.dimensions}. Configure the "
+                "embedding model the table was built with, or use a new table_name."
+            )
 
     def _create_table_if_needed(self) -> None:
         ddl = f"""
