@@ -176,9 +176,11 @@ class VectorStoreConfig(_StrictConfig):
     provider: str = "faiss"
     path: Optional[str] = None
     url: Optional[str] = None
-    """Connection URL for pgvector. Qdrant does not read it.
+    """Connection URL for pgvector or a remote Qdrant server.
     For pgvector: postgresql://user:pass@host:port/dbname?sslmode=require.
-    Honored only by backends that accept a URL; ignored otherwise."""
+    For Qdrant: http(s)://host:6333; ignored when path is set. FAISS ignores it."""
+    api_key: Optional[SecretStr] = None
+    """API key for a remote Qdrant server reached through url. Other backends ignore it."""
     table_name: str = "widemem_vectors"
     """Table name for pgvector. Ignored by other backends."""
 

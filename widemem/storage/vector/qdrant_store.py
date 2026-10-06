@@ -28,6 +28,11 @@ class QdrantVectorStore(BaseVectorStore):
 
         if config.path:
             self.client = QdrantClient(path=os.path.expanduser(config.path))
+        elif config.url:
+            client_kwargs: Dict[str, Any] = {"url": config.url}
+            if config.api_key is not None:
+                client_kwargs["api_key"] = config.api_key.get_secret_value()
+            self.client = QdrantClient(**client_kwargs)
         else:
             self.client = QdrantClient(host="localhost", port=6333)
 

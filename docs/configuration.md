@@ -74,7 +74,8 @@ from widemem.core.types import (
 | --- | --- | --- | --- |
 | `provider` | `str` | `"faiss"` | Vector store backend name. Supported by `WideMemory`: `faiss`, `qdrant`, `pgvector`. |
 | `path` | `Optional[str]` | `None` | Local persistence path. FAISS without a path keeps vectors in RAM only. Qdrant with a path runs embedded. |
-| `url` | `Optional[str]` | `None` | Connection URL for pgvector. Qdrant ignores it: without `path` it connects to `localhost:6333`. |
+| `url` | `Optional[str]` | `None` | Connection URL for pgvector, or a remote Qdrant server (`https://host:6333`). Qdrant uses `path` first, then `url`, then `localhost:6333`. |
+| `api_key` | `Optional[SecretStr]` | `None` | API key for a remote Qdrant server reached through `url`. Qdrant only; ignored with `path` and by other backends. |
 | `table_name` | `str` | `"widemem_vectors"` | Table name used by the pgvector backend. |
 
 ## ScoringConfig
