@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **The OpenAI embedder ignored `EmbeddingConfig.base_url`.** `OpenAIEmbedder` built its client from the API key alone, so embeddings always went to `api.openai.com` (or `OPENAI_BASE_URL`) and an OpenAI-compatible embedding gateway could not be used, although the OpenAI LLM provider already honoured `LLMConfig.base_url`. The embedder now passes `base_url` to the SDK when set; unset or empty, the SDK default applies and `OPENAI_BASE_URL` still works.
+
 - **pgvector: `get()` crashed against a real Postgres.** pgvector-python loads the `embedding` column as a `pgvector.Vector`, which is not iterable, so every `PgVectorStore.get()` raised `TypeError: 'Vector' object is not iterable`. That broke `WideMemory.get()`, `delete()`, `import_json()` and `backfill_entities()`, and the UPDATE, DELETE and NONE actions inside `add()`. The store now converts `Vector`, numpy arrays, plain sequences and pgvector's text form (`"[1,2,3]"`, returned when the adapter is not registered) to a list of floats, and raises `StorageError` on anything else. `search()` and `list_all()` do not read vectors back and were not affected. New `tests/test_pgvector_get_integration.py` runs against a real database when `PGVECTOR_TEST_URL` is set.
 
 - **The servers could not point embeddings at a host Ollama.** `widemem.server` and `widemem.mcp_server` set the LLM base URL from `WIDEMEM_LLM_BASE_URL` but never set `EmbeddingConfig.base_url`, so the Docker image (`WIDEMEM_EMBEDDING_PROVIDER=ollama`) always embedded against `localhost:11434` inside the container. Both servers now read `WIDEMEM_EMBEDDING_BASE_URL`; blank means unset.

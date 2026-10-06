@@ -12,7 +12,10 @@ class OpenAIEmbedder(BaseEmbedder):
             from openai import OpenAI
         except ImportError:
             raise ProviderError('Install openai: pip install "widemem-ai[openai]"')
-        self.client = OpenAI(api_key=config.api_key.get_secret_value() if config.api_key else None)
+        self.client = OpenAI(
+            api_key=config.api_key.get_secret_value() if config.api_key else None,
+            base_url=(config.base_url or "").strip() or None,
+        )
 
     def _embed(self, text: str) -> list[float]:
         return self._embed_batch([text])[0]

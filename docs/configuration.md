@@ -65,7 +65,7 @@ from widemem.core.types import (
 | `provider` | `str` | `"sentence-transformers"` | Embedding backend name. Supported by `WideMemory`: `sentence-transformers`, `ollama`, `openai`. |
 | `model` | `str` | `"all-MiniLM-L6-v2"` | Embedding model name. Left unset, each provider gets its own default model and size: `sentence-transformers` `all-MiniLM-L6-v2` (384), `ollama` `nomic-embed-text` (768), `openai` `text-embedding-3-small` (1536). |
 | `api_key` | `Optional[SecretStr]` | `None` | API key passed to embedding providers that need one. |
-| `base_url` | `Optional[str]` | `None` | Provider base URL override, commonly used for Ollama or compatible endpoints. |
+| `base_url` | `Optional[str]` | `None` | Provider base URL override. `ollama` defaults to `http://localhost:11434`; `openai` sends embeddings to this URL (any OpenAI-compatible gateway) and, when unset, uses its SDK default, which honours `OPENAI_BASE_URL`. `sentence-transformers` runs locally and ignores it. |
 | `dimensions` | `int` | `384` | Embedding vector size; must match the model. A stored FAISS index, Qdrant collection or pgvector table refuses to open under a different size. |
 
 ## VectorStoreConfig
