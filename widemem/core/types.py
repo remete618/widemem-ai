@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+
+from widemem.scoring.topics import validate_topic_weight
 
 
 class MemoryTier(str, Enum):
@@ -206,6 +208,13 @@ class YMYLConfig(_StrictConfig):
 class TopicConfig(_StrictConfig):
     weights: Dict[str, float] = Field(default_factory=dict)
     custom_topics: list = Field(default_factory=list)
+
+    @field_validator("weights")
+    @classmethod
+    def _weights_positive(cls, weights: Dict[str, float]) -> Dict[str, float]:
+        for topic, weight in weights.items():
+            validate_topic_weight(topic, weight)
+        return weights
 
 
 RETRIEVAL_MODE_PRESETS = {

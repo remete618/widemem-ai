@@ -5,11 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from widemem.core.types import (
     Memory,
     MemorySearchResult,
     ScoringConfig,
+    TopicConfig,
     YMYLConfig,
 )
 from widemem.retrieval.temporal import score_and_rank
@@ -226,6 +228,53 @@ class TestTopicBoost:
     def test_best_boost_wins(self):
         weights = {"python": 2.0, "programming": 3.0}
         assert get_topic_boost("python programming", weights) == 3.0
+
+    def test_weight_below_one_suppresses(self):
+        assert get_topic_boost("my gossip notes", {"gossip": 0.5}) == 0.5
+
+    def test_strongest_suppression_wins(self):
+        weights = {"gossip": 0.5, "celebrity": 0.2}
+        assert get_topic_boost("celebrity gossip", weights) == pytest.approx(0.2)
+
+    def test_boost_and_suppression_combine(self):
+        weights = {"python": 2.0, "programming": 3.0, "gossip": 0.5, "rumor": 0.25}
+        content = "python programming gossip and rumor"
+        assert get_topic_boost(content, weights) == pytest.approx(3.0 * 0.25)
+
+    def test_unmatched_suppression_has_no_effect(self):
+        assert get_topic_boost("python tips", {"python": 2.0, "gossip": 0.1}) == 2.0
+
+    def test_weight_exactly_one_is_neutral(self):
+        assert get_topic_boost("python tips", {"python": 1.0}) == 1.0
+
+    @pytest.mark.parametrize("bad", [0.0, -1.0, float("nan"), float("inf")])
+    def test_non_positive_or_non_finite_weight_rejected_by_function(self, bad):
+        with pytest.raises(ValueError, match="python"):
+            get_topic_boost("python tips", {"python": bad})
+
+    @pytest.mark.parametrize("bad", [0.0, -0.5, float("nan"), float("inf")])
+    def test_non_positive_or_non_finite_weight_rejected_by_config(self, bad):
+        with pytest.raises(ValidationError, match="gossip"):
+            TopicConfig(weights={"gossip": bad})
+
+    def test_config_accepts_small_positive_weight(self):
+        assert TopicConfig(weights={"gossip": 0.01}).weights == {"gossip": 0.01}
+
+    def test_suppressed_memory_ranks_below_neutral_one(self):
+        now = datetime(2025, 6, 1)
+        neutral = MemorySearchResult(
+            memory=Memory(content="notes on the quarterly plan", importance=5.0, created_at=now),
+            similarity_score=0.8,
+        )
+        gossip = MemorySearchResult(
+            memory=Memory(content="gossip about the quarterly plan", importance=5.0, created_at=now),
+            similarity_score=0.8,
+        )
+        ranked = score_and_rank(
+            [gossip, neutral], ScoringConfig(), now=now, topic_weights={"gossip": 0.5}
+        )
+        assert [r.memory.content for r in ranked][0] == "notes on the quarterly plan"
+        assert ranked[1].final_score == pytest.approx(ranked[0].final_score * 0.5)
 
     def test_topic_label(self):
         weights = {"python": 2.0, "rust": 1.5}
