@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- **macOS: the local stack could still segfault when faiss loaded before torch.** 2.0.0 pinned faiss's OpenMP threads when torch loaded first. In the opposite order (an app that imports faiss before widemem builds its embedder) and with the model on CPU (any Mac where the model runs on CPU), torch's own thread pool crashed the process. The sentence-transformers embedder now pins torch to one thread in exactly that case and logs it at INFO; batch encoding on that path is 15-35% slower on an M4. One order stays outside widemem's reach: if your app builds the embedder and then calls faiss directly with several threads, call `faiss.omp_set_num_threads(1)` yourself. Also stops calling the deprecated `get_sentence_embedding_dimension()` when `get_embedding_dimension()` exists.
+
 ### Changed
 
 - **Breaking: config models reject unknown fields.** `MemoryConfig`, `LLMConfig`, `EmbeddingConfig`, `VectorStoreConfig`, `ScoringConfig`, `YMYLConfig` and `TopicConfig` now raise `ValidationError` on a field they do not define. A typo such as `MemoryConfig(embeddings=...)` (the field is `embedding`) used to be accepted and ignored, so widemem ran on defaults without saying so. If you pass extra keys on purpose, remove them.

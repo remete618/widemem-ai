@@ -103,6 +103,7 @@ jobs:
         run: >-
           pytest -v -rs
           tests/test_local_stack_e2e.py
+          tests/test_macos_torch_cpu_omp.py
           tests/test_faiss_dimension_guard.py
           tests/test_confidence_thresholds.py
 
