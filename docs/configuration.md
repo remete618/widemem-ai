@@ -39,7 +39,7 @@ from widemem.core.types import (
 | `enable_hierarchy` | `bool` | `False` | Forces hierarchical memory routing on when set. |
 | `enable_active_retrieval` | `bool` | `False` | Enables contradiction checks and clarification callbacks for new memories. |
 | `active_retrieval_threshold` | `float` | `0.6` | Similarity threshold used by active retrieval conflict detection. |
-| `collect_extractions` | `bool` | `False` | Stores extraction input/output pairs for later self-supervised training. |
+| `collect_extractions` | `bool` | `False` | Stores extraction input/output pairs for later self-supervised training. `WIDEMEM_COLLECT_EXTRACTIONS=1` also turns it on. |
 | `extractions_db_path` | `str` | `"~/.widemem/extractions.db"` | SQLite path for collected extraction training examples. |
 | `enable_fact_consolidation` | `bool` | `False` | Passes linked candidate memories into conflict resolution so each fact can add, update, delete, or noop deterministically. |
 | `ttl_days` | `Optional[int]` | `None` | Hides memories older than this many days from `search()`. A filter, not a deletion: hidden rows stay on disk and `get()`, `count()` and `export_json()` still return them. Use `purge_expired()` to remove them. |
@@ -177,4 +177,4 @@ memory = WideMemory(MemoryConfig(
 | `ANTHROPIC_API_KEY` | Anthropic LLM provider. |
 | `WIDEMEM_*` | Provider, model and data path for the MCP server ([mcp.md](mcp.md#environment-variables)) and the REST server. The REST server defaults to `ollama` / `llama3.1:8b` and also reads `WIDEMEM_HOST`, `WIDEMEM_PORT` (or `PORT`) and `WIDEMEM_API_KEY`. |
 | `WIDEMEM_CONFIDENCE_HIGH`, `WIDEMEM_CONFIDENCE_MODERATE`, `WIDEMEM_CONFIDENCE_LOW` | Override the similarity thresholds behind `RetrievalConfidence`. Defaults depend on the embedding model: `all-MiniLM-L6-v2` uses 0.60 / 0.30 / 0.20; every other model uses 0.60 / 0.50 / 0.30, calibrated for `text-embedding-3-small`. Each variable overrides its own level on top of the per-model defaults, so setting only `WIDEMEM_CONFIDENCE_MODERATE` keeps the model's `high` and `low`. Keep `high >= moderate >= low`; widemem logs a warning when the resolved set is out of order. |
-| `WIDEMEM_COLLECT_EXTRACTIONS` | Set to `1` to log extractions for distillation. |
+| `WIDEMEM_COLLECT_EXTRACTIONS` | Set to `1` to log extractions for distillation, even when `collect_extractions` is `False`. Privacy: while set, `WideMemory` (including the MCP and REST servers) stores raw, pre-sanitization input text in `~/.widemem/extractions.db`; unset it if you did not intend that. |

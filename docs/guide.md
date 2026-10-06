@@ -374,4 +374,6 @@ The sanitizer runs automatically inside `LLMExtractor.extract()`, on the text yo
 
 widemem can collect extraction input/output pairs so you can distill a small local extractor from them. Code in `widemem/extraction/collector.py`, training scripts under `scripts/`. `SelfSupervisedExtractor` is not wired into `WideMemory`; you wire it yourself.
 
-Collection is off by default and opt-in, because it persists raw, pre-sanitization input text (a PII risk). Collection needs `WIDEMEM_COLLECT_EXTRACTIONS=1` today: `MemoryConfig(collect_extractions=True)` alone does not turn it on (a known bug). While disabled it opens no database and every operation is a no-op.
+Collection is off by default and opt-in, because it persists raw, pre-sanitization input text (a PII risk). Either switch turns it on: `MemoryConfig(collect_extractions=True)` collects even when `WIDEMEM_COLLECT_EXTRACTIONS=0`, and `WIDEMEM_COLLECT_EXTRACTIONS=1` collects even when the flag is `False`. While disabled it opens no database and every operation is a no-op.
+
+**Privacy:** if `WIDEMEM_COLLECT_EXTRACTIONS` is set in your environment, `WideMemory` (including the MCP and REST servers) stores raw, pre-sanitization input text in `~/.widemem/extractions.db`. Unset it if you did not intend that.

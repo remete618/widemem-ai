@@ -193,3 +193,66 @@ class TestCollectorIntegration:
         extractor = LLMExtractor(MockLLM(), collector=None)
         facts = extractor.extract("test")
         assert len(facts) == 1  # works fine without collector
+
+
+# --- WideMemory wiring ---
+
+class TestWideMemoryCollectionFlag:
+    def _memory(self, tmp_dir, **overrides):
+        from unittest.mock import MagicMock
+
+        from widemem.core.memory import WideMemory
+        from widemem.core.types import MemoryConfig
+
+        llm = MagicMock()
+        llm.config.model = "stub-model"
+        llm.generate_json.return_value = {"facts": [{"content": "Lives in Berlin", "importance": 8}]}
+        config = MemoryConfig(
+            history_db_path=f"{tmp_dir}/h.db",
+            extractions_db_path=f"{tmp_dir}/extractions.db",
+            **overrides,
+        )
+        return WideMemory(config=config, llm=llm, embedder=MagicMock(), vector_store=MagicMock())
+
+    def test_config_flag_alone_enables_collection(self, tmp_dir, monkeypatch):
+        monkeypatch.delenv("WIDEMEM_COLLECT_EXTRACTIONS", raising=False)
+        mem = self._memory(tmp_dir, collect_extractions=True)
+        try:
+            assert mem._collector is not None and mem._collector.enabled is True
+            mem.pipeline.extractor.extract("I live in Berlin")
+            assert mem._collector.count() == 1
+            assert Path(f"{tmp_dir}/extractions.db").exists()
+        finally:
+            mem.close()
+
+    def test_config_flag_wins_over_falsy_env(self, tmp_dir, monkeypatch):
+        monkeypatch.setenv("WIDEMEM_COLLECT_EXTRACTIONS", "0")
+        mem = self._memory(tmp_dir, collect_extractions=True)
+        try:
+            assert mem._collector is not None and mem._collector.enabled is True
+        finally:
+            mem.close()
+
+    def test_env_flag_enables_collection_when_config_is_false(self, tmp_dir, monkeypatch):
+        monkeypatch.setenv("WIDEMEM_COLLECT_EXTRACTIONS", "1")
+        mem = self._memory(tmp_dir)
+        try:
+            assert mem._collector is not None and mem._collector.enabled is True
+            mem.pipeline.extractor.extract("I live in Berlin")
+            assert mem._collector.count() == 1
+        finally:
+            mem.close()
+
+    @pytest.mark.parametrize("value", [None, "", "0", "false", "no"])
+    def test_off_without_config_or_truthy_env(self, tmp_dir, monkeypatch, value):
+        if value is None:
+            monkeypatch.delenv("WIDEMEM_COLLECT_EXTRACTIONS", raising=False)
+        else:
+            monkeypatch.setenv("WIDEMEM_COLLECT_EXTRACTIONS", value)
+        mem = self._memory(tmp_dir)
+        try:
+            assert mem._collector is None
+            mem.pipeline.extractor.extract("I live in Berlin")
+            assert not Path(f"{tmp_dir}/extractions.db").exists()
+        finally:
+            mem.close()
