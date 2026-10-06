@@ -58,4 +58,5 @@ Add to `claude_desktop_config.json`:
 | `WIDEMEM_LLM_MODEL` | (per provider) | LLM model name. Unset, each provider uses its default: `ollama` `llama3.1:8b`, `openai` `gpt-4o-mini`, `anthropic` `claude-haiku-4-5-20251001` |
 | `WIDEMEM_LLM_BASE_URL` | (unset) | Base URL for the OpenAI and Ollama providers; Anthropic ignores it. Unset, OpenAI uses its SDK default (honours `OPENAI_BASE_URL`) and Ollama uses `http://localhost:11434` |
 | `WIDEMEM_EMBEDDING_PROVIDER` | `sentence-transformers` | Embedding provider |
+| `WIDEMEM_EMBEDDING_BASE_URL` | (unset) | Base URL for the Ollama embedding provider, separate from `WIDEMEM_LLM_BASE_URL`; the OpenAI and sentence-transformers embedders ignore it. Unset, Ollama uses `http://localhost:11434`. In Docker, set both to `http://host.docker.internal:11434` to reach Ollama on the host (Linux Docker Engine: also pass `--add-host=host.docker.internal:host-gateway`) |
 | `WIDEMEM_API_KEY` | (unset) | Optional shared key for the optional REST server |

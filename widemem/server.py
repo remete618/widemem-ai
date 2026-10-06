@@ -38,13 +38,14 @@ def _build_config() -> MemoryConfig:
     llm_model = os.environ.get("WIDEMEM_LLM_MODEL")
     llm_base_url = os.environ.get("WIDEMEM_LLM_BASE_URL", "").strip() or None
     embedding_provider = os.environ.get("WIDEMEM_EMBEDDING_PROVIDER", "sentence-transformers")
+    embedding_base_url = os.environ.get("WIDEMEM_EMBEDDING_BASE_URL", "").strip() or None
 
     llm_kwargs: dict = {"provider": llm_provider, "base_url": llm_base_url}
     if llm_model:
         llm_kwargs["model"] = llm_model
     llm_cfg = LLMConfig(**llm_kwargs)
 
-    emb_cfg = EmbeddingConfig(provider=embedding_provider)
+    emb_cfg = EmbeddingConfig(provider=embedding_provider, base_url=embedding_base_url)
 
     vs_cfg = VectorStoreConfig(provider="faiss", path=os.path.join(data_path, "faiss"))
 
