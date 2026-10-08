@@ -144,7 +144,13 @@ def test_the_server_actually_has_the_handlers_registered():
 
 @pytest.fixture
 def clean_env(monkeypatch, tmp_path):
-    for var in ("WIDEMEM_LLM_PROVIDER", "WIDEMEM_LLM_MODEL", "WIDEMEM_LLM_BASE_URL"):
+    for var in (
+        "WIDEMEM_LLM_PROVIDER",
+        "WIDEMEM_LLM_MODEL",
+        "WIDEMEM_LLM_BASE_URL",
+        "WIDEMEM_EMBEDDING_PROVIDER",
+        "WIDEMEM_EMBEDDING_BASE_URL",
+    ):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("WIDEMEM_DATA_PATH", str(tmp_path))
     return monkeypatch
@@ -178,6 +184,30 @@ def test_explicit_base_url_wins(clean_env, provider):
 def test_blank_base_url_is_treated_as_unset(clean_env, blank):
     clean_env.setenv("WIDEMEM_LLM_BASE_URL", blank)
     assert mcp_server._build_config().llm.base_url is None
+
+
+def test_embedding_base_url_defaults_to_unset(clean_env):
+    assert mcp_server._build_config().embedding.base_url is None
+
+
+def test_embedding_base_url_reaches_the_ollama_embedder(clean_env):
+    clean_env.setenv("WIDEMEM_EMBEDDING_PROVIDER", "ollama")
+    clean_env.setenv("WIDEMEM_EMBEDDING_BASE_URL", "http://host.docker.internal:11434")
+    cfg = mcp_server._build_config()
+    assert cfg.embedding.provider == "ollama"
+    assert cfg.embedding.base_url == "http://host.docker.internal:11434"
+    assert cfg.llm.base_url is None
+
+
+def test_llm_base_url_does_not_leak_into_embeddings(clean_env):
+    clean_env.setenv("WIDEMEM_LLM_BASE_URL", "http://gateway.internal:8080/v1")
+    assert mcp_server._build_config().embedding.base_url is None
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_embedding_base_url_is_treated_as_unset(clean_env, blank):
+    clean_env.setenv("WIDEMEM_EMBEDDING_BASE_URL", blank)
+    assert mcp_server._build_config().embedding.base_url is None
 
 
 @pytest.mark.parametrize(

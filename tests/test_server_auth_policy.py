@@ -111,6 +111,25 @@ def test_build_config_sets_no_base_url_unless_asked(monkeypatch, tmp_path, provi
     assert _build_config().llm.base_url == "http://gateway.internal:8080/v1"
 
 
+def test_build_config_reads_embedding_base_url(monkeypatch, tmp_path):
+    from widemem.server import _build_config
+
+    monkeypatch.delenv("WIDEMEM_EMBEDDING_BASE_URL", raising=False)
+    monkeypatch.delenv("WIDEMEM_LLM_BASE_URL", raising=False)
+    monkeypatch.setenv("WIDEMEM_DATA_PATH", str(tmp_path))
+    monkeypatch.setenv("WIDEMEM_EMBEDDING_PROVIDER", "ollama")
+    assert _build_config().embedding.base_url is None
+
+    for blank in ("", "   "):
+        monkeypatch.setenv("WIDEMEM_EMBEDDING_BASE_URL", blank)
+        assert _build_config().embedding.base_url is None
+
+    monkeypatch.setenv("WIDEMEM_EMBEDDING_BASE_URL", "http://host.docker.internal:11434")
+    cfg = _build_config()
+    assert cfg.embedding.base_url == "http://host.docker.internal:11434"
+    assert cfg.llm.base_url is None
+
+
 @pytest.mark.parametrize("provider, model", [("ollama", "llama3.1:8b"), ("openai", "gpt-4o-mini")])
 def test_rest_env_provider_without_a_model_gets_that_providers_default(monkeypatch, tmp_path, provider, model):
     from widemem.core.memory import WideMemory

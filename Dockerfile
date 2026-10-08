@@ -17,6 +17,10 @@ RUN python -c "import widemem.server, ollama, faiss"
 ENV WIDEMEM_DATA_PATH=/data
 ENV WIDEMEM_LLM_PROVIDER=ollama
 ENV WIDEMEM_EMBEDDING_PROVIDER=ollama
+# Ollama on the host: run with
+#   -e WIDEMEM_LLM_BASE_URL=http://host.docker.internal:11434
+#   -e WIDEMEM_EMBEDDING_BASE_URL=http://host.docker.internal:11434
+# (Linux Docker Engine: also pass --add-host=host.docker.internal:host-gateway)
 
 RUN useradd --create-home --uid 10001 widemem \
     && mkdir -p /data \

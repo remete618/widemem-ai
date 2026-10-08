@@ -117,7 +117,7 @@ Tools exposed: `widemem_add`, `widemem_search`, `widemem_delete`, `widemem_count
 
 **LangChain.** `widemem.integrations.langchain.WidememRetriever` is a `BaseRetriever`. Install `[langchain]`; example in `examples/langchain_retriever.py`.
 
-**REST server.** `pip install "widemem-ai[server,local]"`, then `python -m widemem.server`. It refuses to start when `WIDEMEM_HOST` is non-local and `WIDEMEM_API_KEY` is unset. The check reads `WIDEMEM_HOST`, not the bind address, so set it even when you launch uvicorn yourself.
+**REST server.** `pip install "widemem-ai[server,local]"`, then `python -m widemem.server`. It refuses to start when `WIDEMEM_HOST` is non-local and `WIDEMEM_API_KEY` is unset. The check reads `WIDEMEM_HOST`, not the bind address, so set it even when you launch uvicorn yourself. In Docker, the image talks to Ollama for both the LLM and embeddings; point them at Ollama on the host with `WIDEMEM_LLM_BASE_URL` and `WIDEMEM_EMBEDDING_BASE_URL` (`http://host.docker.internal:11434`). (Linux Docker Engine: also pass `--add-host=host.docker.internal:host-gateway`)
 
 ## API
 
