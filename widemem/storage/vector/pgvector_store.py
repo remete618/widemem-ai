@@ -442,9 +442,33 @@ class PgVectorStore(BaseVectorStore):
 
     @staticmethod
     def _vector_to_list(vec: Any) -> List[float]:
-        """Convert a pgvector return value to a Python list of floats."""
-        if isinstance(vec, list):
+        """Convert a pgvector return value to a Python list of floats.
+
+        register_vector() makes psycopg load the column as pgvector.Vector,
+        which is not iterable and exposes to_list(). Without the adapter the
+        column arrives in pgvector's text form, "[1,2,3]". numpy arrays and
+        plain sequences are accepted too.
+        """
+        if hasattr(vec, "to_list"):
+            vec = vec.to_list()
+        elif hasattr(vec, "tolist"):
+            vec = vec.tolist()
+        if isinstance(vec, str):
+            text = vec.strip()
+            if not (text.startswith("[") and text.endswith("]")):
+                raise StorageError(f"Unrecognized pgvector text value: {vec[:50]!r}")
+            body = text[1:-1].strip()
+            if not body:
+                return []
+            try:
+                return [float(x) for x in body.split(",")]
+            except ValueError as e:
+                raise StorageError(f"Unrecognized pgvector text value: {vec[:50]!r}") from e
+        if isinstance(vec, (bytes, bytearray, dict)):
+            raise StorageError(f"Cannot convert embedding of type {type(vec).__name__} to a list of floats")
+        try:
             return [float(x) for x in vec]
-        if hasattr(vec, "tolist"):
-            return [float(x) for x in vec.tolist()]
-        return list(vec)
+        except (TypeError, ValueError) as e:
+            raise StorageError(
+                f"Cannot convert embedding of type {type(vec).__name__} to a list of floats"
+            ) from e

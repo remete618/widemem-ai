@@ -27,6 +27,11 @@ from unittest.mock import DEFAULT, MagicMock
 import pytest
 
 from widemem.core.exceptions import StorageError
+
+try:  # imported before the fixtures stub `pgvector` in sys.modules
+    from pgvector import Vector as _RealPgVector
+except ImportError:  # pragma: no cover - the [pgvector] extra is not installed
+    _RealPgVector = None
 from widemem.core.types import VectorStoreConfig
 
 
@@ -413,3 +418,89 @@ def test_close_safe_when_already_closed(store, fake_conn):
     conn.closed = True
     store.close()  # should not raise
     conn.close.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# get: embedding types returned by pgvector-python
+# ---------------------------------------------------------------------------
+class _FakePgVector:
+    """Mimics pgvector.Vector: not iterable, exposes to_list()."""
+
+    def __init__(self, values):
+        self._values = list(values)
+
+    def to_list(self):
+        return list(self._values)
+
+
+def _get_row(embedding):
+    return (embedding, "c", "alice", None, None, "fact", None, 1.0, "{}", None, None)
+
+
+def test_get_handles_pgvector_vector_type(store, fake_conn):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row(_FakePgVector([0.1, 0.2, 0.3, 0.4]))
+    vec, _ = store.get("m1")
+    assert vec == [0.1, 0.2, 0.3, 0.4]
+    assert all(type(x) is float for x in vec)
+
+
+@pytest.mark.skipif(_RealPgVector is None, reason="pgvector not installed")
+def test_get_handles_the_real_pgvector_vector_class(store, fake_conn):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row(_RealPgVector([0.5, 0.25, 0.0, -1.0]))
+    vec, _ = store.get("m1")
+    assert vec == [0.5, 0.25, 0.0, -1.0]
+
+
+@pytest.mark.parametrize("bad", [b"[1,2]", {"a": 1}])
+def test_get_rejects_bytes_and_dicts_with_storage_error(store, fake_conn, bad):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row(bad)
+    with pytest.raises(StorageError):
+        store.get("m1")
+
+
+def test_get_handles_numpy_array(store, fake_conn):
+    np = pytest.importorskip("numpy")
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row(np.array([0.5, 0.25, 0.0, -1.0], dtype=np.float32))
+    vec, _ = store.get("m1")
+    assert vec == [0.5, 0.25, 0.0, -1.0]
+    assert all(type(x) is float for x in vec)
+
+
+def test_get_handles_pgvector_text_form(store, fake_conn):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row("[0.5,0.25,0,-1]")
+    vec, _ = store.get("m1")
+    assert vec == [0.5, 0.25, 0.0, -1.0]
+
+
+def test_get_handles_empty_text_form(store, fake_conn):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row("[]")
+    vec, _ = store.get("m1")
+    assert vec == []
+
+
+def test_get_handles_tuple(store, fake_conn):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row((1, 2, 3, 4))
+    vec, _ = store.get("m1")
+    assert vec == [1.0, 2.0, 3.0, 4.0]
+    assert all(type(x) is float for x in vec)
+
+
+def test_get_rejects_malformed_text_form(store, fake_conn):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row("not a vector")
+    with pytest.raises(StorageError):
+        store.get("m1")
+
+
+def test_get_rejects_unknown_embedding_type(store, fake_conn):
+    _, cur = fake_conn
+    cur.fetchone.return_value = _get_row(object())
+    with pytest.raises(StorageError):
+        store.get("m1")
