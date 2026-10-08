@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-10-08
+
+### Fixed
+
+- **pgvector: updates and deletes crashed on a real database.** `PgVectorStore.get()` raised `TypeError: 'Vector' object is not iterable`, because pgvector-python returns its own `Vector` type, which is not iterable. `get()` backs `WideMemory.get`, `delete`, `import_json`, `backfill_entities` and the UPDATE, DELETE and NONE actions inside `add()`, so on pgvector every memory update or delete failed. The mocked tests never saw the real type. `_vector_to_list` now converts pgvector `Vector`, numpy arrays, sequences and pgvector's text form, and raises `StorageError` for anything else. Covered by unit tests with the real `pgvector.Vector` class and by `tests/test_pgvector_get_integration.py`, which runs against a live database when `PGVECTOR_TEST_URL` is set.
+
 ## [2.0.1] - 2026-10-04
 
 ### Changed
