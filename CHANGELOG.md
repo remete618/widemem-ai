@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **Qdrant ignored `VectorStoreConfig.url`.** Without `path` it always connected to `localhost:6333`, so a remote Qdrant server could not be used. `url` now connects to that server, and the new `VectorStoreConfig.api_key` (a `SecretStr`, Qdrant only) is passed with it. Precedence: `path` (embedded), then `url`, then `localhost:6333`. The dimension guard applies to remote collections too.
+
 - **pgvector accepted a table built for another vector size.** `CREATE TABLE IF NOT EXISTS` skipped the existing table, and the first insert failed inside Postgres (`expected 384 dimensions, not 1536`). `PgVectorStore` now reads the `embedding` column's declared size on open and raises `StorageError` naming both sizes, as FAISS and Qdrant do. A table with that name but no `embedding` column also raises `StorageError`; a bare `vector` column with no declared size still opens. The connection is closed when opening fails. `tests/test_pgvector_integration.py` covers these against a real database when `PGVECTOR_TEST_URL` is set.
 
 - **`MemoryConfig(collect_extractions=True)` did not turn on collection.** `WideMemory` built the collector without `enabled`, so it fell back to `WIDEMEM_COLLECT_EXTRACTIONS` and stayed off unless the variable was also set; the variable alone did nothing either, because no collector was built while the flag was `False`. Now either one turns collection on.

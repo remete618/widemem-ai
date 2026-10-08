@@ -77,7 +77,7 @@ Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. Mixing is fine: a cloud LLM with lo
 |---|---|---|
 | LLM | Ollama `llama3.1:8b` | OpenAI, Anthropic, any Ollama model |
 | Embeddings | sentence-transformers `all-MiniLM-L6-v2` | Ollama `nomic-embed-text`, OpenAI |
-| Vectors | FAISS | Qdrant (embedded or `localhost:6333`), pgvector |
+| Vectors | FAISS | Qdrant (embedded, `localhost:6333` or a remote `url`), pgvector |
 | History | SQLite | |
 
 Every field and default: [docs/configuration.md](https://github.com/remete618/widemem-ai/blob/main/docs/configuration.md).
