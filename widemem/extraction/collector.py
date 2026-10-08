@@ -14,7 +14,7 @@ _ENV_FLAG = "WIDEMEM_COLLECT_EXTRACTIONS"
 _TRUTHY = {"1", "true", "yes", "on"}
 
 
-def _env_enabled() -> bool:
+def env_enabled() -> bool:
     return os.environ.get(_ENV_FLAG, "").strip().lower() in _TRUTHY
 
 
@@ -32,7 +32,7 @@ class ExtractionCollector:
         db_path: str = "~/.widemem/extractions.db",
         enabled: Optional[bool] = None,
     ) -> None:
-        self.enabled = _env_enabled() if enabled is None else enabled
+        self.enabled = env_enabled() if enabled is None else enabled
         self.conn: Optional[sqlite3.Connection] = None
         if not self.enabled:
             return

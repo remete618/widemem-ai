@@ -23,7 +23,7 @@ from widemem.core.types import (
     ScoringConfig,
     SearchResult,
 )
-from widemem.extraction.collector import ExtractionCollector
+from widemem.extraction.collector import ExtractionCollector, env_enabled
 from widemem.extraction.datetime_parse import parse_leading_datetime
 from widemem.extraction.entities import extract_entities
 from widemem.extraction.llm_extractor import LLMExtractor
@@ -71,9 +71,10 @@ class WideMemory:
         self.vector_store = vector_store or self._create_vector_store()
         self._history_store = HistoryStore(self.config.history_db_path)
 
+        collect = self.config.collect_extractions or env_enabled()
         self._collector = (
-            ExtractionCollector(self.config.extractions_db_path)
-            if self.config.collect_extractions else None
+            ExtractionCollector(self.config.extractions_db_path, enabled=True)
+            if collect else None
         )
         collector = self._collector
         extractor = LLMExtractor(
