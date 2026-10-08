@@ -35,3 +35,37 @@ def test_openai_embedder_passes_dimensions_for_v3_models():
     assert kwargs["model"] == "text-embedding-3-small"
     assert kwargs["input"] == ["hello"]
     assert kwargs["dimensions"] == 3
+
+
+def test_openai_embedder_without_base_url_reaches_the_openai_api(monkeypatch):
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    embedder = OpenAIEmbedder(EmbeddingConfig(provider="openai", api_key="sk-test"))
+    assert str(embedder.client.base_url) == "https://api.openai.com/v1/"
+
+
+def test_openai_embedder_passes_an_explicit_base_url_to_the_sdk(monkeypatch):
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://env-gateway.internal/v1")
+    embedder = OpenAIEmbedder(
+        EmbeddingConfig(provider="openai", api_key="sk-test", base_url="http://gateway.internal:8080/v1")
+    )
+    assert str(embedder.client.base_url) == "http://gateway.internal:8080/v1/"
+
+
+def test_openai_embedder_without_base_url_honours_openai_base_url_env(monkeypatch):
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://env-gateway.internal/v1")
+    embedder = OpenAIEmbedder(EmbeddingConfig(provider="openai", api_key="sk-test"))
+    assert str(embedder.client.base_url) == "http://env-gateway.internal/v1/"
+
+
+def test_openai_embedder_treats_empty_base_url_as_unset(monkeypatch):
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://env-gateway.internal/v1")
+    embedder = OpenAIEmbedder(EmbeddingConfig(provider="openai", api_key="sk-test", base_url=""))
+    assert str(embedder.client.base_url) == "http://env-gateway.internal/v1/"
+
+
+
+def test_openai_embedder_treats_whitespace_base_url_as_unset(monkeypatch):
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://env-gateway.internal/v1")
+    embedder = OpenAIEmbedder(EmbeddingConfig(provider="openai", api_key="sk-test", base_url="   "))
+    assert str(embedder.client.base_url) == "http://env-gateway.internal/v1/"
+
