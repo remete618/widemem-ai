@@ -101,7 +101,7 @@ from widemem.core.types import (
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `weights` | `Dict[str, float]` | `{}` | Topic-to-multiplier map used to boost matching memories during scoring. |
+| `weights` | `Dict[str, float]` | `{}` | Topic-to-multiplier map applied to matching memories during scoring. Above 1.0 boosts, below 1.0 suppresses; must be finite and above 0. |
 | `custom_topics` | `list` | `[]` | Topic hints passed to extraction so domain-specific facts can be labeled. |
 
 ## Retrieval mode presets

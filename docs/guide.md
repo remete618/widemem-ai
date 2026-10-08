@@ -113,20 +113,20 @@ YMYLConfig(enabled=True, categories=["health", "medical", "financial"])
 
 ### Topic Weights (related)
 
-Boost specific topics during retrieval as a multiplier on `final_score`:
+Boost or suppress specific topics during retrieval as a multiplier on `final_score`:
 
 ```python
 from widemem.core.types import TopicConfig
 
 config = MemoryConfig(
     topics=TopicConfig(
-        weights={"python": 2.0, "cooking": 1.5},
+        weights={"python": 2.0, "cooking": 1.5, "gossip": 0.5},
         custom_topics=["python", "machine learning"],  # Extraction hints
     ),
 )
 ```
 
-Matching is case-insensitive substring. Values above 1.0 boost. Values below 1.0 have no effect today: the boost is floored at 1.0. `custom_topics` are passed to the LLM during extraction as a hint.
+Matching is case-insensitive substring. Values above 1.0 boost and values below 1.0 suppress. When several topics match, the multiplier is the strongest boost times the strongest suppression, so `python` (2.0) plus `gossip` (0.5) gives 1.0. Boosts do not stack, so overlapping topics such as `python` and `python programming` cannot compound. A weight of 0, a negative weight, NaN or infinity raises `ValidationError`. `custom_topics` are passed to the LLM during extraction as a hint.
 
 ## Hierarchical Memory
 
