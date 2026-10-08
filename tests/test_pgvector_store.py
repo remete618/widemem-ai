@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import DEFAULT, MagicMock
 
 import pytest
 
@@ -57,6 +57,16 @@ def fake_conn(mock_psycopg):
     conn.cursor.return_value.__exit__.return_value = False
     # By default, vector extension exists (verify_extension passes).
     cur.fetchone.return_value = (1,)
+    # The existing-table probe sees no table unless a test sets
+    # cur.existing_table_row; every other query uses return_value.
+    cur.existing_table_row = (False, None)
+
+    def fetchone(*_args, **_kwargs):
+        if cur.execute.call_args and "atttypmod" in cur.execute.call_args.args[0]:
+            return cur.existing_table_row
+        return DEFAULT
+
+    cur.fetchone.side_effect = fetchone
     fake_psycopg.connect.return_value = conn
     return conn, cur
 
@@ -124,6 +134,77 @@ def test_register_vector_called_on_init(mock_psycopg, fake_conn):
     )
     PgVectorStore(config, dimensions=4)
     assert register.called
+
+
+def _open(table_name="test_memories", dimensions=4):
+    from widemem.storage.vector.pgvector_store import PgVectorStore
+
+    config = VectorStoreConfig(
+        provider="pgvector",
+        url="postgresql://test:test@localhost/widemem_test",
+        table_name=table_name,
+    )
+    return PgVectorStore(config, dimensions=dimensions)
+
+
+def test_existing_table_with_other_dimension_raises_on_open(fake_conn):
+    conn, cur = fake_conn
+    cur.existing_table_row = (True, 1536)
+    with pytest.raises(StorageError) as exc:
+        _open(dimensions=384)
+    message = str(exc.value)
+    assert "test_memories" in message
+    assert "1536" in message and "384" in message
+    executed = [call.args[0] for call in cur.execute.call_args_list]
+    assert not any("CREATE INDEX" in s for s in executed)
+    conn.close.assert_called_once()
+
+
+def test_existing_table_without_embedding_column_raises_and_closes(fake_conn):
+    conn, cur = fake_conn
+    cur.existing_table_row = (True, None)
+    with pytest.raises(StorageError, match="exists but has no embedding column"):
+        _open()
+    executed = [call.args[0] for call in cur.execute.call_args_list]
+    assert not any("CREATE TABLE" in s for s in executed)
+    conn.close.assert_called_once()
+
+
+def test_missing_extension_closes_the_connection(fake_conn):
+    conn, cur = fake_conn
+    cur.fetchone.side_effect = None
+    cur.fetchone.return_value = None
+    with pytest.raises(StorageError, match="pgvector extension"):
+        _open()
+    conn.close.assert_called_once()
+
+
+def test_successful_open_keeps_the_connection(fake_conn):
+    conn, _ = fake_conn
+    _open()
+    conn.close.assert_not_called()
+
+
+def test_existing_table_with_same_dimension_opens(fake_conn):
+    _, cur = fake_conn
+    cur.existing_table_row = (True, 4)
+    assert _open(dimensions=4).dimensions == 4
+
+
+def test_existing_vector_column_without_declared_dimension_opens(fake_conn):
+    # atttypmod is -1 for a bare `vector` column: any size fits, nothing to compare.
+    _, cur = fake_conn
+    cur.existing_table_row = (True, -1)
+    assert _open(dimensions=4).dimensions == 4
+
+
+def test_dimension_probe_binds_table_name_as_parameter(fake_conn):
+    _, cur = fake_conn
+    _open(table_name="test_memories")
+    probes = [c for c in cur.execute.call_args_list if "atttypmod" in c.args[0]]
+    assert len(probes) == 1
+    assert "test_memories" not in probes[0].args[0]
+    assert probes[0].args[1] == ("test_memories", "test_memories")
 
 
 # ---------------------------------------------------------------------------
