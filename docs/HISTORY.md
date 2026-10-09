@@ -5,6 +5,26 @@ truth: `tests/test_readme_claims.py` enforces doc-vs-code consistency in CI,
 and anything that slipped through before that gate existed is recorded here
 permanently.
 
+## 2026-10-09: the 1.4.1 changelog credited MiniLM with thresholds it never had
+
+The 1.4.1 changelog entry "Default LLM is now `gpt-4o-mini`" said the release
+"Calibrated similarity thresholds for `all-MiniLM-L6-v2` embeddings". It did
+not. The confidence thresholds that shipped in 1.4.1 (high 0.60, moderate
+0.50, low 0.30) were tuned for `text-embedding-3-small`, the OpenAI default
+of that era, and every release from 1.4.1 through 2.0.0 applied them to
+every embedder. 2.0.0 made `all-MiniLM-L6-v2` the default embedder without
+touching the thresholds, and its own changelog admitted that short extracted
+facts often scored LOW under it. MiniLM got its own thresholds (high 0.60,
+moderate 0.30, low 0.20), selected from the embedder's resolved model and
+measured on 62 labeled queries, in 2.0.1.
+
+- Retracted: the 1.4.1 claim of MiniLM-calibrated thresholds. Nothing before
+  2.0.1 was calibrated for MiniLM.
+- Unaffected: `text-embedding-3-small` users, whose thresholds matched all
+  along, and every other model, which keeps the 1.4.1 values under 2.0.1.
+- Corrected: the 2.0.1 changelog entry describes the actual fix. The 1.4.1
+  entry stands as published and this log records the error.
+
 ## 2026-10-04: docs described behavior the code does not have
 
 A docs review against the code found claims that crashed or were false:
