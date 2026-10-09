@@ -15,7 +15,7 @@ A cheap, fast regression gate over a 50-question stratified subset of LoCoMo. Us
 
 - **Extraction quality.** Memory stores are reused from the v1 ingestion run (`benchmark/results/widemem_stores/`), so the extraction prompt is v1.3 era. The gate measures retrieval and scoring code paths only.
 - **Statistical certainty.** n=50 is small. A ±2 point fluctuation between runs of the same code is normal noise.
-- **Absolute leaderboard standing.** For a fair LoCoMo number to publish, run the full `run_locomo.py` with fresh ingestion.
+- **Absolute leaderboard standing.** For a fair LoCoMo number to publish, run the full `benchmark/run_ws1.py` with fresh ingestion.
 
 For extraction quality, use the full LoCoMo run.
 
