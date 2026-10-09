@@ -2,6 +2,8 @@
 
 > <img src="https://raw.githubusercontent.com/remete618/widemem-ai/main/docs/widemem-fish.png" width="48" align="middle" alt="widemem fish" /> &nbsp; *Goldfish memory? ¬_¬ Fixed.*
 
+![widemem keeps a fact across a process restart](docs/demo.gif)
+
 [![PyPI version](https://img.shields.io/pypi/v/widemem-ai.svg)](https://pypi.org/project/widemem-ai/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/widemem-ai.svg)](https://pypi.org/project/widemem-ai/)
 [![CI](https://github.com/remete618/widemem-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/remete618/widemem-ai/actions/workflows/ci.yml)
