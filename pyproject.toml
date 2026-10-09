@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "widemem-ai"
 version = "2.0.1"
-description = "Next-gen AI memory layer with hierarchical memory, importance scoring, and temporal retrieval"
+description = "Local-first memory layer for LLM apps and agents: runs offline on Ollama, sentence-transformers and FAISS; OpenAI and Anthropic optional."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
@@ -13,8 +13,9 @@ authors = [{ name = "widemem", email = "hello@widemem.ai" }]
 keywords = [
     "ai", "memory", "llm", "embeddings", "vector-search",
     "agent-memory", "conversational-memory", "rag", "semantic-search",
-    "openai", "anthropic", "ollama", "faiss", "qdrant",
-    "long-term-memory", "mem0", "ai-agents", "chatbot-memory",
+    "local-first", "ollama", "sentence-transformers", "faiss",
+    "openai", "anthropic", "qdrant", "pgvector", "mcp",
+    "long-term-memory", "ai-agents", "chatbot-memory",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -105,9 +106,9 @@ widemem = "widemem.cli:main"
 [project.urls]
 Homepage = "https://widemem.ai"
 Repository = "https://github.com/remete618/widemem-ai"
-Documentation = "https://github.com/remete618/widemem-ai#readme"
+Documentation = "https://widemem.ai/docs"
 Issues = "https://github.com/remete618/widemem-ai/issues"
-Changelog = "https://github.com/remete618/widemem-ai/releases"
+Changelog = "https://github.com/remete618/widemem-ai/blob/main/CHANGELOG.md"
 
 [tool.ruff]
 target-version = "py310"
