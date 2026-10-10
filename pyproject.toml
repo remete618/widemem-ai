@@ -46,9 +46,9 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.8",
 ]
-faiss = ["faiss-cpu>=1.7,<2"]
+faiss = ["faiss-cpu>=1.15.1,<2"]
 local = [
-    "faiss-cpu>=1.7,<2",
+    "faiss-cpu>=1.15.1,<2",
     "ollama>=0.2,<1",
     "sentence-transformers>=2.0,<7",
     # Transitive via huggingface-hub/requests; floor patches PYSEC-2026-141/142.
@@ -77,7 +77,7 @@ bm25 = ["rank-bm25>=0.2.2,<1"]
 pgvector = ["psycopg[binary]>=3.1,<4", "pgvector>=0.3.0,<1"]
 all = [
     "anthropic>=0.30,<2",
-    "faiss-cpu>=1.7,<2",
+    "faiss-cpu>=1.15.1,<2",
     "fastapi>=0.110,<1",
     "langchain-core>=1.0,<2",
     "mcp>=2,<3",
