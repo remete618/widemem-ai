@@ -74,7 +74,7 @@ server = [
 mcp = ["mcp>=2,<3"]
 langchain = ["langchain-core>=1.0,<2"]
 bm25 = ["rank-bm25>=0.2.2,<1"]
-pgvector = ["psycopg[binary]>=3.1,<4", "pgvector>=0.3.0,<1"]
+pgvector = ["psycopg[binary]>=3.1,<4", "pgvector>=0.5.0,<1"]
 all = [
     "anthropic>=0.30,<2",
     "faiss-cpu>=1.7,<2",
@@ -83,7 +83,7 @@ all = [
     "mcp>=2,<3",
     "ollama>=0.2,<1",
     "openai>=1.0,<4",
-    "pgvector>=0.3.0,<1",
+    "pgvector>=0.5.0,<1",
     "psycopg[binary]>=3.1,<4",
     "qdrant-client>=1.9,<2",
     "rank-bm25>=0.2.2,<1",
