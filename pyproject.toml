@@ -69,12 +69,12 @@ server = [
     # Transitive via fastapi; floor patches PYSEC-2026-161/248/249 + CVE-2026-48817/48818.
     "starlette>=1.3.1",
     # Transitive via fastapi form parsing; floor patches CVE-2026-53538.
-    "python-multipart>=0.0.30",
+    "python-multipart>=0.0.32",
 ]
 mcp = ["mcp>=2,<3"]
 langchain = ["langchain-core>=1.0,<2"]
 bm25 = ["rank-bm25>=0.2.2,<1"]
-pgvector = ["psycopg[binary]>=3.1,<4", "pgvector>=0.3.0,<1"]
+pgvector = ["psycopg[binary]>=3.1,<4", "pgvector>=0.5.0,<1"]
 all = [
     "anthropic>=0.30,<2",
     "faiss-cpu>=1.7,<2",
@@ -83,7 +83,7 @@ all = [
     "mcp>=2,<3",
     "ollama>=0.2,<1",
     "openai>=1.0,<4",
-    "pgvector>=0.3.0,<1",
+    "pgvector>=0.5.0,<1",
     "psycopg[binary]>=3.1,<4",
     "qdrant-client>=1.9,<2",
     "rank-bm25>=0.2.2,<1",
@@ -92,7 +92,7 @@ all = [
     # Transitive via fastapi; floor patches PYSEC-2026-161/248/249 + CVE-2026-48817/48818.
     "starlette>=1.3.1",
     # Transitive via fastapi form parsing; floor patches CVE-2026-53538.
-    "python-multipart>=0.0.30",
+    "python-multipart>=0.0.32",
     # Transitive via huggingface-hub/requests; floor patches PYSEC-2026-141/142.
     "urllib3>=2.7.0,<3",
 ]
