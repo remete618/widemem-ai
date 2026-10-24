@@ -43,7 +43,7 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
     "pytest-cov>=7.1.0,<8",
-    "ruff>=0.4",
+    "ruff>=0.17.1",
     "mypy>=1.8",
 ]
 faiss = ["faiss-cpu>=1.15.1,<2"]
